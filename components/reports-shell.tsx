@@ -13,23 +13,28 @@ import type { DbTransaction, DbCategory, DbMember } from "@/lib/types";
 
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-type Period = "7d" | "2w" | "Last month" | "This month";
+type Period = "7d" | "30d" | "Last month" | "This month" | "custom";
 type TxType = "expenses" | "income";
 type Breakdown = "category" | "member";
 
 const PERIODS: { key: Period; label: string }[] = [
   { key: "7d",         label: "Last 7 days" },
-  { key: "2w",         label: "Last 2 weeks" },
+  { key: "30d",        label: "Last 30 days" },
   { key: "Last month", label: "Last month" },
   { key: "This month", label: "This month" },
+  { key: "custom",     label: "Custom" },
 ];
+
+function toDateInputValue(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 function getPeriodRange(period: Period): { start: Date; end: Date } {
   const today = new Date();
   const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   switch (period) {
     case "7d": { const s = new Date(end); s.setDate(s.getDate() - 6); return { start: s, end }; }
-    case "2w": { const s = new Date(end); s.setDate(s.getDate() - 13); return { start: s, end }; }
+    case "30d": { const s = new Date(end); s.setDate(s.getDate() - 29); return { start: s, end }; }
     case "Last month": {
       const s = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       const e = new Date(today.getFullYear(), today.getMonth(), 0);
@@ -69,11 +74,17 @@ type Props = {
 };
 
 export default function ReportsShell({ transactions, categories, members, currency }: Props) {
-  const [period, setPeriod] = useState<Period>("This month");
+  const [period, setPeriod] = useState<Period>("30d");
   const [showDropdown, setShowDropdown] = useState(false);
   const [txType, setTxType] = useState<TxType>("expenses");
   const [breakdown, setBreakdown] = useState<Breakdown>("category");
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const today = new Date();
+  const todayStr = toDateInputValue(today);
+  const thirtyAgo = new Date(today); thirtyAgo.setDate(thirtyAgo.getDate() - 29);
+  const [customStart, setCustomStart] = useState(toDateInputValue(thirtyAgo));
+  const [customEnd, setCustomEnd] = useState(todayStr);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -84,7 +95,13 @@ export default function ReportsShell({ transactions, categories, members, curren
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  const { start, end } = getPeriodRange(period);
+  const { start, end } = period === "custom"
+    ? (() => {
+        const [sy, sm, sd] = customStart.split("-").map(Number);
+        const [ey, em, ed] = customEnd.split("-").map(Number);
+        return { start: new Date(sy, sm - 1, sd), end: new Date(ey, em - 1, ed) };
+      })()
+    : getPeriodRange(period);
   const rangeLabel = formatDateRange(start, end);
 
   const periodTx = transactions.filter((t) => txInRange(t, start, end));
@@ -109,7 +126,7 @@ export default function ReportsShell({ transactions, categories, members, curren
     }
     return days;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period, txType, transactions]);
+  }, [period, txType, transactions, customStart, customEnd]);
 
   const barColor = txType === "expenses" ? "#f43f5e" : "#10b981";
 
@@ -163,14 +180,45 @@ export default function ReportsShell({ transactions, categories, members, curren
               <ChevronDown className={cn("h-3.5 w-3.5 text-[var(--label-secondary)] transition-transform", showDropdown && "rotate-180")} strokeWidth={2.5} />
             </button>
             {showDropdown && (
-              <div className="absolute right-0 top-full mt-2 w-44 overflow-hidden rounded-2xl bg-[var(--surface)] shadow-xl ring-1 ring-black/[0.08] z-20">
+              <div className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-2xl bg-[var(--surface)] shadow-xl ring-1 ring-black/[0.08] z-20">
                 {PERIODS.map(({ key, label }) => (
-                  <button key={key} onClick={() => { setPeriod(key); setShowDropdown(false); }}
+                  <button key={key} onClick={() => { setPeriod(key); if (key !== "custom") setShowDropdown(false); }}
                     className={cn("flex w-full items-center px-4 py-3 text-[14px] transition-colors",
                       key === period ? "font-semibold text-[var(--foreground)] bg-black/[0.03]" : "font-medium text-[var(--label-secondary)] active:bg-black/[0.02]"
                     )}
                   >{label}</button>
                 ))}
+                {period === "custom" && (
+                  <div className="border-t border-[var(--separator)] px-4 py-3 space-y-2">
+                    <div>
+                      <p className="text-[11px] font-medium text-[var(--label-tertiary)] mb-1">From</p>
+                      <input
+                        type="date"
+                        value={customStart}
+                        max={customEnd}
+                        onChange={(e) => setCustomStart(e.target.value)}
+                        className="w-full rounded-xl bg-black/[0.04] px-3 py-1.5 text-[13px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.06] focus:ring-[var(--foreground)]/20"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-[var(--label-tertiary)] mb-1">To</p>
+                      <input
+                        type="date"
+                        value={customEnd}
+                        min={customStart}
+                        max={todayStr}
+                        onChange={(e) => setCustomEnd(e.target.value)}
+                        className="w-full rounded-xl bg-black/[0.04] px-3 py-1.5 text-[13px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.06] focus:ring-[var(--foreground)]/20"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setShowDropdown(false)}
+                      className="w-full rounded-xl bg-[var(--foreground)] py-2 text-[13px] font-semibold text-white"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

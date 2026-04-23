@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { updateHouseholdSymbol } from "@/app/actions/households";
@@ -22,10 +23,19 @@ type Props = {
 
 export default function SymbolPickerPage({ searchParams }: Props) {
   const router = useRouter();
+  const [custom, setCustom] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handlePick(symbol: string) {
+    setLoading(true);
     await updateHouseholdSymbol(symbol);
     router.back();
+  }
+
+  async function handleApplyCustom() {
+    const val = custom.trim();
+    if (!val) return;
+    await handlePick(val);
   }
 
   return (
@@ -50,14 +60,40 @@ export default function SymbolPickerPage({ searchParams }: Props) {
         {SYMBOL_GRID.map((emoji) => (
           <button
             key={emoji}
+            disabled={loading}
             onClick={() => handlePick(emoji)}
             className={cn(
-              "flex aspect-square items-center justify-center rounded-2xl bg-[var(--surface)] text-[28px] ring-1 ring-black/[0.06] transition-all active:scale-95 active:bg-black/[0.04]"
+              "flex aspect-square items-center justify-center rounded-2xl bg-[var(--surface)] text-[28px] ring-1 ring-black/[0.06] transition-all active:scale-95 active:bg-black/[0.04] disabled:opacity-50"
             )}
           >
             {emoji}
           </button>
         ))}
+      </div>
+
+      {/* Custom emoji input */}
+      <div className="mx-5 mt-5">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-px flex-1 bg-black/[0.07]" />
+          <span className="text-[11px] text-[var(--label-tertiary)]">or type your own</span>
+          <div className="h-px flex-1 bg-black/[0.07]" />
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={custom}
+            onChange={(e) => setCustom(e.target.value)}
+            placeholder="Paste any emoji ✨"
+            className="flex-1 h-12 rounded-2xl bg-[var(--surface)] px-4 text-center text-[22px] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow placeholder:text-[16px] placeholder:text-[var(--label-tertiary)]"
+          />
+          <button
+            onClick={handleApplyCustom}
+            disabled={!custom.trim() || loading}
+            className="h-12 px-5 rounded-2xl bg-[var(--foreground)] text-[14px] font-semibold text-white disabled:opacity-40 transition-opacity"
+          >
+            Use
+          </button>
+        </div>
       </div>
     </div>
   );
