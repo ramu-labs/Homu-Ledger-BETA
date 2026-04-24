@@ -66,7 +66,7 @@ export default function AddToHomescreenBanner() {
           </p>
           <p className="text-[11px] text-white/60 mt-0.5 leading-tight">
             {platform === "ios"
-              ? "Tap the share button below, then "Add to Home Screen""
+              ? "Tap the share button below, then 'Add to Home Screen'"
               : "Install for quick access from your home screen"}
           </p>
         </div>
@@ -98,7 +98,7 @@ export default function AddToHomescreenBanner() {
       {/* iOS step-by-step dropdown */}
       {platform === "ios" && showIOSSteps && (
         <div className="bg-[var(--surface)] border-b border-[var(--separator)] px-4 py-3 shadow-md space-y-2.5">
-          <Step number={1} icon={<Share className="h-4 w-4" />} text='Tap the Share button in Safari\'s toolbar' />
+          <Step number={1} icon={<Share className="h-4 w-4" />} text="Tap the Share button in Safari's toolbar" />
           <Step number={2} icon={<PlusSquare className="h-4 w-4" />} text='Scroll down and tap "Add to Home Screen"' />
           <Step number={3} icon={<span className="text-base">✅</span>} text='Tap "Add" — done! Open FamilyLedger like any app' />
         </div>
