@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile } from "lucide-react";
+import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages } from "lucide-react";
 import Link from "next/link";
 import { TapLink } from "@/components/tap";
 import { createClient } from "@/lib/supabase/server";
@@ -13,9 +13,12 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, name, initials, avatar_color, household_id")
+    .select("id, name, initials, avatar_color, household_id, language")
     .eq("id", user.id)
     .single();
+
+  const language = (profile?.language as "en" | "id" | null) ?? "en";
+  const languageLabel = language === "id" ? "Bahasa Indonesia" : "English";
 
   const { data: household } = profile?.household_id
     ? await supabase
@@ -126,6 +129,12 @@ export default async function SettingsPage() {
 
       <Group title="Account">
         <RowLink href="/settings/categories" icon={<Tag className="h-[18px] w-[18px]" strokeWidth={2} />} label="Categories" />
+        <RowLink
+          href={`/settings/language?current=${language}`}
+          icon={<Languages className="h-[18px] w-[18px]" strokeWidth={2} />}
+          label="Language"
+          value={languageLabel}
+        />
         <Row icon={<Bell className="h-[18px] w-[18px]" strokeWidth={2} />} label="Notifications" />
       </Group>
 
@@ -177,7 +186,7 @@ function Row({ icon, label }: { icon: React.ReactNode; label: string }) {
   );
 }
 
-function RowLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
+function RowLink({ href, icon, label, value }: { href: string; icon: React.ReactNode; label: string; value?: string }) {
   return (
     <li>
       <TapLink href={href} className="flex w-full items-center gap-3 px-4 py-3.5 min-h-[52px] active:bg-black/[0.02] transition-colors [touch-action:manipulation]">
@@ -185,6 +194,7 @@ function RowLink({ href, icon, label }: { href: string; icon: React.ReactNode; l
           {icon}
         </span>
         <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">{label}</p>
+        {value && <p className="mr-1 text-[14px] font-medium text-[var(--label-secondary)]">{value}</p>}
         <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
       </TapLink>
     </li>

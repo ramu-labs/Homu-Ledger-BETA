@@ -159,6 +159,24 @@ export async function updateProfile(formData: FormData): Promise<{ error?: strin
   return {};
 }
 
+export async function updateUserLanguage(language: string): Promise<{ error?: string }> {
+  if (!["en", "id"].includes(language)) return { error: "Unsupported language" };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ language })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
+  return {};
+}
+
 export async function joinHousehold(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
