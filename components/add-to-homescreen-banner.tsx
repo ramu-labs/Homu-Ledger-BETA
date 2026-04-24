@@ -68,7 +68,7 @@ export default function AddToHomescreenBanner() {
           </p>
           <p className="text-[11px] text-white/60 mt-0.5 leading-tight truncate">
             {mode === "ios"
-              ? "Open your browser menu, then 'Add to Home Screen'"
+              ? "Tap the share button, then 'Add to Home Screen'"
               : "Install for quick access from your home screen"}
           </p>
         </div>
@@ -103,9 +103,9 @@ export default function AddToHomescreenBanner() {
       {/* iOS step-by-step drawer */}
       {mode === "ios" && showSteps && (
         <div className="bg-[var(--surface)] border-b border-[var(--separator)] px-4 py-3 shadow-md space-y-2.5">
-          <Step number={1} icon={<Share className="h-4 w-4" />} text="Tap the Share / menu button in your browser" />
-          <Step number={2} icon={<PlusSquare className="h-4 w-4" />} text={'Scroll and tap "Add to Home Screen"'} />
-          <Step number={3} icon={<span className="text-base">✅</span>} text={'Tap "Add" — open FamilyLedger like any app'} />
+          <Step number={1} icon={<Share className="h-4 w-4" />} text="Tap the share button (📤) at the bottom or top of your browser" />
+          <Step number={2} icon={<PlusSquare className="h-4 w-4" />} text={'Scroll down and tap "Add to Home Screen"'} />
+          <Step number={3} icon={<span className="text-base">✅</span>} text={'Tap "Add" — done!'} />
         </div>
       )}
     </div>
