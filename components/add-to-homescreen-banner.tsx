@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Share, PlusSquare } from "lucide-react";
+import { X, Share } from "lucide-react";
 
 type BannerMode = "ios" | "android" | null;
 
@@ -73,7 +73,6 @@ export default function AddToHomescreenBanner() {
           </p>
         </div>
 
-        {/* Action button — always visible for iOS */}
         {mode === "ios" && (
           <button
             onClick={() => setShowSteps((v) => !v)}
@@ -103,25 +102,22 @@ export default function AddToHomescreenBanner() {
       {/* iOS step-by-step drawer */}
       {mode === "ios" && showSteps && (
         <div className="bg-[var(--surface)] border-b border-[var(--separator)] px-4 py-3 shadow-md space-y-2.5">
-          <Step number={1} icon={<Share className="h-4 w-4" />} text="Tap the share button (📤) at the bottom or top of your browser" />
-          <Step number={2} icon={<PlusSquare className="h-4 w-4" />} text={'Scroll down and tap "Add to Home Screen"'} />
-          <Step number={3} icon={<span className="text-base">✅</span>} text={'Tap "Add" — done!'} />
+          <Step number={1} text={<>Tap the <Share className="inline h-3.5 w-3.5 mx-0.5 relative -top-px" strokeWidth={2} /> share button at the bottom or top of your browser</>} />
+          <Step number={2} text={'Scroll down and tap "Add to Home Screen"'} />
+          <Step number={3} text={'Tap "Add" — done!'} />
         </div>
       )}
     </div>
   );
 }
 
-function Step({ number, icon, text }: { number: number; icon: React.ReactNode; text: string }) {
+function Step({ number, text }: { number: number; text: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3">
       <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--foreground)] text-white text-[11px] font-bold">
         {number}
       </div>
-      <div className="flex items-center gap-2 text-[var(--label-secondary)]">
-        {icon}
-        <p className="text-[13px]">{text}</p>
-      </div>
+      <p className="text-[13px] text-[var(--label-secondary)]">{text}</p>
     </div>
   );
 }
