@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile } from "lucide-react";
 import Link from "next/link";
+import { TapLink } from "@/components/tap";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions/auth";
 import { CopyButton } from "@/components/copy-button";
@@ -28,21 +29,21 @@ export default async function SettingsPage() {
   return (
     <div className="pb-10">
       <header className="flex items-center justify-between px-5 pt-4 pb-2">
-        <Link
+        <TapLink
           href="/transactions"
           aria-label="Back"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground)] ring-1 ring-black/[0.05] shadow-[0_1px_2px_rgba(0,0,0,0.03)] active:scale-95 transition-transform"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground)] ring-1 ring-black/[0.05] shadow-[0_1px_2px_rgba(0,0,0,0.03)] active:scale-95 transition-transform [touch-action:manipulation]"
         >
           <ChevronLeft className="h-[20px] w-[20px]" strokeWidth={2.25} />
-        </Link>
+        </TapLink>
         <h1 className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">Settings</h1>
         <div className="h-9 w-9" />
       </header>
 
       {/* Profile card — tappable to edit */}
-      <Link
+      <TapLink
         href="/settings/edit-profile"
-        className="mx-5 mt-4 flex items-center gap-3 rounded-2xl bg-[var(--surface)] p-4 ring-1 ring-black/[0.04] active:bg-black/[0.02] transition-colors"
+        className="mx-5 mt-4 flex items-center gap-3 rounded-2xl bg-[var(--surface)] p-4 ring-1 ring-black/[0.04] active:bg-black/[0.02] transition-colors [touch-action:manipulation]"
       >
         <div
           className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-[20px] font-semibold text-white"
@@ -57,7 +58,7 @@ export default async function SettingsPage() {
           <p className="truncate text-[13px] text-[var(--label-secondary)]">{user.email}</p>
         </div>
         <ChevronRight className="h-[18px] w-[18px] shrink-0 text-[var(--label-tertiary)]" strokeWidth={2} />
-      </Link>
+      </TapLink>
 
       {/* Household section */}
       {household && (
@@ -83,9 +84,9 @@ export default async function SettingsPage() {
             </div>
 
             {/* Symbol link */}
-            <Link
+            <TapLink
               href="/settings/symbol"
-              className="flex items-center gap-3 border-t border-[var(--separator)] px-4 py-3.5 active:bg-black/[0.02] transition-colors"
+              className="flex items-center gap-3 border-t border-[var(--separator)] px-4 py-3.5 active:bg-black/[0.02] transition-colors [touch-action:manipulation]"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-[var(--foreground)]">
                 <Smile className="h-[18px] w-[18px]" strokeWidth={2} />
@@ -93,12 +94,12 @@ export default async function SettingsPage() {
               <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">Symbol</p>
               <p className="mr-1 text-[20px] leading-none">{(household as any).symbol ?? "🏠"}</p>
               <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
-            </Link>
+            </TapLink>
 
             {/* Currency link */}
-            <Link
+            <TapLink
               href="/settings/currency"
-              className="flex items-center gap-3 border-t border-[var(--separator)] px-4 py-3.5 active:bg-black/[0.02] transition-colors"
+              className="flex items-center gap-3 border-t border-[var(--separator)] px-4 py-3.5 active:bg-black/[0.02] transition-colors [touch-action:manipulation]"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-[var(--foreground)]">
                 <Coins className="h-[18px] w-[18px]" strokeWidth={2} />
@@ -106,19 +107,19 @@ export default async function SettingsPage() {
               <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">Currency</p>
               <p className="mr-1 text-[14px] font-medium text-[var(--label-secondary)]">{household.currency ?? "IDR"}</p>
               <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
-            </Link>
+            </TapLink>
 
             {/* Members link */}
-            <Link
+            <TapLink
               href="/settings/members"
-              className="flex items-center gap-3 border-t border-[var(--separator)] px-4 py-3.5 active:bg-black/[0.02] transition-colors"
+              className="flex items-center gap-3 border-t border-[var(--separator)] px-4 py-3.5 active:bg-black/[0.02] transition-colors [touch-action:manipulation]"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-[var(--foreground)]">
                 <Users className="h-[18px] w-[18px]" strokeWidth={2} />
               </span>
               <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">Members</p>
               <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
-            </Link>
+            </TapLink>
           </div>
         </section>
       )}
@@ -179,13 +180,13 @@ function Row({ icon, label }: { icon: React.ReactNode; label: string }) {
 function RowLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
   return (
     <li>
-      <Link href={href} className="flex w-full items-center gap-3 px-4 py-3.5 min-h-[52px] active:bg-black/[0.02] transition-colors">
+      <TapLink href={href} className="flex w-full items-center gap-3 px-4 py-3.5 min-h-[52px] active:bg-black/[0.02] transition-colors [touch-action:manipulation]">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-[var(--foreground)]">
           {icon}
         </span>
         <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">{label}</p>
         <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
-      </Link>
+      </TapLink>
     </li>
   );
 }

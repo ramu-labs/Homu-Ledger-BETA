@@ -8,6 +8,7 @@ import {
   BarChart, Bar, XAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { cn } from "@/lib/cn";
+import { TapButton } from "@/components/tap";
 import { formatAmount } from "@/lib/format";
 import type { DbTransaction, DbCategory, DbMember } from "@/lib/types";
 
@@ -172,21 +173,21 @@ export default function ReportsShell({ transactions, categories, members, curren
         <div className="flex items-center justify-between gap-3">
           <p className="text-[15px] font-semibold text-[var(--foreground)]">{rangeLabel}</p>
           <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setShowDropdown((v) => !v)}
-              className="flex items-center gap-1.5 rounded-full bg-[var(--surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--foreground)] ring-1 ring-black/[0.06] shadow-sm"
+            <TapButton
+              onTap={() => setShowDropdown((v) => !v)}
+              className="flex items-center gap-1.5 rounded-full bg-[var(--surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--foreground)] ring-1 ring-black/[0.06] shadow-sm [touch-action:manipulation]"
             >
               {PERIODS.find((p) => p.key === period)?.label ?? period}
               <ChevronDown className={cn("h-3.5 w-3.5 text-[var(--label-secondary)] transition-transform", showDropdown && "rotate-180")} strokeWidth={2.5} />
-            </button>
+            </TapButton>
             {showDropdown && (
               <div className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-2xl bg-[var(--surface)] shadow-xl ring-1 ring-black/[0.08] z-20">
                 {PERIODS.map(({ key, label }) => (
-                  <button key={key} onClick={() => { setPeriod(key); if (key !== "custom") setShowDropdown(false); }}
-                    className={cn("flex w-full items-center px-4 py-3 text-[14px] transition-colors",
+                  <TapButton key={key} onTap={() => { setPeriod(key); if (key !== "custom") setShowDropdown(false); }}
+                    className={cn("flex w-full items-center px-4 py-3 text-[14px] transition-colors [touch-action:manipulation]",
                       key === period ? "font-semibold text-[var(--foreground)] bg-black/[0.03]" : "font-medium text-[var(--label-secondary)] active:bg-black/[0.02]"
                     )}
-                  >{label}</button>
+                  >{label}</TapButton>
                 ))}
                 {period === "custom" && (
                   <div className="border-t border-[var(--separator)] px-4 py-3 space-y-2">
@@ -409,12 +410,12 @@ function SummaryCell({ label, value, tone }: { label: string; value: string; ton
 
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick}
-      className={cn("flex-1 rounded-full px-3 py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
+    <TapButton onTap={onClick}
+      className={cn("flex-1 rounded-full px-3 py-1.5 text-[13px] font-medium transition-all min-h-[32px] [touch-action:manipulation]",
         active ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm" : "text-[var(--label-secondary)]"
       )}
     >
       {children}
-    </button>
+    </TapButton>
   );
 }

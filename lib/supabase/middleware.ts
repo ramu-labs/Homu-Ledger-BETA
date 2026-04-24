@@ -24,15 +24,17 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // Use getSession() — reads cookie locally, no network round-trip.
+  // Pages call getUser() themselves for authoritative checks.
+  const { data: { session } } = await supabase.auth.getSession();
   const pathname = request.nextUrl.pathname;
   const isPublic = PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
 
-  if (!user && !isPublic) {
+  if (!session && !isPublic) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (user && isPublic) {
+  if (session && isPublic) {
     return NextResponse.redirect(new URL("/transactions", request.url));
   }
 

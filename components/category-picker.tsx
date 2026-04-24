@@ -22,7 +22,7 @@ export default function CategoryPicker({
   onCategoryAdded,
 }: Props) {
   const [showAdd, setShowAdd] = useState(false);
-  const [iconMode, setIconMode] = useState<"emoji" | "symbol">("emoji");
+  const [iconMode, setIconMode] = useState<"emoji" | "custom">("emoji");
   const [symbol, setSymbol] = useState("");
   const [selectedSymbol, setSelectedSymbol] = useState("");
   const [selectedColor, setSelectedColor] = useState("#FCA5A5");
@@ -44,15 +44,15 @@ export default function CategoryPicker({
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setAddError(null);
-    if (iconMode === "symbol" && !selectedSymbol) {
+    if (iconMode === "emoji" && !selectedSymbol) {
       setAddError("Pick a symbol");
       return;
     }
     setAdding(true);
     const fd = new FormData();
-    fd.set("symbol", iconMode === "emoji" ? symbol : selectedSymbol);
+    fd.set("symbol", iconMode === "custom" ? symbol : selectedSymbol);
     fd.set("name", name);
-    if (iconMode === "symbol") {
+    if (iconMode === "emoji") {
       fd.set("color", selectedColor);
     } else {
       fd.set("color_index", String(categories.length));
@@ -153,7 +153,7 @@ export default function CategoryPicker({
 
               {/* Mode toggle */}
               <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
-                {(["emoji", "symbol"] as const).map((m) => (
+                {(["emoji", "custom"] as const).map((m) => (
                   <button
                     key={m}
                     type="button"
@@ -165,12 +165,12 @@ export default function CategoryPicker({
                         : "text-[var(--label-secondary)]"
                     )}
                   >
-                    {m === "emoji" ? "Emoji" : "Symbol"}
+                    {m === "emoji" ? "Emoji" : "Custom"}
                   </button>
                 ))}
               </div>
 
-              {iconMode === "emoji" ? (
+              {iconMode === "custom" ? (
                 <div className="flex gap-2">
                   <input
                     type="text"

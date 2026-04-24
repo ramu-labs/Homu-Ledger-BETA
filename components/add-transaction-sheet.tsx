@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Trash2, Camera, ImagePlus, ChevronRight, ArrowRightLeft, Check } from "lucide-react";
+import { X, Trash2, Camera, ImagePlus, ChevronRight, ArrowRightLeft, Check, Calendar } from "lucide-react";
 import { addTransaction, updateTransaction, deleteTransaction, moveTransaction } from "@/app/actions/transactions";
 import CategoryPicker from "@/components/category-picker";
 import { cn } from "@/lib/cn";
@@ -40,6 +40,39 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
 
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    // iOS Safari ignores overflow:hidden on body for touch-driven scroll.
+    // position:fixed on the body is the only reliable way to prevent ALL
+    // directional scrolling (including horizontal) while the sheet is open.
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.body.style.overflowX = "hidden";
+
+    // Belt-and-suspenders: also block any touchmove that escapes the sheet.
+    function onTouchMove(e: TouchEvent) {
+      const sheet = sheetRef.current;
+      if (!sheet) { e.preventDefault(); return; }
+      if (!sheet.contains(e.target as Node)) { e.preventDefault(); return; }
+      const scrollable = (e.target as Element)?.closest?.("[data-scroll]");
+      if (!scrollable) e.preventDefault();
+    }
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      document.body.style.overflowX = "";
+      window.scrollTo(0, scrollY);
+      document.removeEventListener("touchmove", onTouchMove);
+    };
+  }, [open]);
 
   const allCategories = [
     ...categories,
@@ -158,8 +191,9 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
 
       {/* Full-screen sheet */}
       <div
+        ref={sheetRef}
         className={cn(
-          "fixed bottom-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 h-dvh flex flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300",
+          "fixed bottom-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 h-dvh flex flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300 overflow-x-hidden [touch-action:pan-y]",
           open ? "translate-y-0" : "translate-y-full"
         )}
       >
@@ -184,7 +218,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
         {/* Form — flex col filling remaining space */}
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
           {/* Scrollable fields */}
-          <div className="flex-1 overflow-y-auto px-5 space-y-4 pb-4">
+          <div data-scroll className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-5 space-y-4 pb-4">
             {/* Type toggle */}
             <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
               {(["expense", "income"] as const).map((t) => (
@@ -268,18 +302,19 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
                 Date
               </label>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-0 flex items-center px-4">
-                  <span className="text-[15px] font-medium text-[var(--foreground)]">
+              <div className="relative h-12 w-full">
+                <div className="absolute inset-0 flex items-center gap-2 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08]">
+                  <span className="flex-1 text-[15px] font-medium text-[var(--foreground)]">
                     {formatShortDate(date)}
                   </span>
+                  <Calendar className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
                 </div>
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   required
-                  className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-transparent outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow [color-scheme:light]"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0 [color-scheme:light]"
                 />
               </div>
             </div>

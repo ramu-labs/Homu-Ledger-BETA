@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, Suspense, useCallback } from "rea
 import { useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal, X, Check } from "lucide-react";
 import Link from "next/link";
+import { TapLink } from "@/components/tap";
 import BalanceCard from "@/components/balance-card";
 import TransactionList from "@/components/transaction-list";
 import AddTransactionSheet from "@/components/add-transaction-sheet";
@@ -237,14 +238,14 @@ export default function TransactionsShell({
       <PullToRefresh>
         <div>
           <header className="flex items-center justify-between px-5 pt-4">
-            <Link
+            <TapLink
               href="/settings"
               aria-label="Profile and settings"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-semibold text-white ring-1 ring-black/[0.05] shadow-[0_1px_2px_rgba(0,0,0,0.04)] active:scale-95 transition-transform"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-semibold text-white ring-1 ring-black/[0.05] shadow-[0_1px_2px_rgba(0,0,0,0.04)] active:scale-95 transition-transform [touch-action:manipulation]"
               style={{ backgroundColor: currentUser.avatar_color }}
             >
               {currentUser.initials}
-            </Link>
+            </TapLink>
 
             <button
               onClick={() => setShowLedgerSwitcher(true)}
@@ -567,12 +568,24 @@ function FilterSheet({
 
 function SheetOpener({ onOpen }: { onOpen: () => void }) {
   const searchParams = useSearchParams();
+  const onOpenRef = useRef(onOpen);
+  onOpenRef.current = onOpen;
+
+  // URL-based trigger (arriving from another page via ?new=1)
   useEffect(() => {
     if (searchParams.get("new") === "1") {
-      onOpen();
+      onOpenRef.current();
       window.history.replaceState({}, "", "/transactions");
     }
-  }, [searchParams, onOpen]);
+  }, [searchParams]);
+
+  // In-page trigger (from the "+" button in BottomNav)
+  useEffect(() => {
+    const handler = () => onOpenRef.current();
+    window.addEventListener("fl:open-add-transaction", handler);
+    return () => window.removeEventListener("fl:open-add-transaction", handler);
+  }, []);
+
   return null;
 }
 

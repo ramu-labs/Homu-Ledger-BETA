@@ -10,9 +10,14 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "FamilyLedger",
+    startupImage: "/icons/icon-192.png",
   },
   icons: {
     apple: "/icons/icon-192.png",
+  },
+  other: {
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    "apple-mobile-web-app-capable": "yes",
   },
 };
 
@@ -21,6 +26,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  minimumScale: 1,
   userScalable: false,
 };
 

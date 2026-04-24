@@ -1,21 +1,30 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Wallet, PieChart, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { TapLink, TapButton } from "@/components/tap";
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const onTransactions = pathname.startsWith("/transactions");
   const onReports = pathname.startsWith("/reports");
+
+  function openAddTransaction() {
+    if (onTransactions) {
+      window.dispatchEvent(new CustomEvent("fl:open-add-transaction"));
+    } else {
+      router.push("/transactions?new=1");
+    }
+  }
 
   return (
     <nav className="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 z-50">
       <div className="relative h-[84px]">
         <div className="absolute inset-x-0 bottom-0 h-[72px] border-t border-black/[0.06] bg-[var(--surface)]/85 backdrop-blur-xl" />
 
-        <div className="relative grid h-[72px] grid-cols-3 items-center">
+        <div className="absolute inset-x-0 bottom-0 grid h-[72px] grid-cols-3 items-center">
           <NavTab
             href="/transactions"
             label="Transactions"
@@ -24,13 +33,13 @@ export default function BottomNav() {
           />
 
           <div className="flex items-center justify-center">
-            <Link
-              href="/transactions?new=1"
+            <TapButton
+              onTap={openAddTransaction}
               aria-label="Add transaction"
-              className="flex h-16 w-16 -translate-y-4 items-center justify-center rounded-full bg-[var(--foreground)] text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] active:scale-95 transition-transform"
+              className="flex h-16 w-16 -translate-y-4 items-center justify-center rounded-full bg-[var(--foreground)] text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] active:scale-95 transition-transform [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]"
             >
               <Plus className="h-7 w-7" strokeWidth={2.25} />
-            </Link>
+            </TapButton>
           </div>
 
           <NavTab
@@ -57,15 +66,15 @@ function NavTab({
   icon: React.ReactNode;
 }) {
   return (
-    <Link
+    <TapLink
       href={href}
       className={cn(
-        "flex h-full flex-col items-center justify-center gap-0.5 text-[10px] font-medium tracking-wide transition-colors",
+        "flex h-full flex-col items-center justify-center gap-0.5 text-[10px] font-medium tracking-wide transition-colors [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]",
         active ? "text-[var(--foreground)]" : "text-[var(--label-tertiary)]"
       )}
     >
       {icon}
       <span>{label}</span>
-    </Link>
+    </TapLink>
   );
 }
