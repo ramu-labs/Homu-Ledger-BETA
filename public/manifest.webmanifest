@@ -1,6 +1,6 @@
 {
-  "name": "FamilyLedger",
-  "short_name": "FamilyLedger",
+  "name": "Homu",
+  "short_name": "Homu",
   "description": "Shared expense tracker for couples & families",
   "start_url": "/transactions",
   "scope": "/",

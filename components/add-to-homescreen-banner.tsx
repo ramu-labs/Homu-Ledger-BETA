@@ -64,7 +64,7 @@ export default function AddToHomescreenBanner() {
 
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-semibold text-white leading-tight">
-            Add FamilyLedger to Home Screen
+            Add Homu to Home Screen
           </p>
           <p className="text-[11px] text-white/60 mt-0.5 leading-tight truncate">
             {mode === "ios"

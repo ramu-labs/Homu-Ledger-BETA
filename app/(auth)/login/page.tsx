@@ -22,11 +22,12 @@ export default function LoginPage() {
       <AddToHomescreenBanner />
       <div className="w-full">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--foreground)] text-white text-2xl shadow-lg">
-          💰
+        <div className="mx-auto mb-4 h-14 w-14 overflow-hidden rounded-2xl shadow-lg">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/icon-512.png" alt="Homu" className="h-full w-full object-cover" />
         </div>
         <h1 className="text-[26px] font-semibold tracking-tight text-[var(--foreground)]">
-          FamilyLedger
+          Homu
         </h1>
         <p className="mt-1 text-[14px] text-[var(--label-secondary)]">
           Sign in to your shared account

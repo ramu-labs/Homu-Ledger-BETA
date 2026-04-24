@@ -145,7 +145,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">FamilyLedger v0.1</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v0.1</p>
     </div>
   );
 }

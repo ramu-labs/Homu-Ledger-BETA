@@ -3,13 +3,13 @@ import "./globals.css";
 import ServiceWorkerRegistrar from "@/components/service-worker-registrar";
 
 export const metadata: Metadata = {
-  title: "FamilyLedger",
+  title: "Homu",
   description: "Shared expense tracker for couples & families",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "FamilyLedger",
+    title: "Homu",
     startupImage: "/icons/icon-192.png",
   },
   icons: {
