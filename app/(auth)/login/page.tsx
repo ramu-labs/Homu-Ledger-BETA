@@ -23,7 +23,7 @@ export default function LoginPage() {
       <div className="w-full">
       <div className="mb-8 text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icons/icon-512.png" alt="Homu" className="mx-auto mb-5 h-40 w-40 object-contain" />
+        <img src="/homu-login.png" alt="Homu" className="mx-auto mb-5 h-44 w-44 object-contain" />
         <p className="mt-1 text-[14px] text-[var(--label-secondary)]">
           Sign in to your shared account
         </p>
