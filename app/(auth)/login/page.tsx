@@ -22,10 +22,8 @@ export default function LoginPage() {
       <AddToHomescreenBanner />
       <div className="w-full">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 h-14 w-14 overflow-hidden rounded-2xl shadow-lg">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/icon-512.png" alt="Homu" className="h-full w-full object-cover" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icons/icon-512.png" alt="Homu" className="mx-auto mb-4 h-16 w-16 object-contain" />
         <h1 className="text-[26px] font-semibold tracking-tight text-[var(--foreground)]">
           Homu
         </h1>
