@@ -1,34 +1,48 @@
-"use client";
+import { resolveLucideIcon, type IconStyle } from "@/lib/category-icons";
 
-import {
-  resolveLucideIcon,
-  EMOJI_TO_LUCIDE,
-  LUCIDE_TO_EMOJI,
-  type IconStyle,
-} from "@/lib/category-icons";
+// Inline mapping so this file has zero "use client" ambiguity.
+// Maps emoji symbol → lucide icon id.
+const EMOJI_TO_LUCIDE_ID: Record<string, string> = {
+  "🏠": "home", "🏡": "house", "🚗": "car", "🚙": "car",
+  "🚌": "bus", "✈️": "plane", "🚂": "train", "⛽": "fuel",
+  "🍔": "utensils-crossed", "🍽️": "utensils-crossed",
+  "🍕": "pizza", "🍜": "soup", "🍲": "soup", "☕": "coffee",
+  "🛒": "shopping-cart", "👕": "shirt", "👗": "shirt",
+  "💊": "pill", "🧴": "pill", "🩺": "stethoscope", "🏥": "stethoscope",
+  "❤️": "heart-pulse", "🏋️": "dumbbell", "💪": "dumbbell",
+  "📚": "book-open", "🎓": "graduation-cap",
+  "🎬": "film", "🎮": "gamepad-2", "🎵": "music", "🎶": "music",
+  "💼": "briefcase", "💰": "wallet", "💳": "wallet",
+  "🏦": "landmark", "🌐": "landmark",
+  "🧾": "receipt", "📋": "receipt",
+  "🎁": "gift", "🐾": "paw-print", "👶": "baby",
+  "🌿": "leaf", "⚡": "zap", "🔧": "wrench", "🧹": "wrench",
+  "✂️": "scissors", "📱": "smartphone", "💡": "lightbulb",
+};
+
+// Reverse: lucide id → best emoji
+const LUCIDE_TO_EMOJI_ID: Record<string, string> = {};
+for (const [emoji, id] of Object.entries(EMOJI_TO_LUCIDE_ID)) {
+  if (!(id in LUCIDE_TO_EMOJI_ID)) LUCIDE_TO_EMOJI_ID[id] = emoji;
+}
 
 type Props = {
   symbol: string | null | undefined;
-  /** Global icon style — "2d" renders Lucide, "3d" renders emoji. */
+  /** "2d" = Lucide line icons, "3d" = emoji. Omit for auto-detect. */
   iconStyle?: IconStyle;
-  /** Size in px for Lucide icons. */
   size?: number;
-  /** Font size for emoji (e.g. "20px"). Defaults to `${size}px`. */
   emojiSize?: string;
   strokeWidth?: number;
-  /** Passed as CSS `color` to Lucide icons so they inherit category colour. */
   color?: string;
   fallback?: React.ReactNode;
   className?: string;
 };
 
 /**
- * Renders a category icon as either a Lucide 2D icon or an emoji/text,
- * honouring the global `iconStyle` setting.
- *
- * - `iconStyle="2d"`: emojis are mapped to their Lucide equivalent; `lu:` symbols render as Lucide.
- * - `iconStyle="3d"`: `lu:` symbols are mapped back to emoji; plain emoji renders as-is.
- * - No `iconStyle`: auto-detect from the symbol itself (backward-compat).
+ * Renders a category icon — either a Lucide 2D icon or an emoji.
+ * Respects the global iconStyle setting:
+ *   "2d" → emoji symbols are mapped to their Lucide equivalent
+ *   "3d" → lu: symbols are mapped back to emoji
  */
 export function CategoryIcon({
   symbol,
@@ -45,12 +59,11 @@ export function CategoryIcon({
   let resolved = symbol;
 
   if (iconStyle === "2d" && !symbol.startsWith("lu:")) {
-    const id = EMOJI_TO_LUCIDE[symbol];
+    const id = EMOJI_TO_LUCIDE_ID[symbol];
     if (id) resolved = `lu:${id}`;
   } else if (iconStyle === "3d" && symbol.startsWith("lu:")) {
-    const emoji = LUCIDE_TO_EMOJI[symbol.slice(3)];
+    const emoji = LUCIDE_TO_EMOJI_ID[symbol.slice(3)];
     if (emoji) resolved = emoji;
-    // If no emoji mapping, fall through and render Lucide as a graceful fallback
   }
 
   const LucideIcon = resolveLucideIcon(resolved);
