@@ -7,6 +7,7 @@ import CategoryPicker from "@/components/category-picker";
 import { cn } from "@/lib/cn";
 import { formatShortDate } from "@/lib/format";
 import type { DbTransaction, DbCategory, DbHouseholdMembership } from "@/lib/types";
+import { CategoryIcon } from "@/components/category-icon";
 
 type Props = {
   open: boolean;
@@ -283,7 +284,9 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
               >
                 {selectedCategory ? (
                   <>
-                    <span className="text-[20px] leading-none">{selectedCategory.symbol}</span>
+                    <span className="inline-flex items-center" style={{ color: selectedCategory.color }}>
+                      <CategoryIcon symbol={selectedCategory.symbol} size={20} emojiSize="20px" />
+                    </span>
                     <span className="flex-1 text-left text-[15px] font-medium text-[var(--foreground)]">
                       {selectedCategory.name}
                     </span>

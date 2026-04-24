@@ -5,19 +5,15 @@ import { X } from "lucide-react";
 import { addCategory } from "@/app/actions/categories";
 import { cn } from "@/lib/cn";
 import type { DbCategory } from "@/lib/types";
+import { CATEGORY_LUCIDE_ICONS, makeLucideSymbol } from "@/lib/category-icons";
+import { CategoryIcon } from "@/components/category-icon";
 
 const SOFT_PALETTE = [
   "#f97316", "#3b82f6", "#8b5cf6", "#ef4444",
   "#ec4899", "#eab308", "#14b8a6", "#22c55e", "#6b7280",
 ];
 
-const SYMBOLS = [
-  "🏠","🏡","🚗","🚌","✈️","🚂",
-  "🍔","🍕","🍜","☕","🛒","👕",
-  "💊","🏋️","📚","🎬","🎮","🎵",
-  "💼","💰","🏦","🎁","🐾","🌿",
-  "⚡","🔧","📱","🏥","🎓","💡",
-];
+const DEFAULT_ICON_ID = CATEGORY_LUCIDE_ICONS[0].id;
 
 type Props = {
   open: boolean;
@@ -25,23 +21,28 @@ type Props = {
   onAdded: (cat: DbCategory) => void;
 };
 
-type IconMode = "emoji" | "symbol";
+type IconMode = "icon" | "emoji";
 
 export default function AddCategorySheet({ open, onClose, onAdded }: Props) {
   const [name, setName] = useState("");
-  const [iconMode, setIconMode] = useState<IconMode>("symbol");
+  const [iconMode, setIconMode] = useState<IconMode>("icon");
   const [emoji, setEmoji] = useState("");
-  const [selectedSymbol, setSelectedSymbol] = useState(SYMBOLS[0]);
+  const [selectedIconId, setSelectedIconId] = useState<string>(DEFAULT_ICON_ID);
   const [selectedColor, setSelectedColor] = useState(SOFT_PALETTE[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const currentSymbol = iconMode === "emoji" ? emoji : selectedSymbol;
+  const currentSymbol =
+    iconMode === "emoji" ? emoji : makeLucideSymbol(selectedIconId);
 
   function reset() {
-    setName(""); setEmoji(""); setSelectedSymbol(SYMBOLS[0]);
-    setSelectedColor(SOFT_PALETTE[0]); setIconMode("symbol");
-    setError(null); setLoading(false);
+    setName("");
+    setEmoji("");
+    setSelectedIconId(DEFAULT_ICON_ID);
+    setSelectedColor(SOFT_PALETTE[0]);
+    setIconMode("icon");
+    setError(null);
+    setLoading(false);
   }
 
   function handleClose() { reset(); onClose(); }
@@ -99,10 +100,10 @@ export default function AddCategorySheet({ open, onClose, onAdded }: Props) {
             {/* Preview */}
             <div className="flex items-center gap-3 rounded-2xl bg-[var(--background)] px-4 py-3 ring-1 ring-black/[0.06]">
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[22px]"
-                style={{ backgroundColor: `${selectedColor}22` }}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: `${selectedColor}22`, color: selectedColor }}
               >
-                {currentSymbol || "?"}
+                <CategoryIcon symbol={currentSymbol} size={22} emojiSize="22px" />
               </div>
               <p className="text-[15px] font-medium text-[var(--foreground)]">{name || "Category name"}</p>
             </div>
@@ -124,14 +125,14 @@ export default function AddCategorySheet({ open, onClose, onAdded }: Props) {
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Icon</label>
               <div className="flex gap-1 rounded-full bg-black/[0.05] p-1 mb-3">
-                {(["symbol", "emoji"] as const).map((m) => (
+                {(["icon", "emoji"] as const).map((m) => (
                   <button key={m} type="button" onClick={() => setIconMode(m)}
                     className={cn(
                       "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
                       iconMode === m ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm" : "text-[var(--label-secondary)]"
                     )}
                   >
-                    {m === "emoji" ? "Emoji" : "Symbol"}
+                    {m === "emoji" ? "Emoji" : "Icon"}
                   </button>
                 ))}
               </div>
@@ -143,16 +144,17 @@ export default function AddCategorySheet({ open, onClose, onAdded }: Props) {
                 />
               ) : (
                 <div className="grid grid-cols-6 gap-2">
-                  {SYMBOLS.map((s) => (
-                    <button key={s} type="button" onClick={() => setSelectedSymbol(s)}
+                  {CATEGORY_LUCIDE_ICONS.map(({ id, icon: Icon }) => (
+                    <button key={id} type="button" onClick={() => setSelectedIconId(id)}
                       className={cn(
-                        "flex aspect-square items-center justify-center rounded-xl text-[20px] transition-all",
-                        selectedSymbol === s
+                        "flex aspect-square items-center justify-center rounded-xl transition-all",
+                        selectedIconId === id
                           ? "bg-[var(--foreground)]/10 ring-2 ring-[var(--foreground)]/30 scale-95"
                           : "bg-[var(--background)] ring-1 ring-black/[0.06]"
                       )}
+                      style={selectedIconId === id ? { color: selectedColor } : undefined}
                     >
-                      {s}
+                      <Icon size={20} strokeWidth={2} />
                     </button>
                   ))}
                 </div>

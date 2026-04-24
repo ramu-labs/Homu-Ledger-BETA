@@ -5,6 +5,7 @@ import { X, Plus, Check } from "lucide-react";
 import { addCategory } from "@/app/actions/categories";
 import { cn } from "@/lib/cn";
 import type { DbCategory } from "@/lib/types";
+import { CategoryIcon } from "@/components/category-icon";
 
 type Props = {
   categories: DbCategory[];
@@ -122,10 +123,10 @@ export default function CategoryPicker({
                       </span>
                     )}
                     <span
-                      className="flex h-12 w-12 items-center justify-center rounded-full text-[26px]"
-                      style={{ backgroundColor: `${cat.color}20` }}
+                      className="flex h-12 w-12 items-center justify-center rounded-full"
+                      style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
                     >
-                      {cat.symbol}
+                      <CategoryIcon symbol={cat.symbol} size={24} emojiSize="26px" />
                     </span>
                     <span className="text-center text-[13px] font-medium leading-snug text-[var(--foreground)]">
                       {cat.name}

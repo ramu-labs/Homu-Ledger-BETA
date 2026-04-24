@@ -7,6 +7,7 @@ import CategoryPicker from "@/components/category-picker";
 import { cn } from "@/lib/cn";
 import { formatShortDate } from "@/lib/format";
 import type { DbRecurringItem, DbCategory, RecurringFrequency } from "@/lib/types";
+import { CategoryIcon } from "@/components/category-icon";
 
 const FREQUENCIES: { key: RecurringFrequency; label: string }[] = [
   { key: "weekly", label: "Weekly" },
@@ -231,7 +232,9 @@ export default function AddRecurringSheet({
               >
                 {selectedCategory ? (
                   <>
-                    <span className="text-[20px] leading-none">{selectedCategory.symbol}</span>
+                    <span className="inline-flex items-center" style={{ color: selectedCategory.color }}>
+                      <CategoryIcon symbol={selectedCategory.symbol} size={20} emojiSize="20px" />
+                    </span>
                     <span className="flex-1 text-left text-[15px] font-medium text-[var(--foreground)]">
                       {selectedCategory.name}
                     </span>

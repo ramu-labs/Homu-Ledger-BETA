@@ -15,6 +15,7 @@ import PullToRefresh from "@/components/pull-to-refresh";
 import { cn } from "@/lib/cn";
 import { formatAmount } from "@/lib/format";
 import type { DbTransaction, DbCategory, DbMember, DbHouseholdMembership, DbRecurringItem } from "@/lib/types";
+import { CategoryIcon } from "@/components/category-icon";
 
 type SubTab = "history" | "recurring";
 type DateFilter = "all" | "30d" | "this_month" | "custom";
@@ -542,7 +543,7 @@ function FilterSheet({
                 )}
                 style={selected ? { backgroundColor: cat.color } : undefined}
               >
-                <span>{cat.symbol}</span>
+                <span className="inline-flex items-center"><CategoryIcon symbol={cat.symbol} size={14} emojiSize="14px" /></span>
                 {cat.name}
                 {selected && <Check className="h-3 w-3 ml-0.5" strokeWidth={2.5} />}
               </button>

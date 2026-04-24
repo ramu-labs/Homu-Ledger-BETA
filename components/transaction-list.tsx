@@ -3,6 +3,7 @@
 import { Camera } from "lucide-react";
 import { formatAmountSigned, formatShortDate } from "@/lib/format";
 import type { DbTransaction, DbMember } from "@/lib/types";
+import { CategoryIcon } from "@/components/category-icon";
 
 type Props = {
   transactions: DbTransaction[];
@@ -40,10 +41,10 @@ export default function TransactionList({ transactions, members, currency = "IDR
             className="flex items-center gap-3 px-4 py-3.5 min-h-[60px] active:bg-black/[0.02] transition-colors cursor-pointer"
           >
             <div
-              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[18px]"
-              style={{ backgroundColor: `${cat.color}1A` }}
+              className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+              style={{ backgroundColor: `${cat.color}1A`, color: cat.color }}
             >
-              <span>{cat.symbol}</span>
+              <CategoryIcon symbol={cat.symbol} size={18} emojiSize="18px" />
               {creator && (
                 <span
                   className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold text-white ring-2 ring-[var(--surface)]"

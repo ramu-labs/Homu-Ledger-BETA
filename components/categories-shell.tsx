@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Lock, Plus } from "lucide-react";
 import EditCategorySheet from "@/components/edit-category-sheet";
 import AddCategorySheet from "@/components/add-category-sheet";
 import type { DbCategory } from "@/lib/types";
+import { CategoryIcon } from "@/components/category-icon";
 
 type Props = {
   categories: DbCategory[];
@@ -113,10 +114,10 @@ function CategoryRow({ cat, onTap }: { cat: DbCategory; onTap: (c: DbCategory) =
         className="flex w-full items-center gap-3 px-4 py-3 min-h-[56px] text-left active:bg-black/[0.02] transition-colors"
       >
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[20px]"
-          style={{ backgroundColor: `${cat.color}22` }}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: `${cat.color}22`, color: cat.color }}
         >
-          {cat.symbol}
+          <CategoryIcon symbol={cat.symbol} size={20} emojiSize="20px" />
         </div>
         <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">{cat.name}</p>
         {cat.is_default && (

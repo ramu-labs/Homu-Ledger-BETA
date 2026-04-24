@@ -5,19 +5,20 @@ import { X, Trash2 } from "lucide-react";
 import { updateCategory, deleteCategory } from "@/app/actions/categories";
 import { cn } from "@/lib/cn";
 import type { DbCategory } from "@/lib/types";
+import {
+  CATEGORY_LUCIDE_ICONS,
+  isLucideSymbol,
+  makeLucideSymbol,
+  LUCIDE_SYMBOL_PREFIX,
+} from "@/lib/category-icons";
+import { CategoryIcon } from "@/components/category-icon";
 
 const SOFT_PALETTE = [
   "#f97316", "#3b82f6", "#8b5cf6", "#ef4444",
   "#ec4899", "#eab308", "#14b8a6", "#22c55e", "#6b7280",
 ];
 
-const SYMBOLS = [
-  "🏠","🏡","🚗","🚌","✈️","🚂",
-  "🍔","🍕","🍜","☕","🛒","👕",
-  "💊","🏋️","📚","🎬","🎮","🎵",
-  "💼","💰","🏦","🎁","🐾","🌿",
-  "⚡","🔧","📱","🏥","🎓","💡",
-];
+const DEFAULT_ICON_ID = CATEGORY_LUCIDE_ICONS[0].id;
 
 type Props = {
   open: boolean;
@@ -27,13 +28,13 @@ type Props = {
   onDeleted: (id: string) => void;
 };
 
-type IconMode = "emoji" | "symbol";
+type IconMode = "icon" | "emoji";
 
 export default function EditCategorySheet({ open, category, onClose, onUpdated, onDeleted }: Props) {
   const [name, setName] = useState("");
-  const [iconMode, setIconMode] = useState<IconMode>("emoji");
+  const [iconMode, setIconMode] = useState<IconMode>("icon");
   const [emoji, setEmoji] = useState("");
-  const [selectedSymbol, setSelectedSymbol] = useState("");
+  const [selectedIconId, setSelectedIconId] = useState<string>(DEFAULT_ICON_ID);
   const [selectedColor, setSelectedColor] = useState(SOFT_PALETTE[0]);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -46,19 +47,22 @@ export default function EditCategorySheet({ open, category, onClose, onUpdated, 
     setError(null);
     setLoading(false);
     setDeleting(false);
-    // Detect if the symbol is in our grid or treat as free emoji
-    if (SYMBOLS.includes(category.symbol)) {
-      setIconMode("symbol");
-      setSelectedSymbol(category.symbol);
+    if (isLucideSymbol(category.symbol)) {
+      const id = category.symbol.slice(LUCIDE_SYMBOL_PREFIX.length);
+      setIconMode("icon");
+      setSelectedIconId(
+        CATEGORY_LUCIDE_ICONS.find((i) => i.id === id) ? id : DEFAULT_ICON_ID,
+      );
       setEmoji("");
     } else {
       setIconMode("emoji");
       setEmoji(category.symbol);
-      setSelectedSymbol("");
+      setSelectedIconId(DEFAULT_ICON_ID);
     }
   }, [open, category]);
 
-  const currentSymbol = iconMode === "emoji" ? emoji : selectedSymbol;
+  const currentSymbol =
+    iconMode === "emoji" ? emoji : makeLucideSymbol(selectedIconId);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -129,10 +133,10 @@ export default function EditCategorySheet({ open, category, onClose, onUpdated, 
             {/* Preview */}
             <div className="flex items-center gap-3 rounded-2xl bg-[var(--background)] px-4 py-3 ring-1 ring-black/[0.06]">
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[22px]"
-                style={{ backgroundColor: `${selectedColor}22` }}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: `${selectedColor}22`, color: selectedColor }}
               >
-                {currentSymbol || "?"}
+                <CategoryIcon symbol={currentSymbol} size={22} emojiSize="22px" />
               </div>
               <p className="text-[15px] font-medium text-[var(--foreground)]">{name || "Category name"}</p>
             </div>
@@ -153,7 +157,7 @@ export default function EditCategorySheet({ open, category, onClose, onUpdated, 
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Icon</label>
               <div className="flex gap-1 rounded-full bg-black/[0.05] p-1 mb-3">
-                {(["emoji", "symbol"] as const).map((m) => (
+                {(["icon", "emoji"] as const).map((m) => (
                   <button
                     key={m}
                     type="button"
@@ -165,7 +169,7 @@ export default function EditCategorySheet({ open, category, onClose, onUpdated, 
                         : "text-[var(--label-secondary)]"
                     )}
                   >
-                    {m === "emoji" ? "Emoji" : "Symbol"}
+                    {m === "emoji" ? "Emoji" : "Icon"}
                   </button>
                 ))}
               </div>
@@ -180,19 +184,20 @@ export default function EditCategorySheet({ open, category, onClose, onUpdated, 
                 />
               ) : (
                 <div className="grid grid-cols-6 gap-2">
-                  {SYMBOLS.map((s) => (
+                  {CATEGORY_LUCIDE_ICONS.map(({ id, icon: Icon }) => (
                     <button
-                      key={s}
+                      key={id}
                       type="button"
-                      onClick={() => setSelectedSymbol(s)}
+                      onClick={() => setSelectedIconId(id)}
                       className={cn(
-                        "flex aspect-square items-center justify-center rounded-xl text-[20px] transition-all",
-                        selectedSymbol === s
+                        "flex aspect-square items-center justify-center rounded-xl transition-all",
+                        selectedIconId === id
                           ? "bg-[var(--foreground)]/10 ring-2 ring-[var(--foreground)]/30 scale-95"
                           : "bg-[var(--background)] ring-1 ring-black/[0.06]"
                       )}
+                      style={selectedIconId === id ? { color: selectedColor } : undefined}
                     >
-                      {s}
+                      <Icon size={20} strokeWidth={2} />
                     </button>
                   ))}
                 </div>

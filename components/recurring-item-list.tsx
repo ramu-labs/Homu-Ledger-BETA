@@ -3,6 +3,7 @@
 import { Plus } from "lucide-react";
 import { formatAmount, formatShortDate } from "@/lib/format";
 import type { DbRecurringItem } from "@/lib/types";
+import { CategoryIcon } from "@/components/category-icon";
 
 const FALLBACK_CAT = { name: "Other", symbol: "📋", color: "#6b7280" };
 
@@ -72,10 +73,10 @@ export default function RecurringItemList({ items, currency = "IDR", onTap, onAd
               className="flex items-center gap-3 px-4 py-3.5 min-h-[64px] active:bg-black/[0.02] transition-colors cursor-pointer"
             >
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[20px]"
-                style={{ backgroundColor: `${cat.color}1A` }}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: `${cat.color}1A`, color: cat.color }}
               >
-                {cat.symbol}
+                <CategoryIcon symbol={cat.symbol} size={20} emojiSize="20px" />
               </div>
 
               <div className="min-w-0 flex-1">
