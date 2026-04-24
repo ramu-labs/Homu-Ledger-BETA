@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { signIn } from "@/app/actions/auth";
+import AddToHomescreenBanner from "@/components/add-to-homescreen-banner";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +18,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="w-full">
+    <>
+      <AddToHomescreenBanner />
+      <div className="w-full">
       <div className="mb-8 text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--foreground)] text-white text-2xl shadow-lg">
           💰
@@ -56,6 +59,7 @@ export default function LoginPage() {
         </Link>
       </p>
     </div>
+    </>
   );
 }
 
