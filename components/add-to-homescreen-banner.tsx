@@ -3,40 +3,49 @@
 import { useEffect, useState } from "react";
 import { X, Share, PlusSquare } from "lucide-react";
 
-type Platform = "ios" | "android" | null;
+type BannerMode = "ios-safari" | "ios-chrome" | "android" | null;
+
+function detectMode(): BannerMode {
+  // Already installed — don't show
+  try {
+    if (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as any).standalone === true
+    ) {
+      return null;
+    }
+  } catch {}
+
+  const ua = navigator.userAgent;
+  const isIOS = /iP(hone|ad|od)/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const isChrome = /CriOS|Chrome/i.test(ua) && !/Edg/i.test(ua);
+
+  if (isIOS && isChrome) return "ios-chrome";
+  if (isIOS) return "ios-safari";
+  if (isAndroid) return "android";
+  return null;
+}
 
 export default function AddToHomescreenBanner() {
-  const [platform, setPlatform] = useState<Platform>(null);
+  const [mode, setMode] = useState<BannerMode>(null);
   const [dismissed, setDismissed] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showIOSSteps, setShowIOSSteps] = useState(false);
+  const [showSteps, setShowSteps] = useState(false);
 
+  // Detect platform after hydration
   useEffect(() => {
-    // Already installed as PWA — don't show
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as any).standalone === true;
-    if (isStandalone) return;
-
-    // Only show on mobile
-    const ua = navigator.userAgent;
-    const isIOS = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream;
-    const isAndroid = /Android/.test(ua);
-
-    if (isIOS) {
-      setPlatform("ios");
-    } else if (isAndroid) {
-      setPlatform("android");
-    }
+    setMode(detectMode());
   }, []);
 
+  // Capture Android install prompt
   useEffect(() => {
-    function onBeforeInstallPrompt(e: Event) {
+    function handler(e: Event) {
       e.preventDefault();
       setDeferredPrompt(e);
     }
-    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
   async function handleAndroidInstall() {
@@ -47,15 +56,19 @@ export default function AddToHomescreenBanner() {
     setDeferredPrompt(null);
   }
 
-  if (dismissed || !platform) return null;
-  // For Android, only show if we have the deferred prompt
-  if (platform === "android" && !deferredPrompt) return null;
+  if (!mode || dismissed) return null;
+  if (mode === "android" && !deferredPrompt) return null;
+
+  const subtitle: Record<NonNullable<BannerMode>, string> = {
+    "ios-safari": "Tap the share button below, then 'Add to Home Screen'",
+    "ios-chrome": "Open this page in Safari to add it to your home screen",
+    android: "Install for quick access from your home screen",
+  };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] flex flex-col">
-      {/* Main banner */}
+    <div className="fixed top-0 left-0 right-0 z-[100]">
+      {/* Banner */}
       <div className="flex items-center gap-3 bg-[var(--foreground)] px-4 py-3 shadow-lg">
-        {/* App icon */}
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-xl">
           💰
         </div>
@@ -65,23 +78,23 @@ export default function AddToHomescreenBanner() {
             Add FamilyLedger to Home Screen
           </p>
           <p className="text-[11px] text-white/60 mt-0.5 leading-tight">
-            {platform === "ios"
-              ? "Tap the share button below, then 'Add to Home Screen'"
-              : "Install for quick access from your home screen"}
+            {subtitle[mode]}
           </p>
         </div>
 
-        {platform === "ios" ? (
+        {mode === "ios-safari" && (
           <button
-            onClick={() => setShowIOSSteps((v) => !v)}
-            className="shrink-0 rounded-xl bg-white/15 px-3 py-1.5 text-[12px] font-semibold text-white active:bg-white/25"
+            onClick={() => setShowSteps((v) => !v)}
+            className="shrink-0 rounded-xl bg-white/15 px-3 py-1.5 text-[12px] font-semibold text-white"
           >
             How?
           </button>
-        ) : (
+        )}
+
+        {mode === "android" && (
           <button
             onClick={handleAndroidInstall}
-            className="shrink-0 rounded-xl bg-white/15 px-3 py-1.5 text-[12px] font-semibold text-white active:bg-white/25"
+            className="shrink-0 rounded-xl bg-white/15 px-3 py-1.5 text-[12px] font-semibold text-white"
           >
             Install
           </button>
@@ -89,18 +102,18 @@ export default function AddToHomescreenBanner() {
 
         <button
           onClick={() => setDismissed(true)}
-          className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/70 active:bg-white/20"
+          className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/70"
         >
           <X className="h-3.5 w-3.5" strokeWidth={2.5} />
         </button>
       </div>
 
-      {/* iOS step-by-step dropdown */}
-      {platform === "ios" && showIOSSteps && (
+      {/* iOS Safari step-by-step */}
+      {mode === "ios-safari" && showSteps && (
         <div className="bg-[var(--surface)] border-b border-[var(--separator)] px-4 py-3 shadow-md space-y-2.5">
           <Step number={1} icon={<Share className="h-4 w-4" />} text="Tap the Share button in Safari's toolbar" />
-          <Step number={2} icon={<PlusSquare className="h-4 w-4" />} text='Scroll down and tap "Add to Home Screen"' />
-          <Step number={3} icon={<span className="text-base">✅</span>} text='Tap "Add" — done! Open FamilyLedger like any app' />
+          <Step number={2} icon={<PlusSquare className="h-4 w-4" />} text={'Scroll down and tap "Add to Home Screen"'} />
+          <Step number={3} icon={<span className="text-base">✅</span>} text={'Tap "Add" — open FamilyLedger like any app'} />
         </div>
       )}
     </div>
