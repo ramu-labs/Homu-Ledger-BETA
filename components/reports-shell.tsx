@@ -10,7 +10,9 @@ import {
 import { cn } from "@/lib/cn";
 import { TapButton } from "@/components/tap";
 import { formatAmount } from "@/lib/format";
+import { CategoryIcon } from "@/components/category-icon";
 import type { DbTransaction, DbCategory, DbMember } from "@/lib/types";
+import type { IconStyle } from "@/lib/category-icons";
 
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -72,9 +74,10 @@ type Props = {
   categories: DbCategory[];
   members: Record<string, DbMember>;
   currency: string;
+  iconStyle?: IconStyle;
 };
 
-export default function ReportsShell({ transactions, categories, members, currency }: Props) {
+export default function ReportsShell({ transactions, categories, members, currency, iconStyle = "3d" }: Props) {
   const [period, setPeriod] = useState<Period>("30d");
   const [showDropdown, setShowDropdown] = useState(false);
   const [txType, setTxType] = useState<TxType>("expenses");
@@ -315,7 +318,9 @@ export default function ReportsShell({ transactions, categories, members, curren
                     <li key={c.id} className="px-4 py-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <span className="flex h-8 w-8 items-center justify-center rounded-full text-base" style={{ backgroundColor: `${c.color}1A` }}>{c.symbol}</span>
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full text-base" style={{ backgroundColor: `${c.color}1A` }}>
+                            <CategoryIcon symbol={c.symbol} iconStyle={iconStyle} size={16} emojiSize="16px" color={iconStyle === "2d" ? c.color : undefined} />
+                          </span>
                           <div>
                             <p className="text-[14px] font-medium text-[var(--foreground)]">{c.name}</p>
                             <p className="text-[11px] text-[var(--label-secondary)]">{pct.toFixed(1)}%</p>

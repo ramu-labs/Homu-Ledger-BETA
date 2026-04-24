@@ -7,6 +7,7 @@ import CategoryPicker from "@/components/category-picker";
 import { cn } from "@/lib/cn";
 import { formatShortDate } from "@/lib/format";
 import type { DbTransaction, DbCategory, DbHouseholdMembership } from "@/lib/types";
+import type { IconStyle } from "@/lib/category-icons";
 
 type Props = {
   open: boolean;
@@ -16,13 +17,14 @@ type Props = {
   currency?: string;
   memberships?: DbHouseholdMembership[];
   currentHouseholdId?: string;
+  iconStyle?: IconStyle;
 };
 
 function todayString() {
   return new Date().toISOString().split("T")[0];
 }
 
-export default function AddTransactionSheet({ open, onClose, categories, editing, currency = "IDR", memberships = [], currentHouseholdId }: Props) {
+export default function AddTransactionSheet({ open, onClose, categories, editing, currency = "IDR", memberships = [], currentHouseholdId, iconStyle = "3d" }: Props) {
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amount, setAmount] = useState("");
   const [name, setName] = useState("");
@@ -461,6 +463,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
           onSelect={setCategoryId}
           onClose={() => setShowCategoryPicker(false)}
           onCategoryAdded={(cat) => setExtraCategories((prev) => [...prev, cat])}
+          iconStyle={iconStyle}
         />
       )}
     </>

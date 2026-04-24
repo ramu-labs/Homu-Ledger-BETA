@@ -7,6 +7,7 @@ import CategoryPicker from "@/components/category-picker";
 import { cn } from "@/lib/cn";
 import { formatShortDate } from "@/lib/format";
 import type { DbRecurringItem, DbCategory, RecurringFrequency } from "@/lib/types";
+import type { IconStyle } from "@/lib/category-icons";
 
 const FREQUENCIES: { key: RecurringFrequency; label: string }[] = [
   { key: "weekly", label: "Weekly" },
@@ -27,6 +28,7 @@ type Props = {
   editing?: DbRecurringItem | null;
   currency?: string;
   onCategoryAdded: (cat: DbCategory) => void;
+  iconStyle?: IconStyle;
 };
 
 export default function AddRecurringSheet({
@@ -36,6 +38,7 @@ export default function AddRecurringSheet({
   editing,
   currency = "IDR",
   onCategoryAdded,
+  iconStyle = "3d",
 }: Props) {
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amount, setAmount] = useState("");
@@ -387,6 +390,7 @@ export default function AddRecurringSheet({
           onSelect={setCategoryId}
           onClose={() => setShowCategoryPicker(false)}
           onCategoryAdded={onCategoryAdded}
+          iconStyle={iconStyle}
         />
       )}
     </>

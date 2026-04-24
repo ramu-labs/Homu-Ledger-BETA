@@ -10,7 +10,7 @@ export default async function CategoriesPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("household_id")
+    .select("household_id, icon_style")
     .eq("id", user.id)
     .single();
 
@@ -25,5 +25,5 @@ export default async function CategoriesPage() {
 
   const categories: DbCategory[] = categoriesRaw ?? [];
 
-  return <CategoriesShell categories={categories} />;
+  return <CategoriesShell categories={categories} iconStyle={(profile as any).icon_style ?? "3d"} />;
 }

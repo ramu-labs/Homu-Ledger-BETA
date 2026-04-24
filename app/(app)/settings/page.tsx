@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages } from "lucide-react";
+import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers } from "lucide-react";
 import Link from "next/link";
 import { TapLink } from "@/components/tap";
 import { createClient } from "@/lib/supabase/server";
@@ -13,12 +13,15 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, name, initials, avatar_color, household_id, language")
+    .select("id, name, initials, avatar_color, household_id, language, icon_style")
     .eq("id", user.id)
     .single();
 
   const language = (profile?.language as "en" | "id" | null) ?? "en";
   const languageLabel = language === "id" ? "Bahasa Indonesia" : "English";
+
+  const iconStyle = (profile?.icon_style as "2d" | "3d" | null) ?? "3d";
+  const iconStyleLabel = iconStyle === "2d" ? "2D Icons" : "3D Emoji";
 
   const { data: household } = profile?.household_id
     ? await supabase
@@ -129,6 +132,12 @@ export default async function SettingsPage() {
 
       <Group title="Account">
         <RowLink href="/settings/categories" icon={<Tag className="h-[18px] w-[18px]" strokeWidth={2} />} label="Categories" />
+        <RowLink
+          href={`/settings/style?current=${iconStyle}`}
+          icon={<Layers className="h-[18px] w-[18px]" strokeWidth={2} />}
+          label="Icon Style"
+          value={iconStyleLabel}
+        />
         <RowLink
           href={`/settings/language?current=${language}`}
           icon={<Languages className="h-[18px] w-[18px]" strokeWidth={2} />}

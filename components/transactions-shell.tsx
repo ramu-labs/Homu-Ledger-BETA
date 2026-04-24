@@ -15,6 +15,7 @@ import PullToRefresh from "@/components/pull-to-refresh";
 import { cn } from "@/lib/cn";
 import { formatAmount } from "@/lib/format";
 import type { DbTransaction, DbCategory, DbMember, DbHouseholdMembership, DbRecurringItem } from "@/lib/types";
+import type { IconStyle } from "@/lib/category-icons";
 
 type SubTab = "history" | "recurring";
 type DateFilter = "all" | "30d" | "this_month" | "custom";
@@ -62,6 +63,7 @@ type Props = {
   currentUser: { initials: string; avatar_color: string };
   memberships: DbHouseholdMembership[];
   recurringItems: DbRecurringItem[];
+  iconStyle?: IconStyle;
 };
 
 export default function TransactionsShell({
@@ -78,6 +80,7 @@ export default function TransactionsShell({
   currentUser,
   memberships,
   recurringItems,
+  iconStyle = "3d",
 }: Props) {
   const [tab, setTab] = useState<SubTab>("history");
 
@@ -340,6 +343,7 @@ export default function TransactionsShell({
                   transactions={displayedTransactions}
                   members={members}
                   currency={currency}
+                  iconStyle={iconStyle}
                   onTap={openEdit}
                 />
                 {/* Infinite scroll sentinel */}
@@ -352,6 +356,7 @@ export default function TransactionsShell({
               <RecurringItemList
                 items={recurringItems}
                 currency={currency}
+                iconStyle={iconStyle}
                 onTap={openEditRecurring}
                 onAdd={openAddRecurring}
               />
@@ -368,6 +373,7 @@ export default function TransactionsShell({
         currency={currency}
         memberships={memberships}
         currentHouseholdId={householdId}
+        iconStyle={iconStyle}
       />
 
       <AddRecurringSheet
@@ -377,6 +383,7 @@ export default function TransactionsShell({
         editing={editingRecurring}
         currency={currency}
         onCategoryAdded={(cat) => setExtraCategories((prev) => [...prev, cat])}
+        iconStyle={iconStyle}
       />
 
       {showLedgerSwitcher && (

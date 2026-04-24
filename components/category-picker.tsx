@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { X, Plus, Check } from "lucide-react";
 import { addCategory } from "@/app/actions/categories";
+import { CategoryIcon } from "@/components/category-icon";
 import { cn } from "@/lib/cn";
 import type { DbCategory } from "@/lib/types";
+import type { IconStyle } from "@/lib/category-icons";
 
 type Props = {
   categories: DbCategory[];
@@ -12,6 +14,7 @@ type Props = {
   onSelect: (id: string | null) => void;
   onClose: () => void;
   onCategoryAdded: (cat: DbCategory) => void;
+  iconStyle?: IconStyle;
 };
 
 export default function CategoryPicker({
@@ -20,6 +23,7 @@ export default function CategoryPicker({
   onSelect,
   onClose,
   onCategoryAdded,
+  iconStyle = "3d",
 }: Props) {
   const [showAdd, setShowAdd] = useState(false);
   const [iconMode, setIconMode] = useState<"emoji" | "custom">("emoji");
@@ -125,7 +129,13 @@ export default function CategoryPicker({
                       className="flex h-12 w-12 items-center justify-center rounded-full text-[26px]"
                       style={{ backgroundColor: `${cat.color}20` }}
                     >
-                      {cat.symbol}
+                      <CategoryIcon
+                        symbol={cat.symbol}
+                        iconStyle={iconStyle}
+                        size={26}
+                        emojiSize="26px"
+                        color={iconStyle === "2d" ? cat.color : undefined}
+                      />
                     </span>
                     <span className="text-center text-[13px] font-medium leading-snug text-[var(--foreground)]">
                       {cat.name}

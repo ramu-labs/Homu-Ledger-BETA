@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Lock, Plus } from "lucide-react";
 import EditCategorySheet from "@/components/edit-category-sheet";
 import AddCategorySheet from "@/components/add-category-sheet";
+import { CategoryIcon } from "@/components/category-icon";
 import type { DbCategory } from "@/lib/types";
+import type { IconStyle } from "@/lib/category-icons";
 
 type Props = {
   categories: DbCategory[];
+  iconStyle?: IconStyle;
 };
 
-export default function CategoriesShell({ categories: initial }: Props) {
+export default function CategoriesShell({ categories: initial, iconStyle = "3d" }: Props) {
   const router = useRouter();
   const [categories, setCategories] = useState(initial);
   const [editing, setEditing] = useState<DbCategory | null>(null);
@@ -66,7 +69,7 @@ export default function CategoriesShell({ categories: initial }: Props) {
             </p>
             <ul className="mx-5 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] divide-y divide-[var(--separator)]">
               {custom.map((cat) => (
-                <CategoryRow key={cat.id} cat={cat} onTap={openEdit} />
+                <CategoryRow key={cat.id} cat={cat} iconStyle={iconStyle} onTap={openEdit} />
               ))}
             </ul>
           </section>
@@ -78,7 +81,7 @@ export default function CategoriesShell({ categories: initial }: Props) {
           </p>
           <ul className="mx-5 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] divide-y divide-[var(--separator)]">
             {defaults.map((cat) => (
-              <CategoryRow key={cat.id} cat={cat} onTap={openEdit} />
+              <CategoryRow key={cat.id} cat={cat} iconStyle={iconStyle} onTap={openEdit} />
             ))}
           </ul>
         </section>
@@ -105,7 +108,7 @@ export default function CategoriesShell({ categories: initial }: Props) {
   );
 }
 
-function CategoryRow({ cat, onTap }: { cat: DbCategory; onTap: (c: DbCategory) => void }) {
+function CategoryRow({ cat, iconStyle = "3d", onTap }: { cat: DbCategory; iconStyle?: IconStyle; onTap: (c: DbCategory) => void }) {
   return (
     <li>
       <button
@@ -116,7 +119,13 @@ function CategoryRow({ cat, onTap }: { cat: DbCategory; onTap: (c: DbCategory) =
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[20px]"
           style={{ backgroundColor: `${cat.color}22` }}
         >
-          {cat.symbol}
+          <CategoryIcon
+            symbol={cat.symbol}
+            iconStyle={iconStyle}
+            size={20}
+            emojiSize="20px"
+            color={iconStyle === "2d" ? cat.color : undefined}
+          />
         </div>
         <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">{cat.name}</p>
         {cat.is_default && (

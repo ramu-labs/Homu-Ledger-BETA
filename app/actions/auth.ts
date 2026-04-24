@@ -177,6 +177,24 @@ export async function updateUserLanguage(language: string): Promise<{ error?: st
   return {};
 }
 
+export async function updateUserIconStyle(iconStyle: string): Promise<{ error?: string }> {
+  if (!["2d", "3d"].includes(iconStyle)) return { error: "Unsupported icon style" };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ icon_style: iconStyle })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
+  return {};
+}
+
 export async function joinHousehold(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

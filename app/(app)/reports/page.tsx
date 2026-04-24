@@ -10,7 +10,7 @@ export default async function ReportsPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, household_id")
+    .select("id, household_id, icon_style")
     .eq("id", user.id)
     .single();
 
@@ -59,6 +59,7 @@ export default async function ReportsPage() {
       categories={(categoriesRaw ?? []) as DbCategory[]}
       members={members}
       currency={household.currency ?? "IDR"}
+      iconStyle={(profile as any).icon_style ?? "3d"}
     />
   );
 }

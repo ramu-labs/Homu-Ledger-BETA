@@ -2,7 +2,9 @@
 
 import { Plus } from "lucide-react";
 import { formatAmount, formatShortDate } from "@/lib/format";
+import { CategoryIcon } from "@/components/category-icon";
 import type { DbRecurringItem } from "@/lib/types";
+import type { IconStyle } from "@/lib/category-icons";
 
 const FALLBACK_CAT = { name: "Other", symbol: "📋", color: "#6b7280" };
 
@@ -35,11 +37,12 @@ function repeatUntilLabel(item: DbRecurringItem): string | null {
 type Props = {
   items: DbRecurringItem[];
   currency?: string;
+  iconStyle?: IconStyle;
   onTap: (item: DbRecurringItem) => void;
   onAdd: () => void;
 };
 
-export default function RecurringItemList({ items, currency = "IDR", onTap, onAdd }: Props) {
+export default function RecurringItemList({ items, currency = "IDR", iconStyle = "3d", onTap, onAdd }: Props) {
   if (items.length === 0) {
     return (
       <div className="mx-5 mt-2 rounded-2xl bg-[var(--surface)] px-6 py-12 text-center ring-1 ring-black/[0.04]">
@@ -75,7 +78,13 @@ export default function RecurringItemList({ items, currency = "IDR", onTap, onAd
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[20px]"
                 style={{ backgroundColor: `${cat.color}1A` }}
               >
-                {cat.symbol}
+                <CategoryIcon
+                  symbol={cat.symbol}
+                  iconStyle={iconStyle}
+                  size={22}
+                  emojiSize="20px"
+                  color={iconStyle === "2d" ? cat.color : undefined}
+                />
               </div>
 
               <div className="min-w-0 flex-1">

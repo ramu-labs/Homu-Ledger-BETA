@@ -2,18 +2,21 @@
 
 import { Camera } from "lucide-react";
 import { formatAmountSigned, formatShortDate } from "@/lib/format";
+import { CategoryIcon } from "@/components/category-icon";
 import type { DbTransaction, DbMember } from "@/lib/types";
+import type { IconStyle } from "@/lib/category-icons";
 
 type Props = {
   transactions: DbTransaction[];
   members: Record<string, DbMember>;
   currency?: string;
+  iconStyle?: IconStyle;
   onTap?: (tx: DbTransaction) => void;
 };
 
 const FALLBACK_CAT = { name: "Other", symbol: "📋", color: "#6b7280" };
 
-export default function TransactionList({ transactions, members, currency = "IDR", onTap }: Props) {
+export default function TransactionList({ transactions, members, currency = "IDR", iconStyle = "3d", onTap }: Props) {
   if (transactions.length === 0) {
     return (
       <div className="mx-5 mt-2 rounded-2xl bg-[var(--surface)] px-6 py-14 text-center ring-1 ring-black/[0.04]">
@@ -43,7 +46,13 @@ export default function TransactionList({ transactions, members, currency = "IDR
               className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[18px]"
               style={{ backgroundColor: `${cat.color}1A` }}
             >
-              <span>{cat.symbol}</span>
+              <CategoryIcon
+                symbol={cat.symbol}
+                iconStyle={iconStyle}
+                size={20}
+                emojiSize="18px"
+                color={iconStyle === "2d" ? cat.color : undefined}
+              />
               {creator && (
                 <span
                   className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold text-white ring-2 ring-[var(--surface)]"
