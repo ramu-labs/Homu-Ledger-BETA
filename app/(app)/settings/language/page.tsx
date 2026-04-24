@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Suspense, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Check } from "lucide-react";
 import { updateUserLanguage } from "@/app/actions/auth";
@@ -11,6 +11,14 @@ const LANGUAGES: { code: "en" | "id"; name: string; native: string; flag: string
 ];
 
 export default function LanguagePage() {
+  return (
+    <Suspense fallback={null}>
+      <LanguagePageInner />
+    </Suspense>
+  );
+}
+
+function LanguagePageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const initial = (params.get("current") as "en" | "id" | null) ?? "en";
