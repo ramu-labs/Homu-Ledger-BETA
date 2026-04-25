@@ -6,14 +6,9 @@ import { addRecurringItem, updateRecurringItem, deleteRecurringItem } from "@/ap
 import CategoryPicker from "@/components/category-picker";
 import { cn } from "@/lib/cn";
 import { formatShortDate } from "@/lib/format";
+import { useT, useLang } from "@/lib/i18n/provider";
 import type { DbRecurringItem, DbCategory, RecurringFrequency } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
-
-const FREQUENCIES: { key: RecurringFrequency; label: string }[] = [
-  { key: "weekly", label: "Weekly" },
-  { key: "monthly", label: "Monthly" },
-  { key: "yearly", label: "Yearly" },
-];
 
 type RepeatUntilMode = "forever" | "date";
 
@@ -40,6 +35,13 @@ export default function AddRecurringSheet({
   onCategoryAdded,
   iconStyle = "3d",
 }: Props) {
+  const t = useT();
+  const lang = useLang();
+  const FREQUENCIES: { key: RecurringFrequency; label: string }[] = [
+    { key: "weekly", label: t("recurring.weekly") },
+    { key: "monthly", label: t("recurring.monthly") },
+    { key: "yearly", label: t("recurring.yearly") },
+  ];
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amount, setAmount] = useState("");
   const [name, setName] = useState("");
@@ -153,7 +155,10 @@ export default function AddRecurringSheet({
   const monthlyDayLabel = (() => {
     if (frequency !== "monthly" || !nextDueDate) return null;
     const day = parseInt(nextDueDate.split("-")[2]);
-    return `Repeats on the ${ordinal(day)} of every month`;
+    if (lang === "id") {
+      return `${t("recurring.repeatsOnThe")} ${day} ${t("recurring.ofEveryMonth")}`;
+    }
+    return `${t("recurring.repeatsOnThe")} ${ordinal(day)} ${t("recurring.ofEveryMonth")}`;
   })();
 
   return (
@@ -178,7 +183,7 @@ export default function AddRecurringSheet({
 
         <div className="flex shrink-0 items-center justify-between px-5 pb-3">
           <h2 className="text-[17px] font-semibold text-[var(--foreground)]">
-            {editing ? "Edit Recurring" : "Add Recurring"}
+            {editing ? t("recurring.edit") : t("recurring.add")}
           </h2>
           <button
             onClick={onClose}
@@ -193,21 +198,21 @@ export default function AddRecurringSheet({
 
             {/* Type toggle */}
             <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
-              {(["expense", "income"] as const).map((t) => (
+              {(["expense", "income"] as const).map((opt) => (
                 <button
-                  key={t}
+                  key={opt}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => setType(opt)}
                   className={cn(
                     "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
-                    type === t && t === "expense"
+                    type === opt && opt === "expense"
                       ? "bg-rose-500 text-white shadow-sm"
-                      : type === t && t === "income"
+                      : type === opt && opt === "income"
                       ? "bg-emerald-500 text-white shadow-sm"
                       : "text-[var(--label-secondary)]"
                   )}
                 >
-                  {t === "expense" ? "Expense" : "Income"}
+                  {opt === "expense" ? t("tx.expense") : t("tx.incomeShort")}
                 </button>
               ))}
             </div>
@@ -215,7 +220,7 @@ export default function AddRecurringSheet({
             {/* Amount */}
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                Amount ({currency})
+                {t("tx.amount")} ({currency})
               </label>
               <input
                 type="text"
@@ -231,13 +236,13 @@ export default function AddRecurringSheet({
             {/* Description */}
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                Description
+                {t("tx.description")}
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Netflix, Rent, Salary"
+                placeholder={t("recurring.namePlaceholder")}
                 required
                 className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
               />
@@ -246,7 +251,7 @@ export default function AddRecurringSheet({
             {/* Category */}
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                Category
+                {t("tx.category")}
               </label>
               <button
                 type="button"
@@ -262,7 +267,7 @@ export default function AddRecurringSheet({
                   </>
                 ) : (
                   <span className="flex-1 text-left text-[15px] text-[var(--label-tertiary)]">
-                    Select category
+                    {t("tx.selectCategory")}
                   </span>
                 )}
                 <ChevronRight className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
@@ -272,7 +277,7 @@ export default function AddRecurringSheet({
             {/* Frequency */}
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                Frequency
+                {t("recurring.frequency")}
               </label>
               <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
                 {FREQUENCIES.map(({ key, label }) => (
@@ -296,14 +301,14 @@ export default function AddRecurringSheet({
             {/* Starting / next due date */}
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                {frequency === "monthly" ? "Starting date" : "Next due date"}
+                {frequency === "monthly" ? t("recurring.startingDate") : t("recurring.nextDueDate")}
               </label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-0 flex items-center px-4">
                   <span className="text-[15px] font-medium text-[var(--foreground)]">
                     {nextDueDate
                       ? formatShortDate(nextDueDate)
-                      : <span className="text-[var(--label-tertiary)]">Pick a date</span>
+                      : <span className="text-[var(--label-tertiary)]">{t("recurring.pickDate")}</span>
                     }
                   </span>
                 </div>
@@ -324,7 +329,7 @@ export default function AddRecurringSheet({
             {/* Repeat until */}
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                Repeat until
+                {t("recurring.repeatUntil")}
               </label>
               <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
                 <button
@@ -337,7 +342,7 @@ export default function AddRecurringSheet({
                       : "text-[var(--label-secondary)]"
                   )}
                 >
-                  Forever
+                  {t("recurring.forever")}
                 </button>
                 <button
                   type="button"
@@ -349,7 +354,7 @@ export default function AddRecurringSheet({
                       : "text-[var(--label-secondary)]"
                   )}
                 >
-                  On date
+                  {t("recurring.onDate")}
                 </button>
               </div>
 
@@ -359,7 +364,7 @@ export default function AddRecurringSheet({
                     <span className="text-[15px] font-medium text-[var(--foreground)]">
                       {repeatUntilDate
                         ? formatShortDate(repeatUntilDate)
-                        : <span className="text-[var(--label-tertiary)]">Pick end date</span>
+                        : <span className="text-[var(--label-tertiary)]">{t("recurring.pickEndDate")}</span>
                       }
                     </span>
                   </div>
@@ -387,7 +392,7 @@ export default function AddRecurringSheet({
               disabled={loading}
               className="flex h-13 w-full items-center justify-center rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-white transition-opacity disabled:opacity-60"
             >
-              {loading ? "Saving…" : editing ? "Save Changes" : "Add Recurring Item"}
+              {loading ? t("common.saving") : editing ? t("common.saveChanges") : t("recurring.addNew")}
             </button>
             {editing && (
               <button
@@ -397,7 +402,7 @@ export default function AddRecurringSheet({
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-medium text-rose-600 disabled:opacity-60"
               >
                 <Trash2 className="h-4 w-4" strokeWidth={2} />
-                Delete Recurring Item
+                {t("recurring.deleteItem")}
               </button>
             )}
           </div>

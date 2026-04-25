@@ -5,27 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Check } from "lucide-react";
 import { updateUserIconStyle } from "@/app/actions/auth";
 import { CategoryIcon } from "@/components/category-icon";
+import { useT } from "@/lib/i18n/provider";
 import type { IconStyle } from "@/lib/category-icons";
-
-const STYLES: {
-  code: IconStyle;
-  label: string;
-  description: string;
-  previewSymbols: string[];
-}[] = [
-  {
-    code: "2d",
-    label: "2D Icons",
-    description: "Clean, minimal line icons",
-    previewSymbols: ["🏠", "🍔", "🚗", "💼"],
-  },
-  {
-    code: "3d",
-    label: "3D Emoji",
-    description: "Colourful, expressive emojis",
-    previewSymbols: ["🏠", "🍔", "🚗", "💼"],
-  },
-];
 
 export default function StylePage() {
   return (
@@ -36,12 +17,33 @@ export default function StylePage() {
 }
 
 function StylePageInner() {
+  const t = useT();
   const router = useRouter();
   const params = useSearchParams();
   const initial = (params.get("current") as IconStyle | null) ?? "3d";
   const [, startTransition] = useTransition();
   const [selected, setSelected] = useState<IconStyle>(initial);
   const [saving, setSaving] = useState(false);
+
+  const STYLES: {
+    code: IconStyle;
+    label: string;
+    description: string;
+    previewSymbols: string[];
+  }[] = [
+    {
+      code: "2d",
+      label: t("settings.iconStyle.2d"),
+      description: t("settings.iconStyle.2d.desc"),
+      previewSymbols: ["🏠", "🍔", "🚗", "💼"],
+    },
+    {
+      code: "3d",
+      label: t("settings.iconStyle.3d"),
+      description: t("settings.iconStyle.3d.desc"),
+      previewSymbols: ["🏠", "🍔", "🚗", "💼"],
+    },
+  ];
 
   async function handleSelect(code: IconStyle) {
     setSelected(code);
@@ -62,12 +64,12 @@ function StylePageInner() {
         >
           <ChevronLeft className="h-[20px] w-[20px]" strokeWidth={2.25} />
         </button>
-        <h1 className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">Icon Style</h1>
+        <h1 className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">{t("settings.iconStyle.title")}</h1>
         <div className="h-9 w-9" />
       </header>
 
       <p className="px-6 pb-4 text-[13px] text-[var(--label-secondary)]">
-        Choose how category icons appear across the app.
+        {t("settings.iconStyle.subtitle")}
       </p>
 
       <div className="mx-5 space-y-3">

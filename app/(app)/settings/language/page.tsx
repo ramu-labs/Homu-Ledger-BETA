@@ -4,6 +4,7 @@ import { Suspense, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Check } from "lucide-react";
 import { updateUserLanguage } from "@/app/actions/auth";
+import { useT } from "@/lib/i18n/provider";
 
 const LANGUAGES: { code: "en" | "id"; name: string; native: string; flag: string }[] = [
   { code: "en", name: "English", native: "English", flag: "🇬🇧" },
@@ -19,6 +20,7 @@ export default function LanguagePage() {
 }
 
 function LanguagePageInner() {
+  const t = useT();
   const router = useRouter();
   const params = useSearchParams();
   const initial = (params.get("current") as "en" | "id" | null) ?? "en";
@@ -45,12 +47,12 @@ function LanguagePageInner() {
         >
           <ChevronLeft className="h-[20px] w-[20px]" strokeWidth={2.25} />
         </button>
-        <h1 className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">Language</h1>
+        <h1 className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">{t("settings.language")}</h1>
         <div className="h-9 w-9" />
       </header>
 
       <p className="px-6 pb-3 text-[13px] text-[var(--label-secondary)]">
-        Choose your preferred language. This applies to your account only.
+        {t("settings.language.subtitle")}
       </p>
 
       <ul className="mx-5 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] divide-y divide-[var(--separator)]">

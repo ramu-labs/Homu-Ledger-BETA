@@ -5,8 +5,10 @@ import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { signIn } from "@/app/actions/auth";
 import AddToHomescreenBanner from "@/components/add-to-homescreen-banner";
+import { useT } from "@/lib/i18n/provider";
 
 export default function LoginPage() {
+  const t = useT();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -27,16 +29,16 @@ export default function LoginPage() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/homu-login.png" alt="Homu" className="mx-auto mb-5 h-44 w-44 object-contain" />
         <p className="mt-1 text-[14px] text-[var(--label-secondary)]">
-          Sign in to your shared account
+          {t("auth.signInTo")}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <Field label="Email or username" name="identifier" type="text" placeholder="you@example.com or marcel123" />
+        <Field label={t("auth.emailOrUsername")} name="identifier" type="text" placeholder={t("auth.emailOrUsernamePh")} />
 
         <div>
           <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-            Password
+            {t("auth.password")}
           </label>
           <div className="relative">
             <input
@@ -51,7 +53,7 @@ export default function LoginPage() {
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full text-[var(--label-tertiary)] transition-colors hover:text-[var(--label-secondary)]"
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? t("common.close") : t("auth.password")}
             >
               {showPassword
                 ? <EyeOff className="h-4 w-4" strokeWidth={2} />
@@ -72,14 +74,14 @@ export default function LoginPage() {
           disabled={loading}
           className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-white shadow-sm transition-opacity disabled:opacity-60"
         >
-          {loading ? "Signing in…" : "Sign in"}
+          {loading ? t("auth.signingIn") : t("auth.signIn")}
         </button>
       </form>
 
       <p className="mt-6 text-center text-[13px] text-[var(--label-secondary)]">
-        No account?{" "}
+        {t("auth.noAccount")}{" "}
         <Link href="/signup" className="font-semibold text-[var(--foreground)]">
-          Create one
+          {t("auth.createOne")}
         </Link>
       </p>
     </div>

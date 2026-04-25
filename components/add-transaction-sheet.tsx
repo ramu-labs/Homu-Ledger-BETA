@@ -6,6 +6,7 @@ import { addTransaction, updateTransaction, deleteTransaction, moveTransaction }
 import CategoryPicker from "@/components/category-picker";
 import { CategoryIcon } from "@/components/category-icon";
 import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/provider";
 import { formatShortDate } from "@/lib/format";
 import type { DbTransaction, DbCategory, DbHouseholdMembership } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
@@ -26,6 +27,7 @@ function todayString() {
 }
 
 export default function AddTransactionSheet({ open, onClose, categories, editing, currency = "IDR", memberships = [], currentHouseholdId, iconStyle = "3d" }: Props) {
+  const tr = useT();
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amount, setAmount] = useState("");
   const [name, setName] = useState("");
@@ -208,7 +210,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between px-5 pb-3">
           <h2 className="text-[17px] font-semibold text-[var(--foreground)]">
-            {editing ? "Edit Transaction" : "Add Transaction"}
+            {editing ? tr("tx.edit") : tr("tx.add")}
           </h2>
           <button
             onClick={onClose}
@@ -238,7 +240,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
                       : "text-[var(--label-secondary)]"
                   )}
                 >
-                  {t === "expense" ? "Expense" : "Income"}
+                  {t === "expense" ? tr("tx.expense") : tr("tx.incomeShort")}
                 </button>
               ))}
             </div>
@@ -246,7 +248,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
             {/* Amount */}
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                Amount ({currency})
+                {tr("tx.amount")} ({currency})
               </label>
               <input
                 type="text"
@@ -262,13 +264,13 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
             {/* Description */}
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                Description
+                {tr("tx.description")}
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Lunch at Warung"
+                placeholder={tr("tx.descriptionPlaceholder")}
                 required
                 className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
               />
@@ -277,7 +279,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
             {/* Category */}
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                Category
+                {tr("tx.category")}
               </label>
               <button
                 type="button"
@@ -295,7 +297,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
                   </>
                 ) : (
                   <span className="flex-1 text-left text-[15px] text-[var(--label-tertiary)]">
-                    Select category
+                    {tr("tx.selectCategory")}
                   </span>
                 )}
                 <ChevronRight className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
@@ -305,7 +307,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
             {/* Date */}
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                Date
+                {tr("tx.date")}
               </label>
               <div className="relative h-12 w-full">
                 <div className="absolute inset-0 flex items-center gap-2 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08]">
@@ -327,7 +329,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
             {/* Photo */}
             <div>
               <label className="mb-2 block text-[13px] font-medium text-[var(--label-secondary)]">
-                Photo
+                {tr("tx.photo")}
               </label>
               {photoPreview ? (
                 <div className="relative">
@@ -381,7 +383,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
               disabled={loading || moving}
               className="flex h-13 w-full items-center justify-center rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-white transition-opacity disabled:opacity-60"
             >
-              {loading ? "Saving…" : editing ? "Save Changes" : "Add Transaction"}
+              {loading ? tr("common.saving") : editing ? tr("common.saveChanges") : tr("tx.add")}
             </button>
             {editing && !confirmDelete && !showMovePicker && (
               <div className="flex gap-2">
@@ -392,7 +394,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
                   className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-2xl text-[13px] font-medium text-rose-600 disabled:opacity-60"
                 >
                   <Trash2 className="h-4 w-4" strokeWidth={2} />
-                  Delete
+                  {tr("common.delete")}
                 </button>
                 {otherLedgers.length > 0 && (
                   <button
@@ -409,14 +411,14 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
             )}
             {editing && confirmDelete && (
               <div className="rounded-2xl bg-rose-50 px-4 py-3 ring-1 ring-rose-200 space-y-2">
-                <p className="text-[13px] font-medium text-rose-700 text-center">Delete this transaction?</p>
+                <p className="text-[13px] font-medium text-rose-700 text-center">{tr("tx.deleteConfirm")}</p>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setConfirmDelete(false)}
                     className="flex h-10 flex-1 items-center justify-center rounded-xl bg-white text-[13px] font-medium text-[var(--foreground)] ring-1 ring-black/[0.08]"
                   >
-                    Cancel
+                    {tr("common.cancel")}
                   </button>
                   <button
                     type="button"
@@ -424,7 +426,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
                     disabled={loading}
                     className="flex h-10 flex-1 items-center justify-center rounded-xl bg-rose-600 text-[13px] font-semibold text-white disabled:opacity-60"
                   >
-                    {loading ? "Deleting…" : "Yes, delete"}
+                    {loading ? tr("common.loading") : tr("common.delete")}
                   </button>
                 </div>
               </div>

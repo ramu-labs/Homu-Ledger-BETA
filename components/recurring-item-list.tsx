@@ -3,45 +3,20 @@
 import { Plus } from "lucide-react";
 import { formatAmount, formatShortDate } from "@/lib/format";
 import { CategoryIcon } from "@/components/category-icon";
+import { useT, useLang } from "@/lib/i18n/provider";
+import type { TKey } from "@/lib/i18n/dictionaries";
 import type { DbRecurringItem } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 
 const FALLBACK_CAT = { name: "Other", symbol: "📋", color: "#6b7280" };
 
-const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const DAYS_EN = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const DAYS_ID = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
 
 function ordinal(n: number): string {
   const s = ["th", "st", "nd", "rd"];
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
-
-/** Short badge label — just the frequency word. */
-function freqBadge(item: DbRecurringItem): string {
-  switch (item.frequency) {
-    case "weekly":  return "Weekly";
-    case "monthly": return "Monthly";
-    case "yearly":  return "Yearly";
-  }
-}
-
-/** Optional sub-line shown below the badge. */
-function freqSubLabel(item: DbRecurringItem): string | null {
-  if (item.frequency === "monthly" && item.next_due_date) {
-    const day = parseInt(item.next_due_date.split("-")[2]);
-    return `${ordinal(day)} of each month`;
-  }
-  if (item.frequency === "weekly" && item.next_due_date) {
-    const [y, m, d] = item.next_due_date.split("-").map(Number);
-    const dow = new Date(y, m - 1, d).getDay();
-    return `Every ${DAYS[dow]}`;
-  }
-  return null;
-}
-
-function repeatUntilLabel(item: DbRecurringItem): string | null {
-  if (!item.repeat_until) return null;
-  return `Until ${formatShortDate(item.repeat_until)}`;
 }
 
 type Props = {
@@ -53,20 +28,55 @@ type Props = {
 };
 
 export default function RecurringItemList({ items, currency = "IDR", iconStyle = "3d", onTap, onAdd }: Props) {
+  const t = useT();
+  const lang = useLang();
+
+  /** Frequency badge label — "Weekly" / "Bulanan" / etc. */
+  function freqBadge(item: DbRecurringItem): string {
+    const key: TKey =
+      item.frequency === "weekly" ? "recurring.weekly" :
+      item.frequency === "monthly" ? "recurring.monthly" :
+      "recurring.yearly";
+    return t(key);
+  }
+
+  /** Sub-line under the badge: "1st of each month" / "Every Sunday" / etc. */
+  function freqSubLabel(item: DbRecurringItem): string | null {
+    if (item.frequency === "monthly" && item.next_due_date) {
+      const day = parseInt(item.next_due_date.split("-")[2]);
+      if (lang === "id") {
+        return `Tanggal ${day} ${t("recurring.ofEachMonth")}`;
+      }
+      return `${ordinal(day)} ${t("recurring.ofEachMonth")}`;
+    }
+    if (item.frequency === "weekly" && item.next_due_date) {
+      const [y, m, d] = item.next_due_date.split("-").map(Number);
+      const dow = new Date(y, m - 1, d).getDay();
+      const days = lang === "id" ? DAYS_ID : DAYS_EN;
+      return `${t("recurring.everyDay")} ${days[dow]}`;
+    }
+    return null;
+  }
+
+  function repeatUntilLabel(item: DbRecurringItem): string | null {
+    if (!item.repeat_until) return null;
+    return `${t("recurring.until")} ${formatShortDate(item.repeat_until)}`;
+  }
+
   if (items.length === 0) {
     return (
       <div className="mx-5 mt-2 rounded-2xl bg-[var(--surface)] px-6 py-12 text-center ring-1 ring-black/[0.04]">
         <p className="text-[22px] mb-2">🔁</p>
-        <p className="text-[15px] font-medium text-[var(--foreground)]">No recurring items</p>
+        <p className="text-[15px] font-medium text-[var(--foreground)]">{t("recurring.empty.title")}</p>
         <p className="mt-1 text-[13px] text-[var(--label-secondary)]">
-          Track subscriptions, rent, salaries — anything that repeats.
+          {t("recurring.empty.subtitle")}
         </p>
         <button
           onClick={onAdd}
           className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[var(--foreground)] px-4 py-2 text-[13px] font-semibold text-white"
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
-          Add first item
+          {t("recurring.addFirst")}
         </button>
       </div>
     );
@@ -106,7 +116,7 @@ export default function RecurringItemList({ items, currency = "IDR", iconStyle =
                     </span>
                     {item.next_due_date && item.frequency === "yearly" && (
                       <span className="text-[11px] text-[var(--label-tertiary)]">
-                        · Next {formatShortDate(item.next_due_date)}
+                        · {t("recurring.next")} {formatShortDate(item.next_due_date)}
                       </span>
                     )}
                     {until && (
@@ -138,7 +148,7 @@ export default function RecurringItemList({ items, currency = "IDR", iconStyle =
         className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--surface)] py-3.5 text-[14px] font-medium text-[var(--label-secondary)] ring-1 ring-black/[0.06] transition-colors active:bg-black/[0.04]"
       >
         <Plus className="h-4 w-4" strokeWidth={2.25} />
-        Add recurring item
+        {t("recurring.addNew")}
       </button>
     </div>
   );

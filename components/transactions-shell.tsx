@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useMemo, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, X, Check } from "lucide-react";
+import { Search, SlidersHorizontal, X, Check, Plus } from "lucide-react";
+import { useT } from "@/lib/i18n/provider";
 import Link from "next/link";
 import { TapLink } from "@/components/tap";
 import BalanceCard from "@/components/balance-card";
@@ -82,6 +83,7 @@ export default function TransactionsShell({
   recurringItems,
   iconStyle = "3d",
 }: Props) {
+  const t = useT();
   const [tab, setTab] = useState<SubTab>("history");
 
   // Search
@@ -257,7 +259,7 @@ export default function TransactionsShell({
               <h1 className="text-[15px] font-semibold tracking-tight text-[var(--foreground)]">
                 {householdSymbol} {householdName}
               </h1>
-              <p className="text-[11px] text-[var(--label-secondary)]">Tap to switch ›</p>
+              <p className="text-[11px] text-[var(--label-secondary)]">{t("tx.tapToSwitch")} ›</p>
             </button>
 
             <div className="flex items-center gap-2">
@@ -283,7 +285,7 @@ export default function TransactionsShell({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search transactions…"
+                  placeholder={t("filter.searchPlaceholder")}
                   className="h-10 w-full rounded-2xl bg-[var(--surface)] pl-9 pr-9 text-[14px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow placeholder:text-[var(--label-tertiary)]"
                 />
                 {searchQuery.length > 0 && (
@@ -315,7 +317,7 @@ export default function TransactionsShell({
                 onClick={() => { setActiveCategories([]); setActiveDateFilter("all"); setSearchQuery(""); setSearchOpen(false); }}
                 className="text-[12px] font-semibold text-[var(--foreground)]"
               >
-                Clear all
+                {t("common.clearAll")}
               </button>
             </div>
           )}
@@ -323,15 +325,27 @@ export default function TransactionsShell({
           <div className="px-5 pt-4">
             <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
               <TabButton active={tab === "history"} onClick={() => setTab("history")}>
-                History
+                {t("tx.history")}
               </TabButton>
               <TabButton active={tab === "recurring"} onClick={() => setTab("recurring")}>
-                Recurring
-                {recurringItems.length > 0 && (
-                  <span className="ml-1.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[var(--foreground)]/10 px-1 text-[10px] font-semibold text-[var(--foreground)]">
-                    {recurringItems.length}
-                  </span>
-                )}
+                <span className="inline-flex items-center gap-1.5">
+                  {t("tx.recurring")}
+                  {recurringItems.length > 0 && (
+                    <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[var(--foreground)]/10 px-1 text-[10px] font-semibold text-[var(--foreground)]">
+                      {recurringItems.length}
+                    </span>
+                  )}
+                  {tab === "recurring" && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); openAddRecurring(); }}
+                      aria-label={t("recurring.addNew")}
+                      className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--foreground)] text-white active:scale-95 transition-transform"
+                    >
+                      <Plus className="h-3 w-3" strokeWidth={3} />
+                    </button>
+                  )}
+                </span>
               </TabButton>
             </div>
           </div>
@@ -455,6 +469,8 @@ function FilterSheet({
   pendingCustomEnd, setPendingCustomEnd,
   todayStr, hasActive, onApply, onClear,
 }: FilterSheetProps) {
+  const t = useT();
+
   function toggleCategory(id: string) {
     setPendingCategories(
       pendingCategories.includes(id)
@@ -464,10 +480,10 @@ function FilterSheet({
   }
 
   const DATE_OPTIONS: { key: DateFilter; label: string }[] = [
-    { key: "all", label: "All time" },
-    { key: "30d", label: "Last 30 days" },
-    { key: "this_month", label: "This month" },
-    { key: "custom", label: "Custom" },
+    { key: "all", label: t("filter.allTime") },
+    { key: "30d", label: t("filter.last30") },
+    { key: "this_month", label: t("filter.thisMonth") },
+    { key: "custom", label: t("filter.custom") },
   ];
 
   return (
@@ -476,7 +492,7 @@ function FilterSheet({
       <div className="px-5 pt-4 pb-3 shrink-0">
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-black/[0.12]" />
         <div className="flex items-center justify-between">
-          <h2 className="text-[17px] font-semibold text-[var(--foreground)]">Filter</h2>
+          <h2 className="text-[17px] font-semibold text-[var(--foreground)]">{t("filter.title")}</h2>
           {hasActive && (
             <button onClick={onClear} className="text-[13px] font-semibold text-rose-500">
               Clear filter

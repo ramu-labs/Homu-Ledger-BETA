@@ -1,15 +1,17 @@
 import { redirect } from "next/navigation";
 import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers } from "lucide-react";
-import Link from "next/link";
 import { TapLink } from "@/components/tap";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions/auth";
 import { CopyButton } from "@/components/copy-button";
+import { getServerT } from "@/lib/i18n/server";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const { t } = await getServerT();
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -21,7 +23,7 @@ export default async function SettingsPage() {
   const languageLabel = language === "id" ? "Bahasa Indonesia" : "English";
 
   const iconStyle = (profile?.icon_style as "2d" | "3d" | null) ?? "3d";
-  const iconStyleLabel = iconStyle === "2d" ? "2D Icons" : "3D Emoji";
+  const iconStyleLabel = iconStyle === "2d" ? t("settings.iconStyle.2d") : t("settings.iconStyle.3d");
 
   const { data: household } = profile?.household_id
     ? await supabase
@@ -42,7 +44,7 @@ export default async function SettingsPage() {
         >
           <ChevronLeft className="h-[20px] w-[20px]" strokeWidth={2.25} />
         </TapLink>
-        <h1 className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">Settings</h1>
+        <h1 className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">{t("settings.title")}</h1>
         <div className="h-9 w-9" />
       </header>
 
@@ -70,7 +72,7 @@ export default async function SettingsPage() {
       {household && (
         <section className="mt-5">
           <p className="mb-2 px-6 text-[11px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
-            Household
+            {t("settings.household")}
           </p>
           <div className="mx-5 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04]">
             {/* Household name + invite code */}
@@ -79,7 +81,7 @@ export default async function SettingsPage() {
                 <p className="text-[15px] font-semibold text-[var(--foreground)]">{household.name}</p>
                 <div className="mt-0.5 flex items-center gap-2">
                   <p className="text-[12px] text-[var(--label-secondary)]">
-                    Invite code:{" "}
+                    {t("settings.inviteCode")}{" "}
                     <span className="font-mono font-bold tracking-[0.18em] text-[var(--foreground)]">
                       {household.invite_code}
                     </span>
@@ -97,7 +99,7 @@ export default async function SettingsPage() {
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-[var(--foreground)]">
                 <Smile className="h-[18px] w-[18px]" strokeWidth={2} />
               </span>
-              <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">Symbol</p>
+              <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">{t("settings.symbol")}</p>
               <p className="mr-1 text-[20px] leading-none">{(household as any).symbol ?? "🏠"}</p>
               <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
             </TapLink>
@@ -110,7 +112,7 @@ export default async function SettingsPage() {
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-[var(--foreground)]">
                 <Coins className="h-[18px] w-[18px]" strokeWidth={2} />
               </span>
-              <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">Currency</p>
+              <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">{t("settings.currency")}</p>
               <p className="mr-1 text-[14px] font-medium text-[var(--label-secondary)]">{household.currency ?? "IDR"}</p>
               <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
             </TapLink>
@@ -123,32 +125,32 @@ export default async function SettingsPage() {
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-[var(--foreground)]">
                 <Users className="h-[18px] w-[18px]" strokeWidth={2} />
               </span>
-              <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">Members</p>
+              <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">{t("settings.members")}</p>
               <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
             </TapLink>
           </div>
         </section>
       )}
 
-      <Group title="Account">
-        <RowLink href="/settings/categories" icon={<Tag className="h-[18px] w-[18px]" strokeWidth={2} />} label="Categories" />
+      <Group title={t("settings.account")}>
+        <RowLink href="/settings/categories" icon={<Tag className="h-[18px] w-[18px]" strokeWidth={2} />} label={t("settings.categories")} />
         <RowLink
           href={`/settings/style?current=${iconStyle}`}
           icon={<Layers className="h-[18px] w-[18px]" strokeWidth={2} />}
-          label="Icon Style"
+          label={t("settings.iconStyle")}
           value={iconStyleLabel}
         />
         <RowLink
           href={`/settings/language?current=${language}`}
           icon={<Languages className="h-[18px] w-[18px]" strokeWidth={2} />}
-          label="Language"
+          label={t("settings.language")}
           value={languageLabel}
         />
-        <Row icon={<Bell className="h-[18px] w-[18px]" strokeWidth={2} />} label="Notifications" />
+        <Row icon={<Bell className="h-[18px] w-[18px]" strokeWidth={2} />} label={t("settings.notifications")} />
       </Group>
 
-      <Group title="Support">
-        <Row icon={<HelpCircle className="h-[18px] w-[18px]" strokeWidth={2} />} label="Help & feedback" />
+      <Group title={t("settings.support")}>
+        <Row icon={<HelpCircle className="h-[18px] w-[18px]" strokeWidth={2} />} label={t("settings.helpFeedback")} />
       </Group>
 
       <div className="mx-5 mt-6">
@@ -158,7 +160,7 @@ export default async function SettingsPage() {
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--surface)] px-4 py-3.5 text-[15px] font-semibold text-rose-600 ring-1 ring-black/[0.04] active:scale-[0.99] transition-transform"
           >
             <LogOut className="h-[18px] w-[18px]" strokeWidth={2.25} />
-            Log out
+            {t("settings.logOut")}
           </button>
         </form>
       </div>
