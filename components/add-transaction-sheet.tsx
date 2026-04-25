@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Trash2, Camera, ImagePlus, ChevronRight, ArrowRightLeft, Check, Calendar } from "lucide-react";
 import { addTransaction, updateTransaction, deleteTransaction, moveTransaction } from "@/app/actions/transactions";
 import CategoryPicker from "@/components/category-picker";
+import { CategoryIcon } from "@/components/category-icon";
 import { cn } from "@/lib/cn";
 import { formatShortDate } from "@/lib/format";
 import type { DbTransaction, DbCategory, DbHouseholdMembership } from "@/lib/types";
@@ -191,11 +192,11 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
         onClick={onClose}
       />
 
-      {/* Full-screen sheet */}
+      {/* 95% height sheet */}
       <div
         ref={sheetRef}
         className={cn(
-          "fixed bottom-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 h-dvh flex flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300 overflow-x-hidden [touch-action:pan-y]",
+          "fixed bottom-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 h-[95dvh] flex flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300 overflow-x-hidden [touch-action:pan-y]",
           open ? "translate-y-0" : "translate-y-full"
         )}
       >
@@ -285,7 +286,9 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
               >
                 {selectedCategory ? (
                   <>
-                    <span className="text-[20px] leading-none">{selectedCategory.symbol}</span>
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${selectedCategory.color}20` }}>
+                      <CategoryIcon symbol={selectedCategory.symbol} iconStyle={iconStyle} size={16} emojiSize="16px" color={iconStyle === "2d" ? selectedCategory.color : undefined} />
+                    </span>
                     <span className="flex-1 text-left text-[15px] font-medium text-[var(--foreground)]">
                       {selectedCategory.name}
                     </span>

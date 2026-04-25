@@ -76,14 +76,14 @@ export default function AddCategorySheet({ open, onClose, onAdded, iconStyle = "
     <>
       <div
         className={cn(
-          "fixed inset-0 z-[60] bg-black/40 transition-opacity duration-300",
+          "fixed inset-0 z-[100] bg-black/40 transition-opacity duration-300",
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
         onClick={handleClose}
       />
       <div
         className={cn(
-          "fixed bottom-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 flex flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300",
+          "fixed bottom-0 left-1/2 z-[110] w-full max-w-md -translate-x-1/2 flex flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300",
           open ? "translate-y-0" : "translate-y-full"
         )}
       >
@@ -141,15 +141,15 @@ export default function AddCategorySheet({ open, onClose, onAdded, iconStyle = "
                       iconMode === m ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm" : "text-[var(--label-secondary)]"
                     )}
                   >
-                    {m === "emoji" ? "Emoji" : (iconStyle === "2d" ? "Icons" : "Symbol")}
+                    {m === "emoji" ? "Custom" : (iconStyle === "2d" ? "Icons" : "Symbol")}
                   </button>
                 ))}
               </div>
 
               {iconMode === "emoji" ? (
                 <input type="text" value={emoji} onChange={(e) => setEmoji(e.target.value.slice(0, 4))}
-                  placeholder="Paste an emoji"
-                  className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-center text-[22px] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
+                  placeholder="paste here"
+                  className="h-10 w-full rounded-xl bg-[var(--background)] px-4 text-center text-[18px] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
                 />
               ) : iconStyle === "2d" ? (
                 /* 2D mode: Lucide icon grid */
