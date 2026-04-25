@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, X, Check, Plus } from "lucide-react";
+import { Search, SlidersHorizontal, X, Check } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import Link from "next/link";
 import { TapLink } from "@/components/tap";
@@ -335,16 +335,6 @@ export default function TransactionsShell({
                       {recurringItems.length}
                     </span>
                   )}
-                  {tab === "recurring" && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); openAddRecurring(); }}
-                      aria-label={t("recurring.addNew")}
-                      className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--foreground)] text-white active:scale-95 transition-transform"
-                    >
-                      <Plus className="h-3 w-3" strokeWidth={3} />
-                    </button>
-                  )}
                 </span>
               </TabButton>
             </div>
@@ -409,7 +399,7 @@ export default function TransactionsShell({
       )}
 
       <Suspense>
-        <SheetOpener onOpen={openAdd} />
+        <SheetOpener onOpen={() => tab === "recurring" ? openAddRecurring() : openAdd()} />
       </Suspense>
 
       {/* Filter Sheet */}
