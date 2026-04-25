@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Plus, Check } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
 import AddCategorySheet from "@/components/add-category-sheet";
@@ -27,32 +27,40 @@ export default function CategoryPicker({
 }: Props) {
   const [showAdd, setShowAdd] = useState(false);
   const [localCategories, setLocalCategories] = useState<DbCategory[]>(categories);
+  // Slide-up animation: start translated down, animate to 0 on mount
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true));
+  }, []);
 
   function handleAdded(cat: DbCategory) {
     setLocalCategories((prev) => [...prev, cat]);
     onCategoryAdded(cat);
     setShowAdd(false);
-    // Auto-select the newly added category
     onSelect(cat.id);
     onClose();
   }
 
-  const allCategories = localCategories;
-
   return (
     <>
-      {/* Dim overlay — closes picker */}
+      {/* Dim overlay */}
       <div className="fixed inset-0 z-[80] bg-black/50" onClick={onClose} />
 
-      {/* Half-screen bottom sheet (~65% height) */}
-      <div className="fixed bottom-0 left-1/2 z-[90] flex w-full max-w-md -translate-x-1/2 flex-col rounded-t-3xl bg-[var(--surface)]" style={{ maxHeight: "65dvh" }}>
+      {/* Half-screen sheet with slide-up animation */}
+      <div
+        className={cn(
+          "fixed bottom-0 left-1/2 z-[90] flex h-[65dvh] w-full max-w-md -translate-x-1/2 flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300 ease-out",
+          visible ? "translate-y-0" : "translate-y-full"
+        )}
+      >
         {/* Drag handle */}
         <div className="flex shrink-0 justify-center pt-3 pb-1">
           <div className="h-1 w-10 rounded-full bg-black/10" />
         </div>
 
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between px-5 pb-3 pt-1">
+        <div className="flex shrink-0 items-center justify-between px-5 pb-2 pt-1">
           <h3 className="text-[17px] font-semibold text-[var(--foreground)]">Category</h3>
           <button
             onClick={onClose}
@@ -62,22 +70,22 @@ export default function CategoryPicker({
           </button>
         </div>
 
-        {/* Scrollable grid */}
-        <div className="flex-1 overflow-y-auto px-5 pb-2">
-          {allCategories.length === 0 ? (
+        {/* Scrollable grid — min-h-0 is required for flex-1 to scroll correctly */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2">
+          {localCategories.length === 0 ? (
             <div className="flex h-24 items-center justify-center">
               <p className="text-[14px] text-[var(--label-secondary)]">No categories yet. Add one below.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
-              {allCategories.map((cat) => {
+            <div className="grid grid-cols-4 gap-2">
+              {localCategories.map((cat) => {
                 const isSelected = selected === cat.id;
                 return (
                   <button
                     key={cat.id}
                     onClick={() => { onSelect(isSelected ? null : cat.id); onClose(); }}
                     className={cn(
-                      "relative flex flex-col items-center gap-2 rounded-2xl px-2 py-4 transition-all active:scale-[0.97]",
+                      "relative flex flex-col items-center gap-1.5 rounded-2xl px-1 py-2.5 transition-all active:scale-[0.97]",
                       isSelected
                         ? "ring-2 ring-[var(--foreground)]/30"
                         : "bg-[var(--background)] ring-1 ring-black/[0.06]"
@@ -85,23 +93,23 @@ export default function CategoryPicker({
                     style={isSelected ? { backgroundColor: `${cat.color}22` } : undefined}
                   >
                     {isSelected && (
-                      <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--foreground)]">
-                        <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                      <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--foreground)]">
+                        <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
                       </span>
                     )}
                     <span
-                      className="flex h-12 w-12 items-center justify-center rounded-full"
+                      className="flex h-10 w-10 items-center justify-center rounded-full"
                       style={{ backgroundColor: `${cat.color}20` }}
                     >
                       <CategoryIcon
                         symbol={cat.symbol}
                         iconStyle={iconStyle}
-                        size={26}
-                        emojiSize="26px"
+                        size={20}
+                        emojiSize="20px"
                         color={iconStyle === "2d" ? cat.color : undefined}
                       />
                     </span>
-                    <span className="text-center text-[13px] font-medium leading-snug text-[var(--foreground)]">
+                    <span className="w-full text-center text-[11px] font-medium leading-tight text-[var(--foreground)] line-clamp-2">
                       {cat.name}
                     </span>
                   </button>
@@ -111,11 +119,11 @@ export default function CategoryPicker({
           )}
         </div>
 
-        {/* Sticky footer — Add new category button */}
+        {/* Sticky footer */}
         <div className="shrink-0 border-t border-[var(--separator)] bg-[var(--surface)] px-5 pb-8 pt-3">
           <button
             onClick={() => setShowAdd(true)}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--background)] py-3.5 text-[14px] font-medium text-[var(--label-secondary)] ring-1 ring-black/[0.06] transition-colors active:bg-black/[0.04]"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--background)] py-3 text-[14px] font-medium text-[var(--label-secondary)] ring-1 ring-black/[0.06] transition-colors active:bg-black/[0.04]"
           >
             <Plus className="h-4 w-4" strokeWidth={2.25} />
             Add new category
@@ -123,7 +131,7 @@ export default function CategoryPicker({
         </div>
       </div>
 
-      {/* Add Category sheet — opens on top of the picker (z-[100]+) */}
+      {/* Add Category sheet — z-[100/110] sits above the picker */}
       <AddCategorySheet
         open={showAdd}
         onClose={() => setShowAdd(false)}
