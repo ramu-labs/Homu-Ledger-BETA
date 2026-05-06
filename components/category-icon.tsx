@@ -3,7 +3,7 @@ import { resolveLucideIcon, type IconStyle } from "@/lib/category-icons";
 // Inline mapping so this file has zero "use client" ambiguity.
 // Maps emoji symbol → lucide icon id.
 const EMOJI_TO_LUCIDE_ID: Record<string, string> = {
-  "🏠": "home", "🏡": "house", "🚗": "car", "🚙": "car",
+  "🏠": "home", "🏡": "building-2", "🚗": "car", "🚙": "car",
   "🚌": "bus", "✈️": "plane", "🚂": "train", "⛽": "fuel",
   "🍔": "utensils-crossed", "🍽️": "utensils-crossed",
   "🍕": "pizza", "🍜": "soup", "🍲": "soup", "☕": "coffee",

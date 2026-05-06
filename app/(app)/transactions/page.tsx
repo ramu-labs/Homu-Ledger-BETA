@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import TransactionsShell from "@/components/transactions-shell";
-import type { DbTransaction, DbCategory, DbMember, DbHouseholdMembership, DbRecurringItem } from "@/lib/types";
+import type { DbTransaction, DbCategory, DbMember, DbHouseholdMembership, DbRecurringItem, DbPendingInvitation } from "@/lib/types";
 
 export default async function TransactionsPage() {
   const supabase = await createClient();
@@ -24,15 +24,15 @@ export default async function TransactionsPage() {
 
   if (!household) redirect("/onboarding");
 
-  const [{ data: categoriesRaw }, { data: membersRaw }, { data: txRaw }, { data: membershipsRaw }, { data: recurringRaw }] = await Promise.all([
+  const [{ data: categoriesRaw }, { data: membersRaw }, { data: txRaw }, { data: membershipsRaw }, { data: recurringRaw }, { data: invitationsRaw }] = await Promise.all([
     supabase
       .from("categories")
       .select("id, name, symbol, color")
       .eq("household_id", household.id)
       .order("created_at", { ascending: true }),
     supabase
-      .from("profiles")
-      .select("id, name, initials, avatar_color")
+      .from("household_members")
+      .select("profile:profiles(id, name, initials, avatar_color)")
       .eq("household_id", household.id),
     supabase
       .from("transactions")
@@ -50,6 +50,12 @@ export default async function TransactionsPage() {
       .select("id, type, amount, name, category_id, frequency, next_due_date, repeat_until, created_by, created_at, categories(id, name, symbol, color)")
       .eq("household_id", household.id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("household_invitations")
+      .select("id, household_id, invited_by, status, created_at, household:households(id, name, symbol, currency), inviter:profiles!household_invitations_invited_by_fkey(id, name, initials, avatar_color)")
+      .eq("invited_user_id", profile.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false }),
   ]);
 
   const categories: DbCategory[] = categoriesRaw ?? [];
@@ -61,8 +67,9 @@ export default async function TransactionsPage() {
   })).filter((m: DbHouseholdMembership) => m.household);
 
   const members: Record<string, DbMember> = {};
-  for (const m of membersRaw ?? []) {
-    members[m.id] = m;
+  for (const row of membersRaw ?? []) {
+    const p: any = Array.isArray((row as any).profile) ? (row as any).profile[0] : (row as any).profile;
+    if (p?.id) members[p.id] = p;
   }
 
   const transactions: DbTransaction[] = (txRaw ?? []).map((t: any) => ({
@@ -76,6 +83,16 @@ export default async function TransactionsPage() {
     amount: Number(r.amount),
     categories: Array.isArray(r.categories) ? r.categories[0] ?? null : r.categories,
   }));
+
+  const pendingInvitations: DbPendingInvitation[] = (invitationsRaw ?? []).map((i: any) => ({
+    id: i.id,
+    household_id: i.household_id,
+    invited_by: i.invited_by,
+    status: i.status,
+    created_at: i.created_at,
+    household: Array.isArray(i.household) ? i.household[0] : i.household,
+    inviter: Array.isArray(i.inviter) ? i.inviter[0] ?? null : i.inviter,
+  })).filter((i: DbPendingInvitation) => i.household);
 
   const income = transactions
     .filter((t) => t.type === "income")
@@ -99,8 +116,9 @@ export default async function TransactionsPage() {
       expenses={expenses}
       currentUser={{ initials: profile.initials, avatar_color: profile.avatar_color }}
       memberships={memberships}
+      pendingInvitations={pendingInvitations}
       recurringItems={recurringItems}
-      iconStyle={(profile as any).icon_style ?? "3d"}
+      iconStyle={profile.icon_style ?? "3d"}
     />
   );
 }

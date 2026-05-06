@@ -21,6 +21,8 @@ export type Profile = {
   avatar_color: string;
   household_id: string | null;
   created_at: string;
+  language: "en" | "id" | null;
+  icon_style: "2d" | "3d" | null;
 };
 
 export type Category = {

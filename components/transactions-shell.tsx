@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal, X, Check } from "lucide-react";
+import { useT } from "@/lib/i18n/provider";
 import Link from "next/link";
 import { TapLink } from "@/components/tap";
 import BalanceCard from "@/components/balance-card";
@@ -12,9 +13,10 @@ import AddRecurringSheet from "@/components/add-recurring-sheet";
 import RecurringItemList from "@/components/recurring-item-list";
 import LedgerSwitcherSheet from "@/components/ledger-switcher-sheet";
 import PullToRefresh from "@/components/pull-to-refresh";
+import { CategoryIcon } from "@/components/category-icon";
 import { cn } from "@/lib/cn";
 import { formatAmount } from "@/lib/format";
-import type { DbTransaction, DbCategory, DbMember, DbHouseholdMembership, DbRecurringItem } from "@/lib/types";
+import type { DbTransaction, DbCategory, DbMember, DbHouseholdMembership, DbRecurringItem, DbPendingInvitation } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 
 type SubTab = "history" | "recurring";
@@ -62,6 +64,7 @@ type Props = {
   expenses: number;
   currentUser: { initials: string; avatar_color: string };
   memberships: DbHouseholdMembership[];
+  pendingInvitations?: DbPendingInvitation[];
   recurringItems: DbRecurringItem[];
   iconStyle?: IconStyle;
 };
@@ -79,9 +82,11 @@ export default function TransactionsShell({
   expenses,
   currentUser,
   memberships,
+  pendingInvitations = [],
   recurringItems,
   iconStyle = "3d",
 }: Props) {
+  const t = useT();
   const [tab, setTab] = useState<SubTab>("history");
 
   // Search
@@ -257,7 +262,7 @@ export default function TransactionsShell({
               <h1 className="text-[15px] font-semibold tracking-tight text-[var(--foreground)]">
                 {householdSymbol} {householdName}
               </h1>
-              <p className="text-[11px] text-[var(--label-secondary)]">Tap to switch ›</p>
+              <p className="text-[11px] text-[var(--label-secondary)]">{t("tx.tapToSwitch")} ›</p>
             </button>
 
             <div className="flex items-center gap-2">
@@ -283,7 +288,7 @@ export default function TransactionsShell({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search transactions…"
+                  placeholder={t("filter.searchPlaceholder")}
                   className="h-10 w-full rounded-2xl bg-[var(--surface)] pl-9 pr-9 text-[14px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow placeholder:text-[var(--label-tertiary)]"
                 />
                 {searchQuery.length > 0 && (
@@ -315,7 +320,7 @@ export default function TransactionsShell({
                 onClick={() => { setActiveCategories([]); setActiveDateFilter("all"); setSearchQuery(""); setSearchOpen(false); }}
                 className="text-[12px] font-semibold text-[var(--foreground)]"
               >
-                Clear all
+                {t("common.clearAll")}
               </button>
             </div>
           )}
@@ -323,15 +328,17 @@ export default function TransactionsShell({
           <div className="px-5 pt-4">
             <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
               <TabButton active={tab === "history"} onClick={() => setTab("history")}>
-                History
+                {t("tx.history")}
               </TabButton>
               <TabButton active={tab === "recurring"} onClick={() => setTab("recurring")}>
-                Recurring
-                {recurringItems.length > 0 && (
-                  <span className="ml-1.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[var(--foreground)]/10 px-1 text-[10px] font-semibold text-[var(--foreground)]">
-                    {recurringItems.length}
-                  </span>
-                )}
+                <span className="inline-flex items-center gap-1.5">
+                  {t("tx.recurring")}
+                  {recurringItems.length > 0 && (
+                    <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[var(--foreground)]/10 px-1 text-[10px] font-semibold text-[var(--foreground)]">
+                      {recurringItems.length}
+                    </span>
+                  )}
+                </span>
               </TabButton>
             </div>
           </div>
@@ -389,13 +396,14 @@ export default function TransactionsShell({
       {showLedgerSwitcher && (
         <LedgerSwitcherSheet
           memberships={memberships}
+          pendingInvitations={pendingInvitations}
           currentHouseholdId={householdId}
           onClose={() => setShowLedgerSwitcher(false)}
         />
       )}
 
       <Suspense>
-        <SheetOpener onOpen={openAdd} />
+        <SheetOpener onOpen={() => tab === "recurring" ? openAddRecurring() : openAdd()} />
       </Suspense>
 
       {/* Filter Sheet */}
@@ -408,6 +416,7 @@ export default function TransactionsShell({
           <div className="fixed bottom-0 left-1/2 z-[60] w-full max-w-md -translate-x-1/2 rounded-t-3xl bg-[var(--background)] shadow-2xl max-h-[75vh] flex flex-col">
             <FilterSheet
               categories={allCategories}
+              iconStyle={iconStyle}
               pendingCategories={pendingCategories}
               setPendingCategories={setPendingCategories}
               pendingDateFilter={pendingDateFilter}
@@ -433,6 +442,7 @@ export default function TransactionsShell({
 
 type FilterSheetProps = {
   categories: DbCategory[];
+  iconStyle: IconStyle;
   pendingCategories: string[];
   setPendingCategories: (v: string[]) => void;
   pendingDateFilter: DateFilter;
@@ -449,12 +459,14 @@ type FilterSheetProps = {
 };
 
 function FilterSheet({
-  categories, pendingCategories, setPendingCategories,
+  categories, iconStyle, pendingCategories, setPendingCategories,
   pendingDateFilter, setPendingDateFilter,
   pendingCustomStart, setPendingCustomStart,
   pendingCustomEnd, setPendingCustomEnd,
   todayStr, hasActive, onApply, onClear,
 }: FilterSheetProps) {
+  const t = useT();
+
   function toggleCategory(id: string) {
     setPendingCategories(
       pendingCategories.includes(id)
@@ -464,10 +476,10 @@ function FilterSheet({
   }
 
   const DATE_OPTIONS: { key: DateFilter; label: string }[] = [
-    { key: "all", label: "All time" },
-    { key: "30d", label: "Last 30 days" },
-    { key: "this_month", label: "This month" },
-    { key: "custom", label: "Custom" },
+    { key: "all", label: t("filter.allTime") },
+    { key: "30d", label: t("filter.last30") },
+    { key: "this_month", label: t("filter.thisMonth") },
+    { key: "custom", label: t("filter.custom") },
   ];
 
   return (
@@ -476,7 +488,7 @@ function FilterSheet({
       <div className="px-5 pt-4 pb-3 shrink-0">
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-black/[0.12]" />
         <div className="flex items-center justify-between">
-          <h2 className="text-[17px] font-semibold text-[var(--foreground)]">Filter</h2>
+          <h2 className="text-[17px] font-semibold text-[var(--foreground)]">{t("filter.title")}</h2>
           {hasActive && (
             <button onClick={onClear} className="text-[13px] font-semibold text-rose-500">
               Clear filter
@@ -549,7 +561,13 @@ function FilterSheet({
                 )}
                 style={selected ? { backgroundColor: cat.color } : undefined}
               >
-                <span>{cat.symbol}</span>
+                <CategoryIcon
+                  symbol={cat.symbol}
+                  iconStyle={iconStyle}
+                  size={14}
+                  emojiSize="14px"
+                  color={selected ? "#ffffff" : (iconStyle === "2d" ? cat.color : undefined)}
+                />
                 {cat.name}
                 {selected && <Check className="h-3 w-3 ml-0.5" strokeWidth={2.5} />}
               </button>

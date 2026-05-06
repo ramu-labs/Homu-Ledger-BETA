@@ -4,8 +4,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { Wallet, PieChart, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { TapLink, TapButton } from "@/components/tap";
+import { useT } from "@/lib/i18n/provider";
 
 export default function BottomNav() {
+  const t = useT();
   const pathname = usePathname();
   const router = useRouter();
   const onTransactions = pathname.startsWith("/transactions");
@@ -27,7 +29,7 @@ export default function BottomNav() {
         <div className="absolute inset-x-0 bottom-0 grid h-[72px] grid-cols-3 items-center">
           <NavTab
             href="/transactions"
-            label="Transactions"
+            label={t("nav.transactions")}
             active={onTransactions}
             icon={<Wallet className="h-6 w-6" strokeWidth={onTransactions ? 2.25 : 1.75} />}
           />
@@ -44,7 +46,7 @@ export default function BottomNav() {
 
           <NavTab
             href="/reports"
-            label="Reports"
+            label={t("nav.reports")}
             active={onReports}
             icon={<PieChart className="h-6 w-6" strokeWidth={onReports ? 2.25 : 1.75} />}
           />

@@ -1,6 +1,6 @@
 import {
   Home,
-  House,
+  Building2,
   Car,
   Bus,
   Plane,
@@ -43,7 +43,7 @@ export type IconStyle = "2d" | "3d";
 /** Curated Lucide icons for category picker. id = key stored as `lu:<id>` in DB. */
 export const CATEGORY_LUCIDE_ICONS: { id: string; icon: LucideIcon }[] = [
   { id: "home", icon: Home },
-  { id: "house", icon: House },
+  { id: "building-2", icon: Building2 },
   { id: "car", icon: Car },
   { id: "bus", icon: Bus },
   { id: "plane", icon: Plane },
@@ -108,7 +108,7 @@ export function makeLucideSymbol(id: string): string {
 export const EMOJI_TO_LUCIDE: Record<string, string> = {
   // Housing / transport
   "🏠": "home",
-  "🏡": "house",
+  "🏡": "building-2",
   "🚗": "car",
   "🚙": "car",
   "🚌": "bus",

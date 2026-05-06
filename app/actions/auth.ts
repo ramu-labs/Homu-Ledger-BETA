@@ -47,25 +47,13 @@ export async function signIn(formData: FormData) {
   let email = identifier;
 
   if (!identifier.includes("@")) {
-    // Treat as username — look up the email
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .ilike("username", identifier)
-      .maybeSingle();
+    // Treat as username — look up the email via SECURITY DEFINER RPC
+    // (bypasses RLS so unauthenticated callers can resolve a username)
+    const { data: resolvedEmail, error: rpcError } = await supabase
+      .rpc("get_email_by_username", { p_username: identifier });
 
-    if (!profile) return { error: "No account found with that username." };
-
-    // Get the email from auth.users via admin lookup isn't possible client-side,
-    // so we store email on the profile as a workaround
-    const { data: profileWithEmail } = await supabase
-      .from("profiles")
-      .select("email")
-      .ilike("username", identifier)
-      .maybeSingle();
-
-    if (!profileWithEmail?.email) return { error: "Could not resolve username to an email." };
-    email = profileWithEmail.email;
+    if (rpcError || !resolvedEmail) return { error: "No account found with that username." };
+    email = resolvedEmail as string;
   }
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -191,7 +179,8 @@ export async function updateUserIconStyle(iconStyle: string): Promise<{ error?: 
 
   if (error) return { error: error.message };
 
-  revalidatePath("/settings");
+  // Bust cache for every page that reads icon_style from the profile
+  revalidatePath("/", "layout");
   return {};
 }
 

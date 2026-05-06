@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Lock, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import EditCategorySheet from "@/components/edit-category-sheet";
 import AddCategorySheet from "@/components/add-category-sheet";
 import { CategoryIcon } from "@/components/category-icon";
@@ -38,9 +38,6 @@ export default function CategoriesShell({ categories: initial, iconStyle = "3d" 
     setCategories((prev) => [cat, ...prev]);
   }
 
-  const defaults = categories.filter((c) => c.is_default);
-  const custom = categories.filter((c) => !c.is_default);
-
   return (
     <>
       <div className="pb-10">
@@ -62,38 +59,19 @@ export default function CategoriesShell({ categories: initial, iconStyle = "3d" 
           </button>
         </header>
 
-        {custom.length > 0 && (
-          <section className="mt-5">
-            <p className="mb-2 px-6 text-[11px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
-              Custom
-            </p>
-            <ul className="mx-5 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] divide-y divide-[var(--separator)]">
-              {custom.map((cat) => (
-                <CategoryRow key={cat.id} cat={cat} iconStyle={iconStyle} onTap={openEdit} />
-              ))}
-            </ul>
-          </section>
-        )}
-
         <section className="mt-5">
-          <p className="mb-2 px-6 text-[11px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
-            Default
-          </p>
           <ul className="mx-5 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] divide-y divide-[var(--separator)]">
-            {defaults.map((cat) => (
+            {categories.map((cat) => (
               <CategoryRow key={cat.id} cat={cat} iconStyle={iconStyle} onTap={openEdit} />
             ))}
           </ul>
         </section>
-
-        <p className="mt-4 px-6 text-[12px] text-[var(--label-tertiary)]">
-          Default categories can be renamed but not deleted.
-        </p>
       </div>
 
       <EditCategorySheet
         open={sheetOpen}
         category={editing}
+        iconStyle={iconStyle}
         onClose={() => setSheetOpen(false)}
         onUpdated={handleUpdated}
         onDeleted={handleDeleted}
@@ -103,6 +81,7 @@ export default function CategoriesShell({ categories: initial, iconStyle = "3d" 
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onAdded={handleAdded}
+        iconStyle={iconStyle}
       />
     </>
   );
@@ -128,9 +107,6 @@ function CategoryRow({ cat, iconStyle = "3d", onTap }: { cat: DbCategory; iconSt
           />
         </div>
         <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">{cat.name}</p>
-        {cat.is_default && (
-          <Lock className="h-3.5 w-3.5 text-[var(--label-tertiary)] mr-1" strokeWidth={2} />
-        )}
         <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
       </button>
     </li>

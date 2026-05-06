@@ -1,5 +1,8 @@
+"use client";
+
 import { formatAmount } from "@/lib/format";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { useT } from "@/lib/i18n/provider";
 
 type Props = {
   balance: number;
@@ -9,11 +12,12 @@ type Props = {
 };
 
 export default function BalanceCard({ balance, income, expenses, currency = "IDR" }: Props) {
+  const t = useT();
   return (
     <section className="px-5 pt-6 pb-2">
       <div className="flex flex-col items-center text-center">
         <p className="text-[13px] font-medium tracking-wide text-[var(--label-secondary)]">
-          Total Balance
+          {t("tx.totalBalance")}
         </p>
         <p className="mt-1.5 text-[40px] font-semibold leading-tight tracking-tight text-[var(--foreground)] tabular-nums">
           {formatAmount(balance, currency)}
@@ -22,13 +26,13 @@ export default function BalanceCard({ balance, income, expenses, currency = "IDR
 
       <div className="mt-6 grid grid-cols-2 gap-3">
         <SummaryPill
-          label="Income"
+          label={t("tx.income")}
           value={formatAmount(income, currency)}
           icon={<ArrowDownLeft className="h-3.5 w-3.5" strokeWidth={2.5} />}
           tone="income"
         />
         <SummaryPill
-          label="Expenses"
+          label={t("tx.expenses")}
           value={formatAmount(expenses, currency)}
           icon={<ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.5} />}
           tone="expense"

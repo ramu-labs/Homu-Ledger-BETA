@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { ChevronLeft, Crown } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import InviteMemberForm from "@/components/invite-member-form";
+import CancelInviteButton from "@/components/cancel-invite-button";
 
 export default async function MembersPage() {
   const supabase = await createClient();
@@ -24,11 +26,31 @@ export default async function MembersPage() {
 
   if (!household) redirect("/settings");
 
-  const { data: members } = await supabase
-    .from("profiles")
-    .select("id, name, initials, avatar_color")
+  const { data: memberRows } = await supabase
+    .from("household_members")
+    .select("created_at, profile:profiles(id, name, initials, avatar_color)")
     .eq("household_id", household.id)
     .order("created_at", { ascending: true });
+
+  const members = (memberRows ?? [])
+    .map((row: any) => {
+      const p = Array.isArray(row.profile) ? row.profile[0] : row.profile;
+      return p ? { ...p, created_at: row.created_at } : null;
+    })
+    .filter(Boolean);
+
+  const { data: pending } = await supabase
+    .from("household_invitations")
+    .select("id, created_at, invited_user:profiles!household_invitations_invited_user_id_fkey(id, name, initials, avatar_color)")
+    .eq("household_id", household.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  const pendingInvitations = (pending ?? []).map((p: any) => ({
+    id: p.id,
+    created_at: p.created_at,
+    invited_user: Array.isArray(p.invited_user) ? p.invited_user[0] : p.invited_user,
+  })).filter((p: any) => p.invited_user);
 
   return (
     <div className="pb-10">
@@ -44,8 +66,14 @@ export default async function MembersPage() {
         <div className="h-9 w-9" />
       </header>
 
-      <p className="mb-2 mt-5 px-6 text-[11px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
-        {household.name}
+      {/* Invite form */}
+      <section className="mt-4 px-5">
+        <InviteMemberForm />
+      </section>
+
+      {/* Members + pending invitations (single list) */}
+      <p className="mb-2 mt-6 px-6 text-[11px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
+        Members of {household.name}
       </p>
 
       <div className="mx-5 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04]">
@@ -83,6 +111,30 @@ export default async function MembersPage() {
             </div>
           );
         })}
+
+        {/* Pending invitations — same row style with a "Pending" badge */}
+        {pendingInvitations.map((inv: any) => (
+          <div
+            key={inv.id}
+            className="flex items-center gap-3 border-t border-[var(--separator)] px-4 py-3.5"
+          >
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[15px] font-semibold text-white opacity-60"
+              style={{ backgroundColor: inv.invited_user.avatar_color }}
+            >
+              {inv.invited_user.initials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[15px] font-medium text-[var(--label-secondary)]">
+                {inv.invited_user.name}
+              </p>
+            </div>
+            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+              Pending
+            </span>
+            <CancelInviteButton invitationId={inv.id} />
+          </div>
+        ))}
       </div>
     </div>
   );

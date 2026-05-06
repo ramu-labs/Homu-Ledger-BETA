@@ -32,8 +32,8 @@ export default async function ReportsPage() {
       .order("date", { ascending: false })
       .limit(500),
     supabase
-      .from("profiles")
-      .select("id, name, initials, avatar_color")
+      .from("household_members")
+      .select("profile:profiles(id, name, initials, avatar_color)")
       .eq("household_id", household.id),
     supabase
       .from("categories")
@@ -49,8 +49,9 @@ export default async function ReportsPage() {
   }));
 
   const members: Record<string, DbMember> = {};
-  for (const m of membersRaw ?? []) {
-    members[m.id] = m;
+  for (const row of membersRaw ?? []) {
+    const p: any = Array.isArray((row as any).profile) ? (row as any).profile[0] : (row as any).profile;
+    if (p?.id) members[p.id] = p;
   }
 
   return (
@@ -59,7 +60,7 @@ export default async function ReportsPage() {
       categories={(categoriesRaw ?? []) as DbCategory[]}
       members={members}
       currency={household.currency ?? "IDR"}
-      iconStyle={(profile as any).icon_style ?? "3d"}
+      iconStyle={profile.icon_style ?? "3d"}
     />
   );
 }

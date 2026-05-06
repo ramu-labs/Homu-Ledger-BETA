@@ -56,6 +56,36 @@ export async function updateHouseholdCurrency(currency: string): Promise<{ error
   return {};
 }
 
+export async function updateHouseholdName(name: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const trimmed = name.trim();
+  if (!trimmed) return { error: "Name required" };
+  if (trimmed.length > 60) return { error: "Name too long" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("household_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.household_id) return { error: "No household" };
+
+  const { error } = await supabase
+    .from("households")
+    .update({ name: trimmed })
+    .eq("id", profile.household_id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/transactions");
+  revalidatePath("/reports");
+  return {};
+}
+
 export async function updateHouseholdSymbol(symbol: string): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

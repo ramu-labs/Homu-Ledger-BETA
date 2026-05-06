@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { X, Trash2 } from "lucide-react";
 import { updateCategory, deleteCategory } from "@/app/actions/categories";
 import { cn } from "@/lib/cn";
+import { CATEGORY_LUCIDE_ICONS, makeLucideSymbol, isLucideSymbol } from "@/lib/category-icons";
+import { CategoryIcon } from "@/components/category-icon";
 import type { DbCategory } from "@/lib/types";
+import type { IconStyle } from "@/lib/category-icons";
 
 const SOFT_PALETTE = [
   "#f97316", "#3b82f6", "#8b5cf6", "#ef4444",
@@ -22,6 +25,7 @@ const SYMBOLS = [
 type Props = {
   open: boolean;
   category: DbCategory | null;
+  iconStyle?: IconStyle;
   onClose: () => void;
   onUpdated: (cat: DbCategory) => void;
   onDeleted: (id: string) => void;
@@ -29,9 +33,16 @@ type Props = {
 
 type IconMode = "emoji" | "symbol";
 
-export default function EditCategorySheet({ open, category, onClose, onUpdated, onDeleted }: Props) {
+export default function EditCategorySheet({
+  open,
+  category,
+  iconStyle = "3d",
+  onClose,
+  onUpdated,
+  onDeleted,
+}: Props) {
   const [name, setName] = useState("");
-  const [iconMode, setIconMode] = useState<IconMode>("emoji");
+  const [iconMode, setIconMode] = useState<IconMode>("symbol");
   const [emoji, setEmoji] = useState("");
   const [selectedSymbol, setSelectedSymbol] = useState("");
   const [selectedColor, setSelectedColor] = useState(SOFT_PALETTE[0]);
@@ -46,8 +57,11 @@ export default function EditCategorySheet({ open, category, onClose, onUpdated, 
     setError(null);
     setLoading(false);
     setDeleting(false);
-    // Detect if the symbol is in our grid or treat as free emoji
-    if (SYMBOLS.includes(category.symbol)) {
+    // Detect symbol type:
+    //   - "lu:foo" (Lucide id)  -> symbol mode (Icons grid in 2D)
+    //   - emoji in our grid     -> symbol mode (emoji grid in 3D)
+    //   - free emoji            -> custom (emoji input)
+    if (isLucideSymbol(category.symbol) || SYMBOLS.includes(category.symbol)) {
       setIconMode("symbol");
       setSelectedSymbol(category.symbol);
       setEmoji("");
@@ -92,8 +106,6 @@ export default function EditCategorySheet({ open, category, onClose, onUpdated, 
     }
   }
 
-  const isDefault = category?.is_default ?? false;
-
   return (
     <>
       <div
@@ -129,10 +141,20 @@ export default function EditCategorySheet({ open, category, onClose, onUpdated, 
             {/* Preview */}
             <div className="flex items-center gap-3 rounded-2xl bg-[var(--background)] px-4 py-3 ring-1 ring-black/[0.06]">
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[22px]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
                 style={{ backgroundColor: `${selectedColor}22` }}
               >
-                {currentSymbol || "?"}
+                {currentSymbol ? (
+                  <CategoryIcon
+                    symbol={currentSymbol}
+                    iconStyle={iconStyle}
+                    size={22}
+                    emojiSize="22px"
+                    color={iconStyle === "2d" ? selectedColor : undefined}
+                  />
+                ) : (
+                  <span className="text-[22px]">?</span>
+                )}
               </div>
               <p className="text-[15px] font-medium text-[var(--foreground)]">{name || "Category name"}</p>
             </div>
@@ -153,11 +175,19 @@ export default function EditCategorySheet({ open, category, onClose, onUpdated, 
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Icon</label>
               <div className="flex gap-1 rounded-full bg-black/[0.05] p-1 mb-3">
-                {(["emoji", "symbol"] as const).map((m) => (
+                {(["symbol", "emoji"] as const).map((m) => (
                   <button
                     key={m}
                     type="button"
-                    onClick={() => setIconMode(m)}
+                    onClick={() => {
+                      setIconMode(m);
+                      // When switching to symbol mode, ensure we have a valid choice for the current iconStyle
+                      if (m === "symbol" && !selectedSymbol) {
+                        setSelectedSymbol(
+                          iconStyle === "2d" ? makeLucideSymbol(CATEGORY_LUCIDE_ICONS[0].id) : SYMBOLS[0]
+                        );
+                      }
+                    }}
                     className={cn(
                       "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
                       iconMode === m
@@ -165,7 +195,7 @@ export default function EditCategorySheet({ open, category, onClose, onUpdated, 
                         : "text-[var(--label-secondary)]"
                     )}
                   >
-                    {m === "emoji" ? "Emoji" : "Symbol"}
+                    {m === "emoji" ? "Custom" : (iconStyle === "2d" ? "Icons" : "Symbol")}
                   </button>
                 ))}
               </div>
@@ -178,7 +208,37 @@ export default function EditCategorySheet({ open, category, onClose, onUpdated, 
                   placeholder="Paste an emoji"
                   className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-center text-[22px] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
                 />
+              ) : iconStyle === "2d" ? (
+                /* 2D mode: Lucide icon grid */
+                <div className="grid grid-cols-6 gap-2">
+                  {CATEGORY_LUCIDE_ICONS.map(({ id, icon: Icon }) => {
+                    const sym = makeLucideSymbol(id);
+                    const isActive = selectedSymbol === sym;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setSelectedSymbol(sym)}
+                        className={cn(
+                          "flex aspect-square items-center justify-center rounded-xl transition-all",
+                          isActive
+                            ? "ring-2 ring-[var(--foreground)]/30 scale-95"
+                            : "bg-[var(--background)] ring-1 ring-black/[0.06]"
+                        )}
+                        style={isActive ? { backgroundColor: `${selectedColor}22`, color: selectedColor } : undefined}
+                      >
+                        <Icon
+                          size={20}
+                          strokeWidth={2}
+                          style={{ color: isActive ? selectedColor : undefined }}
+                          className={isActive ? "" : "text-[var(--label-secondary)]"}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
               ) : (
+                /* 3D mode: emoji grid */
                 <div className="grid grid-cols-6 gap-2">
                   {SYMBOLS.map((s) => (
                     <button
@@ -233,17 +293,15 @@ export default function EditCategorySheet({ open, category, onClose, onUpdated, 
             >
               {loading ? "Saving…" : "Save Changes"}
             </button>
-            {!isDefault && (
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={loading || deleting}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-medium text-rose-600 disabled:opacity-60"
-              >
-                <Trash2 className="h-4 w-4" strokeWidth={2} />
-                {deleting ? "Deleting…" : "Delete Category"}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={loading || deleting}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-medium text-rose-600 disabled:opacity-60"
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={2} />
+              {deleting ? "Deleting…" : "Delete Category"}
+            </button>
           </div>
         </form>
       </div>

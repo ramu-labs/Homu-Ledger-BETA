@@ -35,7 +35,9 @@ export default function TransactionList({ transactions, members, currency = "IDR
     <ul className="mx-5 mt-2 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] divide-y divide-[var(--separator)]">
       {transactions.map((t) => {
         const cat = t.categories ?? FALLBACK_CAT;
-        const creator = t.created_by ? members[t.created_by] : null;
+        const creator = t.created_by ? (members[t.created_by] ?? null) : null;
+        // If created_by is set but the member isn't loaded, show a neutral fallback
+        const showFallbackBadge = !!t.created_by && !creator;
         return (
           <li
             key={t.id}
@@ -53,7 +55,7 @@ export default function TransactionList({ transactions, members, currency = "IDR
                 emojiSize="18px"
                 color={iconStyle === "2d" ? cat.color : undefined}
               />
-              {creator && (
+              {creator ? (
                 <span
                   className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold text-white ring-2 ring-[var(--surface)]"
                   style={{ backgroundColor: creator.avatar_color }}
@@ -61,7 +63,13 @@ export default function TransactionList({ transactions, members, currency = "IDR
                 >
                   {creator.initials}
                 </span>
-              )}
+              ) : showFallbackBadge ? (
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold text-white ring-2 ring-[var(--surface)] bg-[var(--label-tertiary)]"
+                >
+                  ?
+                </span>
+              ) : null}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[15px] font-medium text-[var(--foreground)]">{t.name}</p>

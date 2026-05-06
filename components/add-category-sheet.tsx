@@ -4,7 +4,10 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { addCategory } from "@/app/actions/categories";
 import { cn } from "@/lib/cn";
+import { CATEGORY_LUCIDE_ICONS, makeLucideSymbol } from "@/lib/category-icons";
+import { CategoryIcon } from "@/components/category-icon";
 import type { DbCategory } from "@/lib/types";
+import type { IconStyle } from "@/lib/category-icons";
 
 const SOFT_PALETTE = [
   "#f97316", "#3b82f6", "#8b5cf6", "#ef4444",
@@ -23,15 +26,18 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onAdded: (cat: DbCategory) => void;
+  iconStyle?: IconStyle;
 };
 
 type IconMode = "emoji" | "symbol";
 
-export default function AddCategorySheet({ open, onClose, onAdded }: Props) {
+export default function AddCategorySheet({ open, onClose, onAdded, iconStyle = "3d" }: Props) {
   const [name, setName] = useState("");
   const [iconMode, setIconMode] = useState<IconMode>("symbol");
   const [emoji, setEmoji] = useState("");
-  const [selectedSymbol, setSelectedSymbol] = useState(SYMBOLS[0]);
+  const [selectedSymbol, setSelectedSymbol] = useState(
+    iconStyle === "2d" ? makeLucideSymbol(CATEGORY_LUCIDE_ICONS[0].id) : SYMBOLS[0]
+  );
   const [selectedColor, setSelectedColor] = useState(SOFT_PALETTE[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +45,8 @@ export default function AddCategorySheet({ open, onClose, onAdded }: Props) {
   const currentSymbol = iconMode === "emoji" ? emoji : selectedSymbol;
 
   function reset() {
-    setName(""); setEmoji(""); setSelectedSymbol(SYMBOLS[0]);
+    setName(""); setEmoji("");
+    setSelectedSymbol(iconStyle === "2d" ? makeLucideSymbol(CATEGORY_LUCIDE_ICONS[0].id) : SYMBOLS[0]);
     setSelectedColor(SOFT_PALETTE[0]); setIconMode("symbol");
     setError(null); setLoading(false);
   }
@@ -69,14 +76,14 @@ export default function AddCategorySheet({ open, onClose, onAdded }: Props) {
     <>
       <div
         className={cn(
-          "fixed inset-0 z-[60] bg-black/40 transition-opacity duration-300",
+          "fixed inset-0 z-[100] bg-black/40 transition-opacity duration-300",
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
         onClick={handleClose}
       />
       <div
         className={cn(
-          "fixed bottom-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 flex flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300",
+          "fixed bottom-0 left-1/2 z-[110] w-full max-w-md -translate-x-1/2 flex flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300",
           open ? "translate-y-0" : "translate-y-full"
         )}
       >
@@ -99,10 +106,13 @@ export default function AddCategorySheet({ open, onClose, onAdded }: Props) {
             {/* Preview */}
             <div className="flex items-center gap-3 rounded-2xl bg-[var(--background)] px-4 py-3 ring-1 ring-black/[0.06]">
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[22px]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
                 style={{ backgroundColor: `${selectedColor}22` }}
               >
-                {currentSymbol || "?"}
+                {currentSymbol
+                  ? <CategoryIcon symbol={currentSymbol} iconStyle={iconStyle} size={22} emojiSize="22px" color={iconStyle === "2d" ? selectedColor : undefined} />
+                  : <span className="text-[22px]">?</span>
+                }
               </div>
               <p className="text-[15px] font-medium text-[var(--foreground)]">{name || "Category name"}</p>
             </div>
@@ -131,17 +141,40 @@ export default function AddCategorySheet({ open, onClose, onAdded }: Props) {
                       iconMode === m ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm" : "text-[var(--label-secondary)]"
                     )}
                   >
-                    {m === "emoji" ? "Emoji" : "Symbol"}
+                    {m === "emoji" ? "Custom" : (iconStyle === "2d" ? "Icons" : "Symbol")}
                   </button>
                 ))}
               </div>
 
               {iconMode === "emoji" ? (
                 <input type="text" value={emoji} onChange={(e) => setEmoji(e.target.value.slice(0, 4))}
-                  placeholder="Paste an emoji"
-                  className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-center text-[22px] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
+                  placeholder="paste here"
+                  className="h-10 w-full rounded-xl bg-[var(--background)] px-4 text-center text-[18px] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
                 />
+              ) : iconStyle === "2d" ? (
+                /* 2D mode: Lucide icon grid */
+                <div className="grid grid-cols-6 gap-2">
+                  {CATEGORY_LUCIDE_ICONS.map(({ id, icon: Icon }) => {
+                    const sym = makeLucideSymbol(id);
+                    const isActive = selectedSymbol === sym;
+                    return (
+                      <button key={id} type="button" onClick={() => setSelectedSymbol(sym)}
+                        className={cn(
+                          "flex aspect-square items-center justify-center rounded-xl transition-all",
+                          isActive
+                            ? "ring-2 ring-[var(--foreground)]/30 scale-95"
+                            : "bg-[var(--background)] ring-1 ring-black/[0.06]"
+                        )}
+                        style={isActive ? { backgroundColor: `${selectedColor}22`, color: selectedColor } : undefined}
+                      >
+                        <Icon size={20} strokeWidth={2} style={{ color: isActive ? selectedColor : undefined }}
+                          className={isActive ? "" : "text-[var(--label-secondary)]"} />
+                      </button>
+                    );
+                  })}
+                </div>
               ) : (
+                /* 3D mode: emoji grid */
                 <div className="grid grid-cols-6 gap-2">
                   {SYMBOLS.map((s) => (
                     <button key={s} type="button" onClick={() => setSelectedSymbol(s)}

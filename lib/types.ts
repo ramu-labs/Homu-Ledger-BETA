@@ -15,6 +15,16 @@ export type DbHouseholdMembership = {
   household: DbHousehold;
 };
 
+export type DbPendingInvitation = {
+  id: string;
+  household_id: string;
+  invited_by: string;
+  status: "pending" | "accepted" | "declined";
+  created_at: string;
+  household: { id: string; name: string; symbol: string | null; currency: string };
+  inviter: { id: string; name: string; initials: string; avatar_color: string } | null;
+};
+
 export type DbCategory = {
   id: string;
   name: string;
