@@ -427,7 +427,7 @@ export default function AddTransactionSheet({ open, onClose, categories, editing
             <button
               type="submit"
               disabled={loading || moving}
-              className="flex h-13 w-full items-center justify-center rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-white transition-opacity disabled:opacity-60"
+              className="flex h-13 w-full items-center justify-center rounded-2xl bg-[#EE6452] text-[15px] font-semibold text-white transition-opacity disabled:opacity-60"
             >
               {loading ? tr("common.saving") : editing ? tr("common.saveChanges") : tr("tx.add")}
             </button>
