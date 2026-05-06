@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers } from "lucide-react";
+import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers, RefreshCw } from "lucide-react";
 import { TapLink } from "@/components/tap";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions/auth";
@@ -155,6 +155,7 @@ export default async function SettingsPage() {
 
       <Group title={t("settings.support")}>
         <Row icon={<HelpCircle className="h-[18px] w-[18px]" strokeWidth={2} />} label={t("settings.helpFeedback")} />
+        <RowLink href="/settings/updates" icon={<RefreshCw className="h-[18px] w-[18px]" strokeWidth={2} />} label={t("settings.updates")} />
       </Group>
 
       <div className="mx-5 mt-6">
@@ -169,7 +170,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v0.1</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v0.7.1</p>
     </div>
   );
 }
