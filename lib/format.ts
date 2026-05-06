@@ -23,11 +23,15 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-export function formatShortDate(date: string): string {
+/**
+ * Format a YYYY-MM-DD date as a short label.
+ * Pass `todayKey` (also "YYYY-MM-DD") so the "Today" decision is deterministic
+ * across SSR and client (otherwise `new Date()` mismatches between UTC server
+ * and the user's local timezone, causing hydration errors).
+ * If `todayKey` is null/undefined the function never returns "Today".
+ */
+export function formatShortDate(date: string, todayKey?: string | null): string {
   const [y, m, d] = date.split("-").map(Number);
-  const today = new Date();
-  if (today.getFullYear() === y && today.getMonth() + 1 === m && today.getDate() === d) {
-    return "Today";
-  }
+  if (todayKey && todayKey === date) return "Today";
   return `${d} ${MONTHS[m - 1]} ${y}`;
 }

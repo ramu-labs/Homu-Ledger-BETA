@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Camera } from "lucide-react";
 import { formatAmountSigned, formatShortDate } from "@/lib/format";
 import { CategoryIcon } from "@/components/category-icon";
@@ -17,6 +18,13 @@ type Props = {
 const FALLBACK_CAT = { name: "Other", symbol: "📋", color: "#6b7280" };
 
 export default function TransactionList({ transactions, members, currency = "IDR", iconStyle = "3d", onTap }: Props) {
+  // Avoid SSR hydration mismatch: only compute "Today" after mount on the client.
+  const [todayKey, setTodayKey] = useState<string | null>(null);
+  useEffect(() => {
+    const d = new Date();
+    setTodayKey(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+  }, []);
+
   if (transactions.length === 0) {
     return (
       <div className="mx-5 mt-2 rounded-2xl bg-[var(--surface)] px-6 py-14 text-center ring-1 ring-black/[0.04]">
@@ -74,7 +82,7 @@ export default function TransactionList({ transactions, members, currency = "IDR
             <div className="min-w-0 flex-1">
               <p className="truncate text-[15px] font-medium text-[var(--foreground)]">{t.name}</p>
               <p className="flex items-center gap-1 text-[12px] text-[var(--label-secondary)]">
-                {cat.name} · {formatShortDate(t.date)}
+                {cat.name} · {formatShortDate(t.date, todayKey)}
                 {t.photo_url && <Camera className="h-3 w-3 shrink-0" strokeWidth={2} />}
               </p>
             </div>
