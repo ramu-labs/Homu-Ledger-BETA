@@ -70,7 +70,7 @@ export default function TransactionList({ transactions, members, currency = "IDR
                 <ArrowRightLeft className="h-[18px] w-[18px] text-[#EE6452]" strokeWidth={2.25} />
                 {creator && (
                   <span
-                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold text-white ring-2 ring-[var(--surface)]"
+                    className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full text-[9px] font-semibold leading-none text-white ring-2 ring-[var(--surface)]"
                     style={{ backgroundColor: creator.avatar_color }}
                     title={creator.name}
                   >
@@ -115,7 +115,7 @@ export default function TransactionList({ transactions, members, currency = "IDR
                 )}
                 {creator ? (
                   <span
-                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold text-white ring-2 ring-[var(--surface)]"
+                    className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full text-[9px] font-semibold leading-none text-white ring-2 ring-[var(--surface)]"
                     style={{ backgroundColor: creator.avatar_color }}
                     title={creator.name}
                   >
@@ -123,7 +123,7 @@ export default function TransactionList({ transactions, members, currency = "IDR
                   </span>
                 ) : showFallbackBadge ? (
                   <span
-                    className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold text-white ring-2 ring-[var(--surface)] bg-[var(--label-tertiary)]"
+                    className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-[var(--label-tertiary)] text-[9px] font-semibold leading-none text-white ring-2 ring-[var(--surface)]"
                   >
                     ?
                   </span>
