@@ -91,18 +91,24 @@ export default function TransactionList({ transactions, members, currency = "IDR
                   emojiSize="18px"
                   color={iconStyle === "2d" ? cat.color : undefined}
                 />
-                {/* Wallet badge — bottom-LEFT (mirror of the member badge on the right) */}
+                {/* Wallet badge — bottom-LEFT (mirror of the member badge on the right).
+                    `leading-none` + grid-place trick centres the icon glyph
+                    (both Lucide SVGs and emoji) more reliably than flexbox at
+                    these tiny sizes — flex still left a hair-width offset on
+                    Lucide stroke icons because the SVG's optical centre isn't
+                    exactly its bounding-box centre. */}
                 {t.wallets && (
                   <span
-                    className="absolute -bottom-0.5 -left-0.5 flex h-4 w-4 items-center justify-center rounded-full ring-2 ring-[var(--surface)]"
+                    className="absolute -bottom-0.5 -left-0.5 grid h-4 w-4 place-items-center rounded-full ring-2 ring-[var(--surface)] leading-none"
                     style={{ backgroundColor: t.wallets.color }}
                     title={t.wallets.name}
                   >
                     <CategoryIcon
                       symbol={t.wallets.symbol}
                       iconStyle={iconStyle}
-                      size={9}
-                      emojiSize="9px"
+                      size={10}
+                      emojiSize="10px"
+                      strokeWidth={2.25}
                       color="#ffffff"
                     />
                   </span>
