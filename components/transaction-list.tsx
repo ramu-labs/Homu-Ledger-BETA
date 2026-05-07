@@ -70,11 +70,11 @@ export default function TransactionList({ transactions, members, currency = "IDR
                 <ArrowRightLeft className="h-[18px] w-[18px] text-[#EE6452]" strokeWidth={2.25} />
                 {creator && (
                   <span
-                    className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full text-[9px] font-semibold leading-none text-white ring-2 ring-[var(--surface)]"
+                    className="absolute -bottom-0.5 -right-0.5 block h-4 w-4 overflow-hidden rounded-full ring-2 ring-[var(--surface)]"
                     style={{ backgroundColor: creator.avatar_color }}
                     title={creator.name}
                   >
-                    {creator.initials}
+                    <InitialMark initials={creator.initials} />
                   </span>
                 )}
               </div>
@@ -115,17 +115,17 @@ export default function TransactionList({ transactions, members, currency = "IDR
                 )}
                 {creator ? (
                   <span
-                    className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full text-[9px] font-semibold leading-none text-white ring-2 ring-[var(--surface)]"
+                    className="absolute -bottom-0.5 -right-0.5 block h-4 w-4 overflow-hidden rounded-full ring-2 ring-[var(--surface)]"
                     style={{ backgroundColor: creator.avatar_color }}
                     title={creator.name}
                   >
-                    {creator.initials}
+                    <InitialMark initials={creator.initials} />
                   </span>
                 ) : showFallbackBadge ? (
                   <span
-                    className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-[var(--label-tertiary)] text-[9px] font-semibold leading-none text-white ring-2 ring-[var(--surface)]"
+                    className="absolute -bottom-0.5 -right-0.5 block h-4 w-4 overflow-hidden rounded-full bg-[var(--label-tertiary)] ring-2 ring-[var(--surface)]"
                   >
-                    ?
+                    <InitialMark initials="?" />
                   </span>
                 ) : null}
               </div>
@@ -170,5 +170,37 @@ export default function TransactionList({ transactions, members, currency = "IDR
         );
       })}
     </ul>
+  );
+}
+
+/**
+ * Renders a 1-2 character initial inside a 16x16 badge using SVG `<text>`.
+ * Centring single uppercase letters with CSS is unreliable: cap-height vs.
+ * descender bias means flex/grid centres the LINE-BOX, not the visible
+ * glyph, so different letters drift differently. SVG with a manually-tuned
+ * baseline (`y="11.25"` for cap-height ≈ 0.7em at 10px) gives identical
+ * vertical positioning regardless of which letter is rendered.
+ */
+function InitialMark({ initials }: { initials: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="block h-full w-full"
+      aria-hidden="true"
+    >
+      <text
+        x="8"
+        y="11.25"
+        textAnchor="middle"
+        fontSize="10"
+        fontWeight="700"
+        fill="#ffffff"
+        // Inherit the page font (Geist) — text-anchor handles horizontal
+        // centring; the explicit y baseline handles vertical centring.
+        style={{ fontFamily: "inherit" }}
+      >
+        {initials}
+      </text>
+    </svg>
   );
 }
