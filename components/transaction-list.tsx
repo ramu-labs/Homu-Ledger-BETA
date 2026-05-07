@@ -63,6 +63,22 @@ export default function TransactionList({ transactions, members, currency = "IDR
                 emojiSize="18px"
                 color={iconStyle === "2d" ? cat.color : undefined}
               />
+              {/* Wallet badge — bottom-LEFT (mirror of the member badge on the right) */}
+              {t.wallets && (
+                <span
+                  className="absolute -bottom-0.5 -left-0.5 flex h-4 w-4 items-center justify-center rounded-full ring-2 ring-[var(--surface)]"
+                  style={{ backgroundColor: t.wallets.color }}
+                  title={t.wallets.name}
+                >
+                  <CategoryIcon
+                    symbol={t.wallets.symbol}
+                    iconStyle={iconStyle}
+                    size={9}
+                    emojiSize="9px"
+                    color="#ffffff"
+                  />
+                </span>
+              )}
               {creator ? (
                 <span
                   className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold text-white ring-2 ring-[var(--surface)]"

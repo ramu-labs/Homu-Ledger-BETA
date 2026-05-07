@@ -13,12 +13,14 @@ const EMOJI_TO_LUCIDE_ID: Record<string, string> = {
   "❤️": "heart-pulse", "🏋️": "dumbbell", "💪": "dumbbell",
   "📚": "book-open", "🎓": "graduation-cap",
   "🎬": "film", "🎮": "gamepad-2", "🎵": "music", "🎶": "music",
-  "💼": "briefcase", "💰": "wallet", "💳": "wallet",
-  "🏦": "landmark", "🌐": "landmark",
+  "💼": "briefcase", "💰": "wallet-money", "💳": "wallet-card",
+  "🏦": "wallet-bank", "🌐": "landmark",
   "🧾": "receipt", "📋": "receipt",
   "🎁": "gift", "🐾": "paw-print", "👶": "baby",
   "🌿": "leaf", "⚡": "zap", "🔧": "wrench", "🧹": "wrench",
-  "✂️": "scissors", "📱": "smartphone", "💡": "lightbulb",
+  "✂️": "scissors", "📱": "wallet-ewallet", "💡": "lightbulb",
+  // Wallet-specific
+  "💵": "wallet-banknote", "🐷": "wallet-savings",
 };
 
 // Reverse: lucide id → best emoji

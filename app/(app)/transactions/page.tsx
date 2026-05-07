@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import TransactionsShell from "@/components/transactions-shell";
-import type { DbTransaction, DbCategory, DbMember, DbHouseholdMembership, DbRecurringItem, DbPendingInvitation } from "@/lib/types";
+import type { DbTransaction, DbCategory, DbWallet, DbMember, DbHouseholdMembership, DbRecurringItem, DbPendingInvitation } from "@/lib/types";
 
 export default async function TransactionsPage() {
   const supabase = await createClient();
@@ -24,11 +24,17 @@ export default async function TransactionsPage() {
 
   if (!household) redirect("/onboarding");
 
-  const [{ data: categoriesRaw }, { data: membersRaw }, { data: txRaw }, { data: membershipsRaw }, { data: recurringRaw }, { data: invitationsRaw }] = await Promise.all([
+  const [{ data: categoriesRaw }, { data: walletsRaw }, { data: membersRaw }, { data: txRaw }, { data: membershipsRaw }, { data: recurringRaw }, { data: invitationsRaw }] = await Promise.all([
     supabase
       .from("categories")
       .select("id, name, symbol, color")
       .eq("household_id", household.id)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("wallets")
+      .select("id, name, symbol, color, initial_balance, is_default")
+      .eq("household_id", household.id)
+      .order("is_default", { ascending: false })
       .order("created_at", { ascending: true }),
     supabase
       .from("household_members")
@@ -36,7 +42,7 @@ export default async function TransactionsPage() {
       .eq("household_id", household.id),
     supabase
       .from("transactions")
-      .select("id, type, amount, name, category_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color)")
+      .select("id, type, amount, name, category_id, wallet_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color), wallets(id, name, symbol, color, initial_balance, is_default)")
       .eq("household_id", household.id)
       .order("date", { ascending: false })
       .order("created_at", { ascending: false })
@@ -47,7 +53,7 @@ export default async function TransactionsPage() {
       .eq("profile_id", profile.id),
     supabase
       .from("recurring_items")
-      .select("id, type, amount, name, category_id, frequency, next_due_date, repeat_until, created_by, created_at, categories(id, name, symbol, color)")
+      .select("id, type, amount, name, category_id, wallet_id, frequency, next_due_date, repeat_until, created_by, created_at, categories(id, name, symbol, color), wallets(id, name, symbol, color, initial_balance, is_default)")
       .eq("household_id", household.id)
       .order("created_at", { ascending: false }),
     supabase
@@ -59,6 +65,10 @@ export default async function TransactionsPage() {
   ]);
 
   const categories: DbCategory[] = categoriesRaw ?? [];
+  const wallets: DbWallet[] = (walletsRaw ?? []).map((w: any) => ({
+    ...w,
+    initial_balance: Number(w.initial_balance ?? 0),
+  }));
 
   const memberships: DbHouseholdMembership[] = (membershipsRaw ?? []).map((m: any) => ({
     household_id: m.household_id,
@@ -76,12 +86,14 @@ export default async function TransactionsPage() {
     ...t,
     amount: Number(t.amount),
     categories: Array.isArray(t.categories) ? t.categories[0] ?? null : t.categories,
+    wallets: Array.isArray(t.wallets) ? t.wallets[0] ?? null : t.wallets,
   }));
 
   const recurringItems: DbRecurringItem[] = (recurringRaw ?? []).map((r: any) => ({
     ...r,
     amount: Number(r.amount),
     categories: Array.isArray(r.categories) ? r.categories[0] ?? null : r.categories,
+    wallets: Array.isArray(r.wallets) ? r.wallets[0] ?? null : r.wallets,
   }));
 
   const pendingInvitations: DbPendingInvitation[] = (invitationsRaw ?? []).map((i: any) => ({
@@ -106,6 +118,7 @@ export default async function TransactionsPage() {
     <TransactionsShell
       transactions={transactions}
       categories={categories}
+      wallets={wallets}
       members={members}
       householdName={household.name}
       householdId={household.id}

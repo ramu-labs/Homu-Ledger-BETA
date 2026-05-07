@@ -27,7 +27,7 @@ export default async function ReportsPage() {
   const [{ data: txRaw }, { data: membersRaw }, { data: categoriesRaw }] = await Promise.all([
     supabase
       .from("transactions")
-      .select("id, type, amount, name, category_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color)")
+      .select("id, type, amount, name, category_id, wallet_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color), wallets(id, name, symbol, color, initial_balance, is_default)")
       .eq("household_id", household.id)
       .order("date", { ascending: false })
       .limit(500),
@@ -46,6 +46,7 @@ export default async function ReportsPage() {
     ...t,
     amount: Number(t.amount),
     categories: Array.isArray(t.categories) ? t.categories[0] ?? null : t.categories,
+    wallets: Array.isArray(t.wallets) ? t.wallets[0] ?? null : t.wallets,
   }));
 
   const members: Record<string, DbMember> = {};

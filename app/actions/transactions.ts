@@ -44,6 +44,7 @@ export async function addTransaction(formData: FormData) {
   const name = (formData.get("name") as string).trim();
   const amount = parseAmount(formData.get("amount") as string);
   const category_id = (formData.get("category_id") as string) || null;
+  const wallet_id = (formData.get("wallet_id") as string) || null;
   const date = formData.get("date") as string;
 
   if (!name) return { error: "Description is required" };
@@ -62,6 +63,7 @@ export async function addTransaction(formData: FormData) {
     amount,
     name,
     category_id,
+    wallet_id,
     date,
     photo_url,
   });
@@ -79,6 +81,7 @@ export async function updateTransaction(id: string, formData: FormData) {
   const name = (formData.get("name") as string).trim();
   const amount = parseAmount(formData.get("amount") as string);
   const category_id = (formData.get("category_id") as string) || null;
+  const wallet_id = (formData.get("wallet_id") as string) || null;
   const date = formData.get("date") as string;
 
   if (!name) return { error: "Description is required" };
@@ -94,7 +97,7 @@ export async function updateTransaction(id: string, formData: FormData) {
 
   const { error } = await supabase
     .from("transactions")
-    .update({ type, amount, name, category_id, date, photo_url })
+    .update({ type, amount, name, category_id, wallet_id, date, photo_url })
     .eq("id", id);
 
   if (error) return { error: error.message };

@@ -35,6 +35,9 @@ import {
   Scissors,
   Smartphone,
   Lightbulb,
+  Banknote,
+  CreditCard,
+  PiggyBank,
   type LucideIcon,
 } from "lucide-react";
 
@@ -80,9 +83,20 @@ export const CATEGORY_LUCIDE_ICONS: { id: string; icon: LucideIcon }[] = [
   { id: "lightbulb", icon: Lightbulb },
 ];
 
-const LUCIDE_ICON_MAP: Record<string, LucideIcon> = Object.fromEntries(
-  CATEGORY_LUCIDE_ICONS.map((e) => [e.id, e.icon]),
-);
+/** Wallet-specific lucide icons. Live in the same `lu:<id>` namespace as categories. */
+export const WALLET_EXTRA_LUCIDE: { id: string; icon: LucideIcon }[] = [
+  { id: "wallet-banknote", icon: Banknote },
+  { id: "wallet-card",     icon: CreditCard },
+  { id: "wallet-bank",     icon: Landmark },
+  { id: "wallet-money",    icon: Wallet },
+  { id: "wallet-ewallet",  icon: Smartphone },
+  { id: "wallet-savings",  icon: PiggyBank },
+];
+
+const LUCIDE_ICON_MAP: Record<string, LucideIcon> = Object.fromEntries([
+  ...CATEGORY_LUCIDE_ICONS.map((e) => [e.id, e.icon] as const),
+  ...WALLET_EXTRA_LUCIDE.map((e) => [e.id, e.icon] as const),
+]);
 
 export const LUCIDE_SYMBOL_PREFIX = "lu:";
 
@@ -144,9 +158,9 @@ export const EMOJI_TO_LUCIDE: Record<string, string> = {
   "🎶": "music",
   // Work & finance
   "💼": "briefcase",
-  "💰": "wallet",
-  "💳": "wallet",
-  "🏦": "landmark",
+  "💰": "wallet-money",
+  "💳": "wallet-card",
+  "🏦": "wallet-bank",
   "🌐": "landmark",
   "🧾": "receipt",
   "📋": "receipt",
@@ -159,8 +173,11 @@ export const EMOJI_TO_LUCIDE: Record<string, string> = {
   "🔧": "wrench",
   "🧹": "wrench",
   "✂️": "scissors",
-  "📱": "smartphone",
+  "📱": "wallet-ewallet",
   "💡": "lightbulb",
+  // Wallet-specific
+  "💵": "wallet-banknote",
+  "🐷": "wallet-savings",
 };
 
 /**

@@ -16,7 +16,7 @@ import PullToRefresh from "@/components/pull-to-refresh";
 import { CategoryIcon } from "@/components/category-icon";
 import { cn } from "@/lib/cn";
 import { formatAmount } from "@/lib/format";
-import type { DbTransaction, DbCategory, DbMember, DbHouseholdMembership, DbRecurringItem, DbPendingInvitation } from "@/lib/types";
+import type { DbTransaction, DbCategory, DbWallet, DbMember, DbHouseholdMembership, DbRecurringItem, DbPendingInvitation } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 
 type SubTab = "history" | "recurring";
@@ -54,6 +54,7 @@ function inDateRange(txDate: string, filter: DateFilter, customStart: string, cu
 type Props = {
   transactions: DbTransaction[];
   categories: DbCategory[];
+  wallets: DbWallet[];
   members: Record<string, DbMember>;
   householdName: string;
   householdId: string;
@@ -72,6 +73,7 @@ type Props = {
 export default function TransactionsShell({
   transactions,
   categories,
+  wallets,
   members,
   householdName,
   householdId,
@@ -97,6 +99,7 @@ export default function TransactionsShell({
   // Filter
   const [filterOpen, setFilterOpen] = useState(false);
   const [pendingCategories, setPendingCategories] = useState<string[]>([]);
+  const [pendingWallets, setPendingWallets] = useState<string[]>([]);
   const [pendingDateFilter, setPendingDateFilter] = useState<DateFilter>("all");
   const today = new Date();
   const todayStr = toInputDate(today);
@@ -106,6 +109,7 @@ export default function TransactionsShell({
 
   // Applied filter state
   const [activeCategories, setActiveCategories] = useState<string[]>([]);
+  const [activeWallets, setActiveWallets] = useState<string[]>([]);
   const [activeDateFilter, setActiveDateFilter] = useState<DateFilter>("all");
   const [activeCustomStart, setActiveCustomStart] = useState(thirtyAgoStr);
   const [activeCustomEnd, setActiveCustomEnd] = useState(todayStr);
@@ -125,14 +129,19 @@ export default function TransactionsShell({
   // Ledger switcher
   const [showLedgerSwitcher, setShowLedgerSwitcher] = useState(false);
 
-  // Extra categories added inline (optimistic)
+  // Extra categories / wallets added inline (optimistic)
   const [extraCategories, setExtraCategories] = useState<DbCategory[]>([]);
+  const [extraWallets, setExtraWallets] = useState<DbWallet[]>([]);
   const allCategories = [
     ...categories,
     ...extraCategories.filter((e) => !categories.find((c) => c.id === e.id)),
   ];
+  const allWallets = [
+    ...wallets,
+    ...extraWallets.filter((e) => !wallets.find((w) => w.id === e.id)),
+  ];
 
-  const hasActiveFilter = activeCategories.length > 0 || activeDateFilter !== "all";
+  const hasActiveFilter = activeCategories.length > 0 || activeWallets.length > 0 || activeDateFilter !== "all";
 
   // Filtered transactions
   const filteredTransactions = useMemo(() => {
@@ -144,11 +153,14 @@ export default function TransactionsShell({
     if (activeCategories.length > 0) {
       result = result.filter((t) => activeCategories.includes(t.category_id ?? ""));
     }
+    if (activeWallets.length > 0) {
+      result = result.filter((t) => activeWallets.includes(t.wallet_id ?? ""));
+    }
     if (activeDateFilter !== "all") {
       result = result.filter((t) => inDateRange(t.date, activeDateFilter, activeCustomStart, activeCustomEnd));
     }
     return result;
-  }, [transactions, searchQuery, activeCategories, activeDateFilter, activeCustomStart, activeCustomEnd]);
+  }, [transactions, searchQuery, activeCategories, activeWallets, activeDateFilter, activeCustomStart, activeCustomEnd]);
 
   // Recalc balance when filters active
   const isFiltering = hasActiveFilter || searchQuery.trim().length > 0;
@@ -209,6 +221,7 @@ export default function TransactionsShell({
   function openFilter() {
     // Sync pending state with active
     setPendingCategories([...activeCategories]);
+    setPendingWallets([...activeWallets]);
     setPendingDateFilter(activeDateFilter);
     setPendingCustomStart(activeCustomStart);
     setPendingCustomEnd(activeCustomEnd);
@@ -217,6 +230,7 @@ export default function TransactionsShell({
 
   function applyFilter() {
     setActiveCategories(pendingCategories);
+    setActiveWallets(pendingWallets);
     setActiveDateFilter(pendingDateFilter);
     setActiveCustomStart(pendingCustomStart);
     setActiveCustomEnd(pendingCustomEnd);
@@ -225,6 +239,7 @@ export default function TransactionsShell({
 
   function clearFilter() {
     setActiveCategories([]);
+    setActiveWallets([]);
     setActiveDateFilter("all");
     setFilterOpen(false);
   }
@@ -317,7 +332,7 @@ export default function TransactionsShell({
                 {filteredTransactions.length} result{filteredTransactions.length !== 1 ? "s" : ""} filtered
               </p>
               <button
-                onClick={() => { setActiveCategories([]); setActiveDateFilter("all"); setSearchQuery(""); setSearchOpen(false); }}
+                onClick={() => { setActiveCategories([]); setActiveWallets([]); setActiveDateFilter("all"); setSearchQuery(""); setSearchOpen(false); }}
                 className="text-[12px] font-semibold text-[var(--foreground)]"
               >
                 {t("common.clearAll")}
@@ -376,6 +391,8 @@ export default function TransactionsShell({
         open={showSheet}
         onClose={closeSheet}
         categories={allCategories}
+        wallets={allWallets}
+        onWalletAdded={(w) => setExtraWallets((prev) => [...prev, w])}
         editing={editingTx}
         currency={currency}
         memberships={memberships}
@@ -416,9 +433,12 @@ export default function TransactionsShell({
           <div className="fixed bottom-0 left-1/2 z-[60] w-full max-w-md -translate-x-1/2 rounded-t-3xl bg-[var(--background)] shadow-2xl max-h-[75vh] flex flex-col">
             <FilterSheet
               categories={allCategories}
+              wallets={allWallets}
               iconStyle={iconStyle}
               pendingCategories={pendingCategories}
               setPendingCategories={setPendingCategories}
+              pendingWallets={pendingWallets}
+              setPendingWallets={setPendingWallets}
               pendingDateFilter={pendingDateFilter}
               setPendingDateFilter={setPendingDateFilter}
               pendingCustomStart={pendingCustomStart}
@@ -442,9 +462,12 @@ export default function TransactionsShell({
 
 type FilterSheetProps = {
   categories: DbCategory[];
+  wallets: DbWallet[];
   iconStyle: IconStyle;
   pendingCategories: string[];
   setPendingCategories: (v: string[]) => void;
+  pendingWallets: string[];
+  setPendingWallets: (v: string[]) => void;
   pendingDateFilter: DateFilter;
   setPendingDateFilter: (v: DateFilter) => void;
   pendingCustomStart: string;
@@ -459,7 +482,8 @@ type FilterSheetProps = {
 };
 
 function FilterSheet({
-  categories, iconStyle, pendingCategories, setPendingCategories,
+  categories, wallets, iconStyle, pendingCategories, setPendingCategories,
+  pendingWallets, setPendingWallets,
   pendingDateFilter, setPendingDateFilter,
   pendingCustomStart, setPendingCustomStart,
   pendingCustomEnd, setPendingCustomEnd,
@@ -472,6 +496,14 @@ function FilterSheet({
       pendingCategories.includes(id)
         ? pendingCategories.filter((c) => c !== id)
         : [...pendingCategories, id]
+    );
+  }
+
+  function toggleWallet(id: string) {
+    setPendingWallets(
+      pendingWallets.includes(id)
+        ? pendingWallets.filter((w) => w !== id)
+        : [...pendingWallets, id]
     );
   }
 
@@ -542,6 +574,41 @@ function FilterSheet({
               />
             </div>
           </div>
+        )}
+
+        {/* Wallet filter */}
+        {wallets.length > 0 && (
+          <>
+            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">{t("tx.wallet")}</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {wallets.map((w) => {
+                const selected = pendingWallets.includes(w.id);
+                return (
+                  <button
+                    key={w.id}
+                    onClick={() => toggleWallet(w.id)}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium ring-1 transition-all",
+                      selected
+                        ? "text-white ring-transparent"
+                        : "bg-[var(--surface)] text-[var(--foreground)] ring-black/[0.08]"
+                    )}
+                    style={selected ? { backgroundColor: w.color } : undefined}
+                  >
+                    <CategoryIcon
+                      symbol={w.symbol}
+                      iconStyle={iconStyle}
+                      size={14}
+                      emojiSize="14px"
+                      color={selected ? "#ffffff" : (iconStyle === "2d" ? w.color : undefined)}
+                    />
+                    {w.name}
+                    {selected && <Check className="h-3 w-3 ml-0.5" strokeWidth={2.5} />}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* Category filter */}

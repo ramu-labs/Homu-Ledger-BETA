@@ -33,6 +33,15 @@ export type DbCategory = {
   is_default?: boolean;
 };
 
+export type DbWallet = {
+  id: string;
+  name: string;
+  symbol: string;
+  color: string;
+  initial_balance: number;
+  is_default: boolean;
+};
+
 export type DbMember = {
   id: string;
   name: string;
@@ -48,12 +57,14 @@ export type DbRecurringItem = {
   amount: number;
   name: string;
   category_id: string | null;
+  wallet_id: string | null;
   frequency: RecurringFrequency;
   next_due_date: string | null;
   repeat_until: string | null;
   created_by: string | null;
   created_at: string;
   categories: DbCategory | null;
+  wallets: DbWallet | null;
 };
 
 export type DbTransaction = {
@@ -62,9 +73,11 @@ export type DbTransaction = {
   amount: number;
   name: string;
   category_id: string | null;
+  wallet_id: string | null;
   date: string;
   created_by: string | null;
   created_at: string;
   categories: DbCategory | null;
+  wallets: DbWallet | null;
   photo_url: string | null;
 };
