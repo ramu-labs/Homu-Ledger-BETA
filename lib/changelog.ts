@@ -29,7 +29,7 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
-    version: "0.10.0",
+    version: "1.1.0",
     date: "May 7, 2026",
     changes: [
       { type: "new", en: "Transfer between wallets — third option in Add Transaction (Expense | Income | Transfer) with From and To wallet pickers", id: "Transfer antar dompet — opsi ketiga di Tambah Transaksi (Pengeluaran | Pemasukan | Transfer) dengan pemilih dompet Dari dan Ke" },
