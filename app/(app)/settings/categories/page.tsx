@@ -25,5 +25,5 @@ export default async function CategoriesPage() {
 
   const categories: DbCategory[] = categoriesRaw ?? [];
 
-  return <CategoriesShell categories={categories} iconStyle={profile.icon_style ?? "3d"} />;
+  return <CategoriesShell categories={categories} iconStyle={(profile.icon_style as "2d" | "3d") ?? "3d"} />;
 }

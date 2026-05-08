@@ -26,16 +26,21 @@ export default async function MembersPage() {
 
   if (!household) redirect("/settings");
 
+  // The `household_members` table stores the join timestamp under
+  // `joined_at`, NOT `created_at`. Selecting / ordering by `created_at`
+  // here used to make Supabase silently return zero rows — which is why
+  // the M&D ledger's Members page rendered as an empty container even
+  // though Marcel and Della were both in the table.
   const { data: memberRows } = await supabase
     .from("household_members")
-    .select("created_at, profile:profiles(id, name, initials, avatar_color)")
+    .select("joined_at, profile:profiles(id, name, initials, avatar_color)")
     .eq("household_id", household.id)
-    .order("created_at", { ascending: true });
+    .order("joined_at", { ascending: true });
 
   const members = (memberRows ?? [])
     .map((row: any) => {
       const p = Array.isArray(row.profile) ? row.profile[0] : row.profile;
-      return p ? { ...p, created_at: row.created_at } : null;
+      return p ? { ...p, joined_at: row.joined_at } : null;
     })
     .filter(Boolean);
 

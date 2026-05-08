@@ -155,7 +155,7 @@ export default async function TransactionsPage() {
       memberships={memberships}
       pendingInvitations={pendingInvitations}
       recurringItems={recurringItems}
-      iconStyle={profile.icon_style ?? "3d"}
+      iconStyle={(profile.icon_style as "2d" | "3d") ?? "3d"}
     />
   );
 }

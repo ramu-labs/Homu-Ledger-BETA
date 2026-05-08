@@ -77,7 +77,14 @@ export async function updateWallet(
   if (!name) return { error: "Name required" };
   if (!symbol) return { error: "Icon required" };
 
-  const update: Record<string, unknown> = { name, symbol, color };
+  // Typed against the wallets schema so a column rename here would be a
+  // compile error rather than a silent no-op.
+  const update: {
+    name: string;
+    symbol: string;
+    color: string;
+    initial_balance?: number;
+  } = { name, symbol, color };
   // initial_balance is optional on update — only override when explicitly provided
   if (initialBalanceRaw != null && initialBalanceRaw !== "") {
     update.initial_balance = parseAmount(initialBalanceRaw);

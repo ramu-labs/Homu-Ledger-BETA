@@ -33,7 +33,7 @@ export async function generatePromoCode(
     code: {
       id: row.id,
       code: row.code,
-      tier: row.tier,
+      tier: row.tier as SubscriptionTier,
       created_at: row.created_at,
       created_by: user.id,
       redeemed_by: null,
