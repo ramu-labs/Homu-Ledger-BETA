@@ -217,9 +217,9 @@ create policy "profiles: self can update"
   with check (id = auth.uid());
 
 -- HOUSEHOLDS ---------------------------------------------------------------
--- Any authenticated user can look up a household by invite code in order to join it.
--- This policy allows read access to all households, which is OK because the
--- invite code is effectively a secret; listing doesn't expose sensitive data.
+-- Bootstrap policy for the initial schema. Migration 0002 adds owner_id and
+-- immediately tightens this to member/owner-only reads; invite-code lookup is
+-- handled by a SECURITY DEFINER RPC in migration 0008.
 create policy "households: authenticated can read"
   on public.households for select
   to authenticated

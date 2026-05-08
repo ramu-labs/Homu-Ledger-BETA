@@ -179,11 +179,9 @@ export async function joinLedgerByCode(code: string): Promise<{ error?: string }
   const trimmed = code.trim().toUpperCase();
   if (!trimmed) return { error: "Invite code required" };
 
-  const { data: household, error: lookupError } = await supabase
-    .from("households")
-    .select("id, name")
-    .eq("invite_code", trimmed)
-    .single();
+  const { data: lookupRows, error: lookupError } = await supabase
+    .rpc("lookup_household_by_invite_code", { p_code: trimmed });
+  const household = Array.isArray(lookupRows) ? lookupRows[0] : lookupRows;
 
   if (lookupError || !household) return { error: "Invalid invite code." };
 

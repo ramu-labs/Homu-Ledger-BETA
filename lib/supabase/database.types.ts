@@ -516,6 +516,13 @@ export type Database = {
       generate_promo_code_string: { Args: never; Returns: string }
       get_email_by_username: { Args: { p_username: string }; Returns: string }
       is_promo_code_valid: { Args: { p_code: string }; Returns: boolean }
+      lookup_household_by_invite_code: {
+        Args: { p_code: string }
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       lookup_user_for_invite: {
         Args: { p_query: string }
         Returns: {

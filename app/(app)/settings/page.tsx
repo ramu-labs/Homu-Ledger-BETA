@@ -134,7 +134,7 @@ export default async function SettingsPage() {
                 <Smile className="h-[18px] w-[18px]" strokeWidth={2} />
               </span>
               <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">{t("settings.symbol")}</p>
-              <p className="mr-1 text-[20px] leading-none">{(household as any).symbol ?? "🏠"}</p>
+              <p className="mr-1 text-[20px] leading-none">{household.symbol ?? "🏠"}</p>
               <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
             </TapLink>
 
@@ -208,7 +208,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.3.3</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.3.4</p>
     </div>
   );
 }

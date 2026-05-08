@@ -1,7 +1,51 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import TransactionsShell from "@/components/transactions-shell";
-import type { DbTransaction, DbCategory, DbWallet, DbMember, DbHouseholdMembership, DbRecurringItem, DbPendingInvitation } from "@/lib/types";
+import type { DbTransaction, DbCategory, DbWallet, DbMember, DbHousehold, DbHouseholdMembership, DbRecurringItem, DbPendingInvitation } from "@/lib/types";
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+type LedgerTotalRow = {
+  type: "income" | "expense";
+  amount: number;
+};
+type TransactionRowWithRelations = Omit<DbTransaction, "amount" | "categories" | "wallets" | "peer_wallet"> & {
+  amount: number;
+  categories: DbCategory | DbCategory[] | null;
+  wallets: DbWallet | DbWallet[] | null;
+};
+type RecurringRowWithRelations = Omit<DbRecurringItem, "amount" | "categories" | "wallets"> & {
+  amount: number;
+  categories: DbCategory | DbCategory[] | null;
+  wallets: DbWallet | DbWallet[] | null;
+};
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
+const QUERY_PAGE_SIZE = 1000;
+
+async function fetchLedgerTotalRows(
+  supabase: Supabase,
+  householdId: string
+): Promise<LedgerTotalRow[]> {
+  const rows: LedgerTotalRow[] = [];
+
+  for (let from = 0; ; from += QUERY_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("type, amount")
+      .eq("household_id", householdId)
+      .is("transfer_pair_id", null)
+      .range(from, from + QUERY_PAGE_SIZE - 1);
+
+    if (error) throw new Error(`Failed to load ledger totals: ${error.message}`);
+    rows.push(...((data ?? []) as LedgerTotalRow[]));
+    if (!data || data.length < QUERY_PAGE_SIZE) break;
+  }
+
+  return rows;
+}
 
 export default async function TransactionsPage() {
   const supabase = await createClient();
@@ -24,7 +68,7 @@ export default async function TransactionsPage() {
 
   if (!household) redirect("/onboarding");
 
-  const [{ data: categoriesRaw }, { data: walletsRaw }, { data: membersRaw }, { data: txRaw }, { data: membershipsRaw }, { data: recurringRaw }, { data: invitationsRaw }] = await Promise.all([
+  const [{ data: categoriesRaw }, { data: walletsRaw }, { data: membersRaw }, { data: txRaw }, { data: membershipsRaw }, { data: recurringRaw }, { data: invitationsRaw }, totalRows] = await Promise.all([
     supabase
       .from("categories")
       .select("id, name, symbol, color")
@@ -62,31 +106,36 @@ export default async function TransactionsPage() {
       .eq("invited_user_id", profile.id)
       .eq("status", "pending")
       .order("created_at", { ascending: false }),
+    fetchLedgerTotalRows(supabase, household.id),
   ]);
 
   const categories: DbCategory[] = categoriesRaw ?? [];
-  const wallets: DbWallet[] = (walletsRaw ?? []).map((w: any) => ({
+  const wallets: DbWallet[] = (walletsRaw ?? []).map((w) => ({
     ...w,
     initial_balance: Number(w.initial_balance ?? 0),
   }));
 
-  const memberships: DbHouseholdMembership[] = (membershipsRaw ?? []).map((m: any) => ({
-    household_id: m.household_id,
-    role: m.role,
-    household: Array.isArray(m.household) ? m.household[0] : m.household,
-  })).filter((m: DbHouseholdMembership) => m.household);
+  const memberships: DbHouseholdMembership[] = (membershipsRaw ?? []).flatMap((m) => {
+    const membershipHousehold = firstRelation(m.household as DbHousehold | DbHousehold[] | null);
+    if (!membershipHousehold) return [];
+    return [{
+      household_id: m.household_id,
+      role: m.role as "owner" | "member",
+      household: membershipHousehold,
+    }];
+  });
 
   const members: Record<string, DbMember> = {};
   for (const row of membersRaw ?? []) {
-    const p: any = Array.isArray((row as any).profile) ? (row as any).profile[0] : (row as any).profile;
+    const p = firstRelation(row.profile as DbMember | DbMember[] | null);
     if (p?.id) members[p.id] = p;
   }
 
-  const allTransactions: DbTransaction[] = (txRaw ?? []).map((t: any) => ({
+  const allTransactions: DbTransaction[] = ((txRaw ?? []) as TransactionRowWithRelations[]).map((t) => ({
     ...t,
     amount: Number(t.amount),
-    categories: Array.isArray(t.categories) ? t.categories[0] ?? null : t.categories,
-    wallets: Array.isArray(t.wallets) ? t.wallets[0] ?? null : t.wallets,
+    categories: firstRelation(t.categories),
+    wallets: firstRelation(t.wallets),
   }));
 
   // Build pair_id → peer wallet map for transfer rendering. The DEST side
@@ -109,31 +158,34 @@ export default async function TransactionsPage() {
         : t
     );
 
-  const recurringItems: DbRecurringItem[] = (recurringRaw ?? []).map((r: any) => ({
+  const recurringItems: DbRecurringItem[] = ((recurringRaw ?? []) as RecurringRowWithRelations[]).map((r) => ({
     ...r,
     amount: Number(r.amount),
-    categories: Array.isArray(r.categories) ? r.categories[0] ?? null : r.categories,
-    wallets: Array.isArray(r.wallets) ? r.wallets[0] ?? null : r.wallets,
+    categories: firstRelation(r.categories),
+    wallets: firstRelation(r.wallets),
   }));
 
-  const pendingInvitations: DbPendingInvitation[] = (invitationsRaw ?? []).map((i: any) => ({
-    id: i.id,
-    household_id: i.household_id,
-    invited_by: i.invited_by,
-    status: i.status,
-    created_at: i.created_at,
-    household: Array.isArray(i.household) ? i.household[0] : i.household,
-    inviter: Array.isArray(i.inviter) ? i.inviter[0] ?? null : i.inviter,
-  })).filter((i: DbPendingInvitation) => i.household);
+  const pendingInvitations: DbPendingInvitation[] = (invitationsRaw ?? []).flatMap((i) => {
+    const invitationHousehold = firstRelation(i.household as DbPendingInvitation["household"] | DbPendingInvitation["household"][] | null);
+    if (!invitationHousehold) return [];
+    return [{
+      id: i.id,
+      household_id: i.household_id,
+      invited_by: i.invited_by,
+      status: i.status as DbPendingInvitation["status"],
+      created_at: i.created_at,
+      household: invitationHousehold,
+      inviter: firstRelation(i.inviter as DbPendingInvitation["inviter"] | DbPendingInvitation["inviter"][] | null),
+    }];
+  });
 
   // Exclude transfers from income/expense aggregates — they net to zero across
   // the ledger (source expense + dest income same amount), so including them
   // would inflate both columns without changing the balance.
-  const realTransactions = allTransactions.filter((t) => !t.transfer_pair_id);
-  const income = realTransactions
+  const income = totalRows
     .filter((t) => t.type === "income")
     .reduce((s, t) => s + t.amount, 0);
-  const expenses = realTransactions
+  const expenses = totalRows
     .filter((t) => t.type === "expense")
     .reduce((s, t) => s + t.amount, 0);
   const balance = Number(household.opening_balance) + income - expenses;
@@ -146,7 +198,7 @@ export default async function TransactionsPage() {
       members={members}
       householdName={household.name}
       householdId={household.id}
-      householdSymbol={(household as any).symbol ?? "🏠"}
+      householdSymbol={household.symbol ?? "🏠"}
       currency={household.currency ?? "IDR"}
       balance={balance}
       income={income}

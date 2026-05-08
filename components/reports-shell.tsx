@@ -18,6 +18,7 @@ const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct
 type Period = "7d" | "30d" | "Last month" | "This month" | "custom";
 type TxType = "expenses" | "income";
 type Breakdown = "category" | "member";
+type SelectedSegment = { index: number; key: string };
 
 const PERIODS: { key: Period; label: string }[] = [
   { key: "7d",         label: "Last 7 days" },
@@ -97,21 +98,24 @@ export default function ReportsShell({ transactions, categories, wallets, member
   // Index of the segment currently highlighted in the stacked bar (or null
   // when nothing is selected). Tapping a segment opens a small popup above
   // it; tapping the same one again or outside the bar closes it.
-  const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
+  const [selectedSegment, setSelectedSegment] = useState<SelectedSegment | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const walletDropdownRef = useRef<HTMLDivElement>(null);
   const stackedBarRef = useRef<HTMLDivElement>(null);
 
   function toggleWallet(id: string) {
-    setWalletIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setWalletIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      return next.length === wallets.length ? [] : next;
+    });
   }
 
   const todayStr = toDateInputValue(now);
   const thirtyAgo = new Date(now); thirtyAgo.setDate(thirtyAgo.getDate() - 29);
   const [customStart, setCustomStart] = useState(toDateInputValue(thirtyAgo));
   const [customEnd, setCustomEnd] = useState(todayStr);
+  const segmentKey = `${period}|${txType}|${breakdown}|${walletIds.join(",")}|${customStart}|${customEnd}`;
+  const selectedSegmentIndex = selectedSegment?.key === segmentKey ? selectedSegment.index : null;
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -126,18 +130,11 @@ export default function ReportsShell({ transactions, categories, wallets, member
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  // Drop the bar selection whenever the underlying data changes (period,
-  // tx type, wallet filter, breakdown, …) — the index would otherwise
-  // point at a stale segment from the previous data set.
-  useEffect(() => {
-    setSelectedSegment(null);
-  }, [period, txType, breakdown, walletIds, customStart, customEnd]);
-
   const selectedWallets = wallets.filter((w) => walletIds.includes(w.id));
+  const hasWalletFilter = walletIds.length > 0 && walletIds.length < wallets.length;
   const selectedWalletLabel = (() => {
     if (selectedWallets.length === 0) return "All";
     if (selectedWallets.length === 1) return selectedWallets[0].name;
-    if (selectedWallets.length === wallets.length) return "All";
     return `${selectedWallets.length} wallets`;
   })();
 
@@ -156,14 +153,19 @@ export default function ReportsShell({ transactions, categories, wallets, member
   // breakdown, category list, member list — automatically respects the
   // wallet filter without us having to thread `walletIds` through each
   // useMemo.
-  const periodTx = transactions
-    .filter((t) => walletIds.length === 0 || (t.wallet_id != null && walletIds.includes(t.wallet_id)))
-    .filter((t) => txInRange(t, start, end));
+  const periodTx = useMemo(() => (
+    transactions
+      .filter((t) => !hasWalletFilter || (t.wallet_id != null && walletIds.includes(t.wallet_id)))
+      .filter((t) => txInRange(t, start, end))
+  ), [transactions, hasWalletFilter, walletIds, start, end]);
   const income   = periodTx.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const expenses = periodTx.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
   const net      = income - expenses;
 
-  const activeTx   = periodTx.filter((t) => t.type === (txType === "expenses" ? "expense" : "income"));
+  const activeTx = useMemo(
+    () => periodTx.filter((t) => t.type === (txType === "expenses" ? "expense" : "income")),
+    [periodTx, txType]
+  );
   const grandTotal = activeTx.reduce((s, t) => s + t.amount, 0);
 
   // --- Trend bar chart data (daily) ---
@@ -179,28 +181,35 @@ export default function ReportsShell({ transactions, categories, wallets, member
       cur.setDate(cur.getDate() + 1);
     }
     return days;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period, txType, transactions, customStart, customEnd, walletIds]);
+  }, [activeTx, start, end]);
 
   const barColor = txType === "expenses" ? "#f43f5e" : "#10b981";
 
   // --- By category ---
-  const byCategory = categories
-    .map((c) => ({ ...c, total: activeTx.filter((t) => t.category_id === c.id).reduce((s,t) => s+t.amount, 0) }))
-    .filter((c) => c.total > 0).sort((a, b) => b.total - a.total);
+  const byCategory = useMemo(() => (
+    categories
+      .map((c) => ({ ...c, total: activeTx.filter((t) => t.category_id === c.id).reduce((s,t) => s+t.amount, 0) }))
+      .filter((c) => c.total > 0).sort((a, b) => b.total - a.total)
+  ), [categories, activeTx]);
 
-  const uncategorizedTotal = activeTx
-    .filter((t) => !t.category_id || !categories.find((c) => c.id === t.category_id))
-    .reduce((s, t) => s + t.amount, 0);
+  const uncategorizedTotal = useMemo(() => (
+    activeTx
+      .filter((t) => !t.category_id || !categories.find((c) => c.id === t.category_id))
+      .reduce((s, t) => s + t.amount, 0)
+  ), [activeTx, categories]);
 
   // --- By member ---
-  const byMember = Object.values(members)
-    .map((m) => ({ ...m, total: activeTx.filter((t) => t.created_by === m.id).reduce((s,t) => s+t.amount, 0) }))
-    .filter((m) => m.total > 0).sort((a, b) => b.total - a.total);
+  const byMember = useMemo(() => (
+    Object.values(members)
+      .map((m) => ({ ...m, total: activeTx.filter((t) => t.created_by === m.id).reduce((s,t) => s+t.amount, 0) }))
+      .filter((m) => m.total > 0).sort((a, b) => b.total - a.total)
+  ), [members, activeTx]);
 
-  const unassignedTotal = activeTx
-    .filter((t) => !t.created_by || !members[t.created_by])
-    .reduce((s, t) => s + t.amount, 0);
+  const unassignedTotal = useMemo(() => (
+    activeTx
+      .filter((t) => !t.created_by || !members[t.created_by])
+      .reduce((s, t) => s + t.amount, 0)
+  ), [activeTx, members]);
 
   // --- Donut data ---
   const donutData = useMemo(() => {
@@ -213,7 +222,6 @@ export default function ReportsShell({ transactions, categories, wallets, member
       if (unassignedTotal > 0) slices.push({ name: "Unassigned", value: unassignedTotal, color: "#d1d5db" });
       return slices;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [breakdown, byCategory, byMember, uncategorizedTotal, unassignedTotal]);
 
   const hasData = grandTotal > 0;
@@ -473,12 +481,12 @@ export default function ReportsShell({ transactions, categories, wallets, member
               <div className="flex h-5 w-full overflow-hidden rounded-full bg-black/[0.05]">
                 {donutData.map((entry, i) => {
                   const pct = grandTotal > 0 ? (entry.value / grandTotal) * 100 : 0;
-                  const isSel = selectedSegment === i;
+                  const isSel = selectedSegmentIndex === i;
                   return (
                     <button
                       key={i}
                       type="button"
-                      onClick={() => setSelectedSegment(isSel ? null : i)}
+                      onClick={() => setSelectedSegment(isSel ? null : { index: i, key: segmentKey })}
                       className={cn(
                         "h-full transition-opacity [touch-action:manipulation]",
                         // Hairline white separator between adjacent segments
@@ -486,7 +494,7 @@ export default function ReportsShell({ transactions, categories, wallets, member
                         // colours sit next to each other.
                         i > 0 && "border-l border-white/70",
                         // Dim non-selected segments when one is highlighted.
-                        selectedSegment !== null && !isSel && "opacity-50",
+                        selectedSegmentIndex !== null && !isSel && "opacity-50",
                       )}
                       style={{ width: `${pct}%`, backgroundColor: entry.color }}
                       aria-label={`${entry.name}: ${formatAmount(entry.value, currency)}`}
@@ -499,11 +507,11 @@ export default function ReportsShell({ transactions, categories, wallets, member
                   horizontal centre, clamped to [12%, 88%] so it doesn't
                   fall off the screen edges. The little tail underneath
                   points down at the bar. */}
-              {selectedSegment !== null && donutData[selectedSegment] && (() => {
-                const entry = donutData[selectedSegment];
+              {selectedSegmentIndex !== null && donutData[selectedSegmentIndex] && (() => {
+                const entry = donutData[selectedSegmentIndex];
                 const pct = grandTotal > 0 ? (entry.value / grandTotal) * 100 : 0;
                 let cumulCenter = 0;
-                for (let i = 0; i < selectedSegment; i++) {
+                for (let i = 0; i < selectedSegmentIndex; i++) {
                   cumulCenter += grandTotal > 0 ? (donutData[i].value / grandTotal) * 100 : 0;
                 }
                 cumulCenter += pct / 2;

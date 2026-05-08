@@ -1,0 +1,104 @@
+# Homu Release History
+
+This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
+
+## v1.3.4 - May 8, 2026
+
+- Fixed fresh database setup so migrations include wallets, invitations, promo codes, transfer helpers, storage policies, and current security rules.
+- Fixed Dashboard balances and Reports totals so they use full ledger history instead of only the first loaded transaction page.
+- Fixed Reports wallet filtering so selecting every wallet behaves exactly like All wallets, including older transactions without a wallet.
+- Tightened invite-code lookups and promo-code deletion so ledger invites stay private and developers can only delete their own unused promo codes.
+
+## v1.3.3 - May 8, 2026
+
+- Added developer-only deletion for generated promo codes that have not been redeemed yet, with two-tap confirmation.
+
+## v1.3.2 - May 8, 2026
+
+- Replaced the large Reports donut chart with a compact horizontal stacked bar so the breakdown list is visible sooner.
+
+## v1.3.1 - May 8, 2026
+
+- Added multi-wallet selection to the Reports wallet filter.
+
+## v1.3.0 - May 8, 2026
+
+- Added wallet filtering to the Reports page.
+- Reorganized the Reports header with wallet filter, date range, and period selector.
+
+## v1.2.0 - May 8, 2026
+
+- Added fullscreen receipt photo viewing with download.
+- Added browser-side photo compression before upload for faster saves on mobile data.
+
+## v1.1.2 - May 8, 2026
+
+- Fixed iOS Chrome photo saves hanging on "Saving..." by uploading photos directly to Supabase Storage.
+- Added clearer upload failure handling with timeout behavior.
+
+## v1.1.1 - May 7, 2026
+
+- New ledgers now start with Cash, Savings, and Credit wallets.
+- Fixed wallet badge centering on transaction rows.
+- Improved wallet picker sizing and iPhone home-indicator spacing.
+
+## v1.1.0 - May 7, 2026
+
+- Added wallet-to-wallet transfers.
+- Rendered transfer rows with neutral styling and From to To labeling.
+- Excluded transfers from income, expense, and report aggregates.
+- Fixed per-wallet balance handling for transfers.
+- Fixed a Total Balance card hydration mismatch.
+
+## v0.9.0 - May 7, 2026
+
+- Added single-use promo-code signup.
+- Added developer-only promo-code generation and stats.
+- Added welcome modal for new PRO users.
+- Added PRO badge showing subscription tier and expiry.
+- Grandfathered existing users into Lifetime PRO.
+
+## v0.8.0 - May 7, 2026
+
+- Added wallets for tracking transaction source.
+- Added wallet picker to Add Transaction.
+- Added wallet badges to transaction rows.
+- Added transaction filtering by wallet.
+- Applied Homu coral branding to key app surfaces.
+
+## v0.7.1 - May 6, 2026
+
+- Localized the Updates page in English and Bahasa Indonesia.
+
+## v0.7.0 - May 6, 2026
+
+- Added quick recurring setup from any transaction.
+
+## v0.6.3 - May 6, 2026
+
+- Made categories a single editable list.
+- Fixed Edit Category icon style handling.
+- Fixed Lucide symbols rendering as text in filter chips and recurring editors.
+
+## v0.6.2 - May 6, 2026
+
+- Added pending invitees inline in the Members list.
+
+## v0.6.1 - May 6, 2026
+
+- Fixed inviting users outside the current ledger by email or username.
+
+## v0.6.0 - May 6, 2026
+
+- Added member invites by email or username.
+- Added pending invitation accept/decline flow in My Ledgers.
+- Added join-by-invite-code from My Ledgers.
+- Added owner controls for canceling pending invitations.
+
+## v0.5.0 - May 6, 2026
+
+- Migrated to the new `homu.ramu.app` infrastructure.
+- Added ledger renaming from Settings.
+- Renamed Household to Ledger.
+- Made the floating action button open the recurring sheet from the Recurring tab.
+- Added the in-app Updates page.

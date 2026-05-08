@@ -29,6 +29,16 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.3.4",
+    date: "May 8, 2026",
+    changes: [
+      { type: "fix", en: "Database setup is now complete for fresh installs, including wallets, invitations, promo codes, transfer helpers, storage policies, and the latest security rules", id: "Setup database kini lengkap untuk instalasi baru, termasuk dompet, undangan, kode promo, helper transfer, kebijakan storage, dan aturan keamanan terbaru" },
+      { type: "fix", en: "Dashboard balances and Reports totals now read full ledger history instead of stopping at the first page of transactions", id: "Saldo Dashboard dan total Laporan kini membaca seluruh riwayat buku, bukan berhenti di halaman transaksi pertama" },
+      { type: "fix", en: "Reports wallet filter now treats every-wallet selection exactly like All wallets, including older transactions without a wallet", id: "Filter dompet di Laporan kini memperlakukan pilihan semua dompet sama persis seperti Semua dompet, termasuk transaksi lama tanpa dompet" },
+      { type: "fix", en: "Invite-code lookups and promo-code deletion are stricter, so ledger invites stay private and developers can only delete their own unused promo codes", id: "Pencarian kode undangan dan penghapusan kode promo kini lebih ketat, jadi undangan buku tetap privat dan developer hanya bisa menghapus kode promo kosong miliknya sendiri" },
+    ],
+  },
+  {
     version: "1.3.3",
     date: "May 8, 2026",
     changes: [

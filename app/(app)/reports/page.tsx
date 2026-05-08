@@ -3,6 +3,45 @@ import { createClient } from "@/lib/supabase/server";
 import ReportsShell from "@/components/reports-shell";
 import type { DbTransaction, DbCategory, DbMember, DbWallet } from "@/lib/types";
 
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+type ReportTransactionRow = Omit<DbTransaction, "amount" | "categories" | "wallets" | "peer_wallet"> & {
+  amount: number;
+};
+
+const QUERY_PAGE_SIZE = 1000;
+
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
+async function fetchReportTransactions(
+  supabase: Supabase,
+  householdId: string
+): Promise<DbTransaction[]> {
+  const rows: ReportTransactionRow[] = [];
+
+  for (let from = 0; ; from += QUERY_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, date, created_by, created_at, photo_url")
+      .eq("household_id", householdId)
+      .is("transfer_pair_id", null)
+      .order("date", { ascending: false })
+      .range(from, from + QUERY_PAGE_SIZE - 1);
+
+    if (error) throw new Error(`Failed to load report transactions: ${error.message}`);
+    rows.push(...((data ?? []) as ReportTransactionRow[]));
+    if (!data || data.length < QUERY_PAGE_SIZE) break;
+  }
+
+  return rows.map((t) => ({
+    ...t,
+    amount: Number(t.amount),
+    categories: null,
+    wallets: null,
+  }));
+}
+
 export default async function ReportsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -24,13 +63,8 @@ export default async function ReportsPage() {
 
   if (!household) redirect("/onboarding");
 
-  const [{ data: txRaw }, { data: membersRaw }, { data: categoriesRaw }, { data: walletsRaw }] = await Promise.all([
-    supabase
-      .from("transactions")
-      .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color), wallets(id, name, symbol, color, initial_balance, is_default)")
-      .eq("household_id", household.id)
-      .order("date", { ascending: false })
-      .limit(500),
+  const [transactions, { data: membersRaw }, { data: categoriesRaw }, { data: walletsRaw }] = await Promise.all([
+    fetchReportTransactions(supabase, household.id),
     supabase
       .from("household_members")
       .select("profile:profiles(id, name, initials, avatar_color)")
@@ -47,21 +81,9 @@ export default async function ReportsPage() {
       .order("created_at", { ascending: true }),
   ]);
 
-  // Reports excludes transfers entirely — they distort income/expense totals,
-  // categories, and member breakdowns since transfers are zero-sum movement,
-  // not real spending.
-  const transactions: DbTransaction[] = (txRaw ?? [])
-    .filter((t: any) => !t.transfer_pair_id)
-    .map((t: any) => ({
-      ...t,
-      amount: Number(t.amount),
-      categories: Array.isArray(t.categories) ? t.categories[0] ?? null : t.categories,
-      wallets: Array.isArray(t.wallets) ? t.wallets[0] ?? null : t.wallets,
-    }));
-
   const members: Record<string, DbMember> = {};
   for (const row of membersRaw ?? []) {
-    const p: any = Array.isArray((row as any).profile) ? (row as any).profile[0] : (row as any).profile;
+    const p = firstRelation(row.profile as DbMember | DbMember[] | null);
     if (p?.id) members[p.id] = p;
   }
 
