@@ -94,8 +94,13 @@ export default function ReportsShell({ transactions, categories, wallets, member
   // later persist this filter in URL params or localStorage.
   const [walletIds, setWalletIds] = useState<string[]>([]);
   const [showWalletDropdown, setShowWalletDropdown] = useState(false);
+  // Index of the segment currently highlighted in the stacked bar (or null
+  // when nothing is selected). Tapping a segment opens a small popup above
+  // it; tapping the same one again or outside the bar closes it.
+  const [selectedSegment, setSelectedSegment] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const walletDropdownRef = useRef<HTMLDivElement>(null);
+  const stackedBarRef = useRef<HTMLDivElement>(null);
 
   function toggleWallet(id: string) {
     setWalletIds((prev) =>
@@ -114,10 +119,19 @@ export default function ReportsShell({ transactions, categories, wallets, member
         setShowDropdown(false);
       if (walletDropdownRef.current && !walletDropdownRef.current.contains(e.target as Node))
         setShowWalletDropdown(false);
+      if (stackedBarRef.current && !stackedBarRef.current.contains(e.target as Node))
+        setSelectedSegment(null);
     }
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+
+  // Drop the bar selection whenever the underlying data changes (period,
+  // tx type, wallet filter, breakdown, …) — the index would otherwise
+  // point at a stale segment from the previous data set.
+  useEffect(() => {
+    setSelectedSegment(null);
+  }, [period, txType, breakdown, walletIds, customStart, customEnd]);
 
   const selectedWallets = wallets.filter((w) => walletIds.includes(w.id));
   const selectedWalletLabel = (() => {
@@ -439,7 +453,11 @@ export default function ReportsShell({ transactions, categories, wallets, member
           {/* Horizontal stacked bar — replaces the old donut.
               Same colour-per-slice visualisation but ~70 px tall instead
               of ~240 px, so the breakdown list below is still visible
-              without scrolling. Total + label sit inline above the bar. */}
+              without scrolling. Total + label sit inline above the bar.
+
+              Each segment is a tap-target: tapping opens a small popup
+              tooltip above the bar with the category/member name, share,
+              and amount. Tapping outside or on the same segment closes it. */}
           <div className="px-5 pt-5 pb-3">
             <div className="flex items-baseline justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
@@ -449,21 +467,69 @@ export default function ReportsShell({ transactions, categories, wallets, member
                 {formatAmount(grandTotal, currency)}
               </p>
             </div>
-            <div className="mt-3 flex h-5 w-full overflow-hidden rounded-full bg-black/[0.05]">
-              {donutData.map((entry, i) => {
+            {/* Wrapper is `relative` so the popup can absolute-position
+                itself against the bar's left edge using a percentage. */}
+            <div ref={stackedBarRef} className="relative mt-3">
+              <div className="flex h-5 w-full overflow-hidden rounded-full bg-black/[0.05]">
+                {donutData.map((entry, i) => {
+                  const pct = grandTotal > 0 ? (entry.value / grandTotal) * 100 : 0;
+                  const isSel = selectedSegment === i;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setSelectedSegment(isSel ? null : i)}
+                      className={cn(
+                        "h-full transition-opacity [touch-action:manipulation]",
+                        // Hairline white separator between adjacent segments
+                        // so they stay legible even when two same-tone
+                        // colours sit next to each other.
+                        i > 0 && "border-l border-white/70",
+                        // Dim non-selected segments when one is highlighted.
+                        selectedSegment !== null && !isSel && "opacity-50",
+                      )}
+                      style={{ width: `${pct}%`, backgroundColor: entry.color }}
+                      aria-label={`${entry.name}: ${formatAmount(entry.value, currency)}`}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Selected-segment popup. Positioned at the segment's
+                  horizontal centre, clamped to [12%, 88%] so it doesn't
+                  fall off the screen edges. The little tail underneath
+                  points down at the bar. */}
+              {selectedSegment !== null && donutData[selectedSegment] && (() => {
+                const entry = donutData[selectedSegment];
                 const pct = grandTotal > 0 ? (entry.value / grandTotal) * 100 : 0;
-                // Hairline white separator between adjacent segments so they
-                // stay legible even when two same-tone colours sit next to
-                // each other.
+                let cumulCenter = 0;
+                for (let i = 0; i < selectedSegment; i++) {
+                  cumulCenter += grandTotal > 0 ? (donutData[i].value / grandTotal) * 100 : 0;
+                }
+                cumulCenter += pct / 2;
+                const clamped = Math.max(12, Math.min(88, cumulCenter));
                 return (
                   <div
-                    key={i}
-                    className={cn("h-full", i > 0 && "border-l border-white/70")}
-                    style={{ width: `${pct}%`, backgroundColor: entry.color }}
-                    title={`${entry.name}: ${formatAmount(entry.value, currency)}`}
-                  />
+                    className="pointer-events-none absolute -top-2 z-10 -translate-x-1/2 -translate-y-full"
+                    style={{ left: `${clamped}%` }}
+                  >
+                    <div className="rounded-xl bg-[var(--foreground)] px-3 py-2 text-white shadow-lg">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="block h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: entry.color }}
+                        />
+                        <p className="text-[12px] font-semibold whitespace-nowrap">{entry.name}</p>
+                      </div>
+                      <p className="mt-0.5 text-[12px] tabular-nums whitespace-nowrap text-white/90">
+                        {formatAmount(entry.value, currency)} · {pct.toFixed(1)}%
+                      </p>
+                    </div>
+                    {/* Tail — a small triangle pointing down to the bar. */}
+                    <div className="mx-auto h-0 w-0 border-x-[6px] border-t-[6px] border-x-transparent border-t-[var(--foreground)]" />
+                  </div>
                 );
-              })}
+              })()}
             </div>
           </div>
 
