@@ -19,22 +19,10 @@ function parseAmount(raw: string): number {
   return parseFloat(raw.replace(/\./g, "").replace(",", ".")) || 0;
 }
 
-async function uploadPhoto(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  householdId: string,
-  file: File
-): Promise<string | null> {
-  const ext = file.name.split(".").pop() ?? "jpg";
-  const path = `${householdId}/${crypto.randomUUID()}.${ext}`;
-  const { data, error } = await supabase.storage
-    .from("transaction-photos")
-    .upload(path, file, { contentType: file.type, upsert: false });
-  if (error || !data) return null;
-  const { data: { publicUrl } } = supabase.storage
-    .from("transaction-photos")
-    .getPublicUrl(data.path);
-  return publicUrl;
-}
+// Photo uploads are now done client-side directly to Supabase Storage so we
+// don't relay multi-MB iPhone photos through Vercel server actions (which
+// hit the 4.5 MB body limit on Hobby and stall on slow mobile networks).
+// Server actions only receive the resulting public URL.
 
 export async function addTransaction(formData: FormData) {
   const { supabase, userId, householdId } = await getHouseholdId();
@@ -46,15 +34,10 @@ export async function addTransaction(formData: FormData) {
   const category_id = (formData.get("category_id") as string) || null;
   const wallet_id = (formData.get("wallet_id") as string) || null;
   const date = formData.get("date") as string;
+  const photo_url = (formData.get("photo_url") as string) || null;
 
   if (!name) return { error: "Description is required" };
   if (amount <= 0) return { error: "Amount must be greater than 0" };
-
-  const photoFile = formData.get("photo") as File | null;
-  let photo_url: string | null = null;
-  if (photoFile && photoFile.size > 0) {
-    photo_url = await uploadPhoto(supabase, householdId, photoFile);
-  }
 
   const { error } = await supabase.from("transactions").insert({
     household_id: householdId,
@@ -71,6 +54,7 @@ export async function addTransaction(formData: FormData) {
   if (error) return { error: error.message };
   revalidatePath("/transactions");
   revalidatePath("/reports");
+  return {};
 }
 
 export async function updateTransaction(id: string, formData: FormData) {
@@ -94,17 +78,10 @@ export async function updateTransaction(id: string, formData: FormData) {
   const category_id = (formData.get("category_id") as string) || null;
   const wallet_id = (formData.get("wallet_id") as string) || null;
   const date = formData.get("date") as string;
+  const photo_url = (formData.get("photo_url") as string) || null;
 
   if (!name) return { error: "Description is required" };
   if (amount <= 0) return { error: "Amount must be greater than 0" };
-
-  const photoFile = formData.get("photo") as File | null;
-  let photo_url: string | null = null;
-  if (photoFile && photoFile.size > 0) {
-    photo_url = await uploadPhoto(supabase, householdId, photoFile);
-  } else if (formData.get("keep_photo") === "1") {
-    photo_url = (formData.get("existing_photo_url") as string) || null;
-  }
 
   const { error } = await supabase
     .from("transactions")
@@ -114,6 +91,7 @@ export async function updateTransaction(id: string, formData: FormData) {
   if (error) return { error: error.message };
   revalidatePath("/transactions");
   revalidatePath("/reports");
+  return {};
 }
 
 export async function deleteTransaction(id: string) {
@@ -124,6 +102,7 @@ export async function deleteTransaction(id: string) {
   if (error) return { error: error.message };
   revalidatePath("/transactions");
   revalidatePath("/reports");
+  return {};
 }
 
 export async function addTransfer(formData: FormData) {
@@ -151,6 +130,7 @@ export async function addTransfer(formData: FormData) {
 
   revalidatePath("/transactions");
   revalidatePath("/reports");
+  return {};
 }
 
 export async function moveTransaction(id: string, targetHouseholdId: string) {

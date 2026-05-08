@@ -10,6 +10,7 @@ import { CategoryIcon } from "@/components/category-icon";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/provider";
 import { formatShortDate } from "@/lib/format";
+import { uploadTransactionPhoto } from "@/lib/upload-photo";
 import type { DbTransaction, DbCategory, DbWallet, DbHouseholdMembership } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 
@@ -203,6 +204,29 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
       return;
     }
 
+    // Upload the photo client-side first (browser → Supabase Storage direct).
+    // This avoids relaying multi-MB iPhone photos through Vercel's 4.5 MB
+    // server-action body limit, which was causing the Save button to hang
+    // indefinitely on iOS Chrome with a real receipt photo attached.
+    let photoUrl: string | null = null;
+    if (photo) {
+      if (!currentHouseholdId) {
+        setError("No household selected — please refresh and try again.");
+        setLoading(false);
+        return;
+      }
+      const upload = await uploadTransactionPhoto(currentHouseholdId, photo);
+      if (!upload.ok) {
+        setError(upload.error);
+        setLoading(false);
+        return;
+      }
+      photoUrl = upload.url;
+    } else if (editing?.photo_url && photoPreview) {
+      // No new photo picked, but the existing one wasn't removed — keep it.
+      photoUrl = editing.photo_url;
+    }
+
     const fd = new FormData();
     fd.set("type", type);
     fd.set("amount", amount);
@@ -210,12 +234,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     fd.set("category_id", categoryId ?? "");
     fd.set("wallet_id", walletId ?? "");
     fd.set("date", date);
-    if (photo) {
-      fd.set("photo", photo);
-    } else if (editing?.photo_url && photoPreview) {
-      fd.set("keep_photo", "1");
-      fd.set("existing_photo_url", editing.photo_url);
-    }
+    if (photoUrl) fd.set("photo_url", photoUrl);
 
     const result = editing
       ? await updateTransaction(editing.id, fd)

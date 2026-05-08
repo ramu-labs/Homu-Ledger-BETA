@@ -29,6 +29,14 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.1.2",
+    date: "May 8, 2026",
+    changes: [
+      { type: "fix", en: "Save Transaction with a photo on iOS Chrome no longer hangs on \"Saving…\" — photos now upload directly to storage, bypassing the server's request-size limit", id: "Simpan Transaksi dengan foto di iOS Chrome tidak lagi macet di \"Menyimpan…\" — foto kini diunggah langsung ke storage, tidak lewat batas ukuran request server" },
+      { type: "improvement", en: "If a photo upload stalls or the connection drops, you now get a clear error message instead of a frozen button (30s timeout)", id: "Jika unggah foto tersendat atau koneksi putus, kamu akan melihat pesan error yang jelas, bukan tombol membeku (timeout 30 detik)" },
+    ],
+  },
+  {
     version: "1.1.1",
     date: "May 7, 2026",
     changes: [
