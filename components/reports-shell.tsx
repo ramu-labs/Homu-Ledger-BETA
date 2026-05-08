@@ -425,10 +425,10 @@ export default function ReportsShell({ transactions, categories, wallets, member
       ) : (
         <>
           {/* Horizontal stacked bar — replaces the old donut.
-              Same colour-per-slice visualisation but ~50 px tall instead
-              of ~240 px, so the breakdown list below is visible without
-              scrolling. Total + label sit inline above the bar. */}
-          <div className="px-5 pt-4">
+              Same colour-per-slice visualisation but ~70 px tall instead
+              of ~240 px, so the breakdown list below is still visible
+              without scrolling. Total + label sit inline above the bar. */}
+          <div className="px-5 pt-5 pb-3">
             <div className="flex items-baseline justify-between">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
                 {txType === "expenses" ? "Spent" : "Earned"}
@@ -437,7 +437,7 @@ export default function ReportsShell({ transactions, categories, wallets, member
                 {formatAmount(grandTotal, currency)}
               </p>
             </div>
-            <div className="mt-2 flex h-2.5 w-full overflow-hidden rounded-full bg-black/[0.05]">
+            <div className="mt-3 flex h-5 w-full overflow-hidden rounded-full bg-black/[0.05]">
               {donutData.map((entry, i) => {
                 const pct = grandTotal > 0 ? (entry.value / grandTotal) * 100 : 0;
                 // Hairline white separator between adjacent segments so they
