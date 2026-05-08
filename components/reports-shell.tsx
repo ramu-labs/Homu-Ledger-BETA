@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, Wallet as WalletIcon, Check } from "lucide-react";
 import PullToRefresh from "@/components/pull-to-refresh";
 import {
-  PieChart, Pie, Cell,
   BarChart, Bar, XAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { cn } from "@/lib/cn";
@@ -60,13 +59,6 @@ function txInRange(tx: DbTransaction, start: Date, end: Date): boolean {
   const [y, m, d] = tx.date.split("-").map(Number);
   const txDate = new Date(y, m - 1, d);
   return txDate >= start && txDate <= end;
-}
-
-function shortAmount(n: number): string {
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return String(Math.round(n));
 }
 
 type Props = {
@@ -432,28 +424,34 @@ export default function ReportsShell({ transactions, categories, wallets, member
         </div>
       ) : (
         <>
-          {/* Donut chart */}
-          <div className="flex flex-col items-center pt-4">
-            <div className="relative">
-              <PieChart width={220} height={220}>
-                <Pie
-                  data={donutData}
-                  cx={110} cy={110}
-                  innerRadius={68} outerRadius={100}
-                  paddingAngle={donutData.length > 1 ? 2 : 0}
-                  dataKey="value"
-                  strokeWidth={0}
-                  startAngle={90} endAngle={-270}
-                >
-                  {donutData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
-              </PieChart>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <p className="text-[11px] text-[var(--label-secondary)]">{txType === "expenses" ? "Spent" : "Earned"}</p>
-                <p className="text-[16px] font-bold text-[var(--foreground)] tabular-nums">{shortAmount(grandTotal)}</p>
-              </div>
+          {/* Horizontal stacked bar — replaces the old donut.
+              Same colour-per-slice visualisation but ~50 px tall instead
+              of ~240 px, so the breakdown list below is visible without
+              scrolling. Total + label sit inline above the bar. */}
+          <div className="px-5 pt-4">
+            <div className="flex items-baseline justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
+                {txType === "expenses" ? "Spent" : "Earned"}
+              </p>
+              <p className="text-[15px] font-bold text-[var(--foreground)] tabular-nums">
+                {formatAmount(grandTotal, currency)}
+              </p>
+            </div>
+            <div className="mt-2 flex h-2.5 w-full overflow-hidden rounded-full bg-black/[0.05]">
+              {donutData.map((entry, i) => {
+                const pct = grandTotal > 0 ? (entry.value / grandTotal) * 100 : 0;
+                // Hairline white separator between adjacent segments so they
+                // stay legible even when two same-tone colours sit next to
+                // each other.
+                return (
+                  <div
+                    key={i}
+                    className={cn("h-full", i > 0 && "border-l border-white/70")}
+                    style={{ width: `${pct}%`, backgroundColor: entry.color }}
+                    title={`${entry.name}: ${formatAmount(entry.value, currency)}`}
+                  />
+                );
+              })}
             </div>
           </div>
 

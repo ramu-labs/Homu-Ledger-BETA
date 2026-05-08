@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.3.2",
+    date: "May 8, 2026",
+    changes: [
+      { type: "improvement", en: "Reports: replaced the big donut chart with a thin horizontal stacked bar — same colour-per-category visualisation, but the breakdown list below is now visible without scrolling", id: "Laporan: grafik donat besar diganti dengan bar horizontal tipis bertumpuk — visualisasi warna per kategori tetap sama, tapi rincian di bawah kini terlihat tanpa harus scroll" },
+    ],
+  },
+  {
     version: "1.3.1",
     date: "May 8, 2026",
     changes: [
