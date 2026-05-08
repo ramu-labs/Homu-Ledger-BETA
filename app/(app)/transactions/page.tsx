@@ -41,54 +41,39 @@ async function fetchLedgerTotalRows(
   return rows;
 }
 
+// Initial server-render only fetches the most recent INITIAL_TX_LIMIT rows.
+// The client requests older batches via /api/transactions when the user
+// scrolls past the cached set. This caps the first-paint RSC payload at
+// ~50 KB regardless of household size — important on 4G mobile.
+const INITIAL_TX_LIMIT = 200;
+
 async function fetchLedgerTransactions(
   supabase: Supabase,
   householdId: string
 ): Promise<TransactionRowWithRelations[]> {
-  const rows: TransactionRowWithRelations[] = [];
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color), wallets(id, name, symbol, color, initial_balance, is_default)")
+    .eq("household_id", householdId)
+    .order("date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(INITIAL_TX_LIMIT);
 
-  for (let from = 0; ; from += QUERY_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("transactions")
-      .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color), wallets(id, name, symbol, color, initial_balance, is_default)")
-      .eq("household_id", householdId)
-      .order("date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .range(from, from + QUERY_PAGE_SIZE - 1);
-
-    if (error) throw new Error(`Failed to load transactions: ${error.message}`);
-    rows.push(...((data ?? []) as TransactionRowWithRelations[]));
-    if (!data || data.length < QUERY_PAGE_SIZE) break;
-  }
-
-  return rows;
+  if (error) throw new Error(`Failed to load transactions: ${error.message}`);
+  return (data ?? []) as TransactionRowWithRelations[];
 }
 
-function transactionPhotoPath(value: string): string {
+// Photos are stored as bare object paths (e.g. "<household_id>/<random>.jpg").
+// The list view only needs to know IF a photo exists (camera icon); the edit
+// sheet signs the URL on demand via signTransactionPhoto() so we don't burn
+// an N×100ms storage round-trip on every page load.
+function normalizePhotoPath(value: string | null): string | null {
+  if (!value) return value;
   const publicPrefix = "/storage/v1/object/public/transaction-photos/";
   const publicIndex = value.indexOf(publicPrefix);
   if (publicIndex === -1) return value;
   return decodeURIComponent(value.slice(publicIndex + publicPrefix.length));
-}
-
-async function attachSignedPhotoUrls(
-  supabase: Supabase,
-  transactions: DbTransaction[]
-): Promise<DbTransaction[]> {
-  return Promise.all(transactions.map(async (transaction) => {
-    if (!transaction.photo_url) return transaction;
-    const path = transactionPhotoPath(transaction.photo_url);
-    const { data, error } = await supabase.storage
-      .from("transaction-photos")
-      .createSignedUrl(path, 60 * 60);
-
-    return {
-      ...transaction,
-      photo_url: path,
-      signed_photo_url: error ? transaction.photo_url : data?.signedUrl ?? null,
-    };
-  }));
 }
 
 export default async function TransactionsPage() {
@@ -169,32 +154,16 @@ export default async function TransactionsPage() {
     if (p?.id) members[p.id] = p;
   }
 
-  const allTransactions: DbTransaction[] = await attachSignedPhotoUrls(supabase, (txRaw ?? []).map((t) => ({
+  // Send raw transactions; the client shell handles transfer-pair dedup +
+  // peer-wallet attachment so the same logic also covers batches fetched
+  // later via /api/transactions.
+  const transactions: DbTransaction[] = (txRaw ?? []).map((t) => ({
     ...t,
+    photo_url: normalizePhotoPath(t.photo_url),
     amount: Number(t.amount),
     categories: firstRelation(t.categories),
     wallets: firstRelation(t.wallets),
-  })));
-
-  // Build pair_id → peer wallet map for transfer rendering. The DEST side
-  // (type='income') of each transfer holds the destination wallet info; we
-  // attach it to the SOURCE side so the list can show "From → To" in one row.
-  const peerWalletByPair = new Map<string, DbTransaction["wallets"]>();
-  for (const t of allTransactions) {
-    if (t.transfer_pair_id && t.type === "income") {
-      peerWalletByPair.set(t.transfer_pair_id, t.wallets);
-    }
-  }
-
-  // Display list: drop the destination side of each transfer pair, attach
-  // peer_wallet to the source side. Regular tx pass through unchanged.
-  const transactions: DbTransaction[] = allTransactions
-    .filter((t) => !(t.transfer_pair_id && t.type === "income"))
-    .map((t) =>
-      t.transfer_pair_id
-        ? { ...t, peer_wallet: peerWalletByPair.get(t.transfer_pair_id) ?? null }
-        : t
-    );
+  }));
 
   const recurringItems: DbRecurringItem[] = ((recurringRaw ?? []) as RecurringRowWithRelations[]).map((r) => ({
     ...r,

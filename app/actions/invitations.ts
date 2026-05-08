@@ -84,13 +84,33 @@ export async function acceptInvitation(invitationId: string): Promise<{ error?: 
 
   const { data: invite } = await supabase
     .from("household_invitations")
-    .select("id, household_id, invited_user_id, status")
+    .select("id, household_id, invited_by, invited_user_id, status")
     .eq("id", invitationId)
     .single();
 
   if (!invite) return { error: "Invitation not found" };
   if (invite.invited_user_id !== user.id) return { error: "Not your invitation" };
   if (invite.status !== "pending") return { error: "Invitation is no longer pending" };
+
+  // Verify the inviter is STILL a member of the household at accept time.
+  // Without this, a removed member's stale pending invites would still grant
+  // access to their old ledger.
+  const { data: inviterMembership } = await supabase
+    .from("household_members")
+    .select("profile_id")
+    .eq("household_id", invite.household_id)
+    .eq("profile_id", invite.invited_by)
+    .maybeSingle();
+  if (!inviterMembership) {
+    // Auto-decline so the now-invalid invite stops appearing in the
+    // recipient's pending list. (The status CHECK constraint allows
+    // pending/accepted/declined; 'declined' fits closest semantically.)
+    await supabase
+      .from("household_invitations")
+      .update({ status: "declined" })
+      .eq("id", invitationId);
+    return { error: "This invitation is no longer valid — the inviter is no longer a member of that ledger." };
+  }
 
   // Add to household_members
   const { error: memberError } = await supabase

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Trash2, Camera, ImagePlus, ChevronRight, ArrowRightLeft, Check, Calendar, Repeat } from "lucide-react";
 import { addTransaction, updateTransaction, deleteTransaction, moveTransaction, addTransfer } from "@/app/actions/transactions";
+import { signTransactionPhoto } from "@/app/actions/photos";
 import { addRecurringItem } from "@/app/actions/recurring";
 import CategoryPicker from "@/components/category-picker";
 import WalletPickerSheet from "@/components/wallet-picker-sheet";
@@ -131,7 +132,17 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
       setWalletId(editing.wallet_id ?? defaultWallet?.id ?? null);
       setToWalletId(altWallet?.id ?? null);
       setDate(editing.date);
-      setPhotoPreview(editing.signed_photo_url ?? editing.photo_url ?? null);
+      // Photos are stored as bare object paths; sign on demand only when the
+      // edit sheet actually opens (avoids signing every photo on page load).
+      if (editing.photo_url) {
+        const tentative = editing.signed_photo_url ?? null;
+        setPhotoPreview(tentative); // show prior signed URL if still cached
+        signTransactionPhoto(editing.photo_url).then((res) => {
+          if (res.url) setPhotoPreview(res.url);
+        });
+      } else {
+        setPhotoPreview(null);
+      }
     } else {
       setType("expense");
       setAmount("");

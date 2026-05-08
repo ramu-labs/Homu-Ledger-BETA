@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Pre-push hook: type-check the code that's about to land on origin/main,
+# not the working tree. Without this, `tsc --noEmit` happily passes when
+# unstaged edits silently fix type errors that exist in the committed code
+# (we hit this exact bug when v1.3.6 broke Vercel's build).
+#
+# Install once with:  git config core.hooksPath .githooks
+
+set -e
+
+# Stash everything that isn't committed (including untracked) so the
+# checked-out tree matches what we're about to push. -k keeps the index
+# usable; --include-untracked makes sure new files don't bleed through.
+STASH_REF=
+if [ -n "$(git status --porcelain)" ]; then
+  echo "pre-push: stashing working-tree changes for clean type-check"
+  git stash push --quiet --include-untracked --message "pre-push-tsc-stash"
+  STASH_REF=1
+fi
+
+restore() {
+  if [ -n "$STASH_REF" ]; then
+    git stash pop --quiet || echo "pre-push: WARNING — failed to pop stash, run 'git stash pop' manually"
+  fi
+}
+trap restore EXIT
+
+echo "pre-push: running tsc --noEmit"
+if ! npx tsc --noEmit; then
+  echo ""
+  echo "pre-push: type check failed — push aborted"
+  echo "Fix the errors, commit the fix, then push again."
+  exit 1
+fi
+
+echo "pre-push: type check passed"

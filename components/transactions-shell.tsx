@@ -71,7 +71,7 @@ type Props = {
 };
 
 export default function TransactionsShell({
-  transactions,
+  transactions: initialTransactions,
   categories,
   wallets,
   members,
@@ -118,6 +118,18 @@ export default function TransactionsShell({
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  // Server-side cursor pagination. The page server-renders only the first N
+  // transactions (INITIAL_TX_LIMIT = 200); when the user scrolls past that
+  // we fetch older batches from /api/transactions and append.
+  const [transactions, setTransactions] = useState<DbTransaction[]>(initialTransactions);
+  const [endOfHistory, setEndOfHistory] = useState(false);
+  const [fetchingMore, setFetchingMore] = useState(false);
+  // Reset when the server hands us a new set (e.g. after pull-to-refresh)
+  useEffect(() => {
+    setTransactions(initialTransactions);
+    setEndOfHistory(initialTransactions.length < 200);
+  }, [initialTransactions]);
+
   // Transaction sheet
   const [showSheet, setShowSheet] = useState(false);
   const [editingTx, setEditingTx] = useState<DbTransaction | null>(null);
@@ -143,9 +155,29 @@ export default function TransactionsShell({
 
   const hasActiveFilter = activeCategories.length > 0 || activeWallets.length > 0 || activeDateFilter !== "all";
 
+  // Transfers come back as TWO rows sharing transfer_pair_id (source +
+  // destination). Drop the income half and attach peer_wallet to the source
+  // so the list renders one "From → To" row per transfer. Done client-side
+  // so it covers both server-rendered and API-fetched batches.
+  const transfersFlattened = useMemo(() => {
+    const peerByPair = new Map<string, DbTransaction["wallets"]>();
+    for (const t of transactions) {
+      if (t.transfer_pair_id && t.type === "income") {
+        peerByPair.set(t.transfer_pair_id, t.wallets);
+      }
+    }
+    return transactions
+      .filter((t) => !(t.transfer_pair_id && t.type === "income"))
+      .map((t) =>
+        t.transfer_pair_id
+          ? { ...t, peer_wallet: peerByPair.get(t.transfer_pair_id) ?? null }
+          : t
+      );
+  }, [transactions]);
+
   // Filtered transactions
   const filteredTransactions = useMemo(() => {
-    let result = transactions;
+    let result = transfersFlattened;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter((t) => t.name.toLowerCase().includes(q));
@@ -179,9 +211,42 @@ export default function TransactionsShell({
   useEffect(() => { setDisplayCount(PAGE_SIZE); }, [filteredTransactions]);
 
   // Infinite scroll — scroll listener is more reliable than IntersectionObserver
-  // because IO won't re-fire if element is already in view when re-observed
+  // because IO won't re-fire if element is already in view when re-observed.
+  // Two-tier behaviour: first try to grow `displayCount` against the local
+  // cache; once we've shown everything we have, fetch the next batch from
+  // /api/transactions using the OLDEST visible row as the cursor.
   const filteredLengthRef = useRef(filteredTransactions.length);
   filteredLengthRef.current = filteredTransactions.length;
+
+  const loadOlderFromServer = useCallback(async () => {
+    if (fetchingMore || endOfHistory) return;
+    const oldest = transactions[transactions.length - 1];
+    if (!oldest) return;
+    setFetchingMore(true);
+    try {
+      const params = new URLSearchParams({
+        date: oldest.date,
+        createdAt: oldest.created_at,
+        id: oldest.id,
+        limit: "40",
+      });
+      const res = await fetch(`/api/transactions?${params}`);
+      if (!res.ok) { setFetchingMore(false); return; }
+      const json = await res.json();
+      const more: DbTransaction[] = (json.transactions ?? []).map((row: DbTransaction) => ({
+        ...row,
+        amount: Number(row.amount),
+      }));
+      if (more.length === 0) { setEndOfHistory(true); }
+      // De-dupe by id in case the cursor caught a tied tuple
+      setTransactions((prev) => {
+        const seen = new Set(prev.map((t) => t.id));
+        return [...prev, ...more.filter((t) => !seen.has(t.id))];
+      });
+    } finally {
+      setFetchingMore(false);
+    }
+  }, [fetchingMore, endOfHistory, transactions]);
 
   useEffect(() => {
     function handleScroll() {
@@ -191,6 +256,8 @@ export default function TransactionsShell({
       if (rect.top <= window.innerHeight + 200) {
         setDisplayCount((prev) => {
           if (prev < filteredLengthRef.current) return prev + PAGE_SIZE;
+          // Local cache exhausted — try to fetch more from server
+          loadOlderFromServer();
           return prev;
         });
       }
@@ -198,7 +265,7 @@ export default function TransactionsShell({
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll(); // check immediately in case already in view
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [filteredTransactions.length]); // re-attach when filter changes
+  }, [filteredTransactions.length, loadOlderFromServer]);
 
   // Focus search input when opened
   useEffect(() => {

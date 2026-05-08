@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
@@ -22,7 +23,10 @@ export async function signUp(formData: FormData) {
 
   // Pre-check: confirm the code is valid and unredeemed before we create
   // the auth account. Avoids creating an orphan account if the code is bad.
-  const { data: codeIsValid } = await supabase.rpc("is_promo_code_valid", { p_code: promoCode });
+  // Use the admin client so this RPC is no longer reachable by anon REST
+  // callers (see migration 0012).
+  const admin = getAdminClient();
+  const { data: codeIsValid } = await admin.rpc("is_promo_code_valid", { p_code: promoCode });
   if (!codeIsValid) {
     return { error: "Invalid or already-redeemed promo code." };
   }
@@ -67,9 +71,11 @@ export async function signIn(formData: FormData) {
   let email = identifier;
 
   if (!identifier.includes("@")) {
-    // Treat as username — look up the email via SECURITY DEFINER RPC
-    // (bypasses RLS so unauthenticated callers can resolve a username)
-    const { data: resolvedEmail, error: rpcError } = await supabase
+    // Treat as username — resolve via the service-role admin client so the
+    // username→email RPC is not exposed to anon REST callers (which would
+    // let anyone enumerate registered emails). See migration 0012.
+    const admin = getAdminClient();
+    const { data: resolvedEmail, error: rpcError } = await admin
       .rpc("get_email_by_username", { p_username: identifier });
 
     if (rpcError || !resolvedEmail) return { error: "No account found with that username." };
