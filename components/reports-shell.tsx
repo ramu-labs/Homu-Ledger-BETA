@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Wallet as WalletIcon, Check } from "lucide-react";
 import PullToRefresh from "@/components/pull-to-refresh";
 import {
   PieChart, Pie, Cell,
@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import { TapButton } from "@/components/tap";
 import { formatAmount } from "@/lib/format";
 import { CategoryIcon } from "@/components/category-icon";
-import type { DbTransaction, DbCategory, DbMember } from "@/lib/types";
+import type { DbTransaction, DbCategory, DbMember, DbWallet } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -72,17 +72,22 @@ function shortAmount(n: number): string {
 type Props = {
   transactions: DbTransaction[];
   categories: DbCategory[];
+  wallets: DbWallet[];
   members: Record<string, DbMember>;
   currency: string;
   iconStyle?: IconStyle;
 };
 
-export default function ReportsShell({ transactions, categories, members, currency, iconStyle = "3d" }: Props) {
+export default function ReportsShell({ transactions, categories, wallets, members, currency, iconStyle = "3d" }: Props) {
   const [period, setPeriod] = useState<Period>("30d");
   const [showDropdown, setShowDropdown] = useState(false);
   const [txType, setTxType] = useState<TxType>("expenses");
   const [breakdown, setBreakdown] = useState<Breakdown>("category");
+  // null = All wallets (no filter). Otherwise a specific wallet id.
+  const [walletId, setWalletId] = useState<string | null>(null);
+  const [showWalletDropdown, setShowWalletDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const walletDropdownRef = useRef<HTMLDivElement>(null);
 
   const today = new Date();
   const todayStr = toDateInputValue(today);
@@ -94,10 +99,14 @@ export default function ReportsShell({ transactions, categories, members, curren
     function onClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node))
         setShowDropdown(false);
+      if (walletDropdownRef.current && !walletDropdownRef.current.contains(e.target as Node))
+        setShowWalletDropdown(false);
     }
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+
+  const selectedWallet = walletId ? wallets.find((w) => w.id === walletId) ?? null : null;
 
   const { start, end } = period === "custom"
     ? (() => {
@@ -108,7 +117,14 @@ export default function ReportsShell({ transactions, categories, members, curren
     : getPeriodRange(period);
   const rangeLabel = formatDateRange(start, end);
 
-  const periodTx = transactions.filter((t) => txInRange(t, start, end));
+  // Filter by wallet first (if a specific wallet is selected), then by the
+  // selected period. Doing it in this order means every downstream
+  // calculation — income/expenses cards, daily trend, donut breakdown,
+  // category list, member list — automatically respects the wallet filter
+  // without us having to thread `walletId` through each useMemo.
+  const periodTx = transactions
+    .filter((t) => walletId == null || t.wallet_id === walletId)
+    .filter((t) => txInRange(t, start, end));
   const income   = periodTx.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const expenses = periodTx.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
   const net      = income - expenses;
@@ -130,7 +146,7 @@ export default function ReportsShell({ transactions, categories, members, curren
     }
     return days;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period, txType, transactions, customStart, customEnd]);
+  }, [period, txType, transactions, customStart, customEnd, walletId]);
 
   const barColor = txType === "expenses" ? "#f43f5e" : "#10b981";
 
@@ -171,11 +187,118 @@ export default function ReportsShell({ transactions, categories, members, curren
   return (
     <PullToRefresh>
     <div className="pb-10">
-      {/* Sticky header */}
+      {/* Sticky header — three columns:
+          LEFT  : wallet filter (defaults to "All")
+          MIDDLE: current date range label
+          RIGHT : period dropdown
+          The middle column gets `flex-1` and `text-center` so the date
+          stays visually centred regardless of the side button widths. */}
       <header className="sticky top-0 z-10 bg-[var(--background)]/85 px-5 pt-4 pb-3 backdrop-blur-xl">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[15px] font-semibold text-[var(--foreground)]">{rangeLabel}</p>
-          <div className="relative" ref={dropdownRef}>
+        <div className="flex items-center gap-2">
+          {/* LEFT — wallet filter */}
+          <div className="relative shrink-0" ref={walletDropdownRef}>
+            <TapButton
+              onTap={() => setShowWalletDropdown((v) => !v)}
+              className="flex items-center gap-1.5 rounded-full bg-[var(--surface)] px-2.5 py-1.5 text-[13px] font-medium text-[var(--foreground)] ring-1 ring-black/[0.06] shadow-sm [touch-action:manipulation]"
+              aria-label="Filter by wallet"
+            >
+              {selectedWallet ? (
+                <span
+                  className="flex h-5 w-5 items-center justify-center rounded-full"
+                  style={{ backgroundColor: selectedWallet.color }}
+                >
+                  <CategoryIcon
+                    symbol={selectedWallet.symbol}
+                    iconStyle={iconStyle}
+                    size={11}
+                    emojiSize="11px"
+                    color="#ffffff"
+                  />
+                </span>
+              ) : (
+                <WalletIcon className="h-4 w-4 text-[var(--label-secondary)]" strokeWidth={2} />
+              )}
+              <span className="max-w-[88px] truncate">
+                {selectedWallet ? selectedWallet.name : "All"}
+              </span>
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 text-[var(--label-secondary)] transition-transform",
+                  showWalletDropdown && "rotate-180",
+                )}
+                strokeWidth={2.5}
+              />
+            </TapButton>
+            {showWalletDropdown && (
+              <div className="absolute left-0 top-full mt-2 w-56 overflow-hidden rounded-2xl bg-[var(--surface)] shadow-xl ring-1 ring-black/[0.08] z-20">
+                {/* "All wallets" — clears the filter */}
+                <TapButton
+                  onTap={() => {
+                    setWalletId(null);
+                    setShowWalletDropdown(false);
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 px-4 py-3 text-[14px] transition-colors [touch-action:manipulation]",
+                    walletId === null
+                      ? "bg-black/[0.03] font-semibold text-[var(--foreground)]"
+                      : "font-medium text-[var(--label-secondary)] active:bg-black/[0.02]",
+                  )}
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black/[0.06]">
+                    <WalletIcon className="h-[14px] w-[14px] text-[var(--label-secondary)]" strokeWidth={2} />
+                  </span>
+                  <span className="flex-1 text-left">All wallets</span>
+                  {walletId === null && (
+                    <Check className="h-4 w-4 text-[var(--foreground)]" strokeWidth={2.5} />
+                  )}
+                </TapButton>
+                {wallets.length > 0 && (
+                  <div className="border-t border-[var(--separator)]" />
+                )}
+                {wallets.map((w) => {
+                  const isSel = walletId === w.id;
+                  return (
+                    <TapButton
+                      key={w.id}
+                      onTap={() => {
+                        setWalletId(w.id);
+                        setShowWalletDropdown(false);
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-2.5 px-4 py-3 text-[14px] transition-colors [touch-action:manipulation]",
+                        isSel
+                          ? "bg-black/[0.03] font-semibold text-[var(--foreground)]"
+                          : "font-medium text-[var(--label-secondary)] active:bg-black/[0.02]",
+                      )}
+                    >
+                      <span
+                        className="flex h-6 w-6 items-center justify-center rounded-full"
+                        style={{ backgroundColor: w.color }}
+                      >
+                        <CategoryIcon
+                          symbol={w.symbol}
+                          iconStyle={iconStyle}
+                          size={13}
+                          emojiSize="13px"
+                          color="#ffffff"
+                        />
+                      </span>
+                      <span className="flex-1 truncate text-left">{w.name}</span>
+                      {isSel && <Check className="h-4 w-4 text-[var(--foreground)]" strokeWidth={2.5} />}
+                    </TapButton>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* MIDDLE — date range label, centred */}
+          <p className="flex-1 truncate text-center text-[15px] font-semibold text-[var(--foreground)]">
+            {rangeLabel}
+          </p>
+
+          {/* RIGHT — period dropdown */}
+          <div className="relative shrink-0" ref={dropdownRef}>
             <TapButton
               onTap={() => setShowDropdown((v) => !v)}
               className="flex items-center gap-1.5 rounded-full bg-[var(--surface)] px-3 py-1.5 text-[13px] font-medium text-[var(--foreground)] ring-1 ring-black/[0.06] shadow-sm [touch-action:manipulation]"

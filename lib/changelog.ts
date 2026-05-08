@@ -29,6 +29,14 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.3.0",
+    date: "May 8, 2026",
+    changes: [
+      { type: "new", en: "Wallet filter on the Reports page — pick a single wallet to scope every chart, total, and breakdown to that wallet only", id: "Filter dompet di halaman Laporan — pilih satu dompet untuk menyaring semua grafik, total, dan rincian khusus dompet itu" },
+      { type: "improvement", en: "Reports header reorganised: wallet filter on the left, date range centred, period selector on the right", id: "Header Laporan ditata ulang: filter dompet di kiri, rentang tanggal di tengah, pilih periode di kanan" },
+    ],
+  },
+  {
     version: "1.2.0",
     date: "May 8, 2026",
     changes: [
