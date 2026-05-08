@@ -7,7 +7,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <LanguageProvider lang={lang}>
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-[var(--background)]">
-        <main className="flex-1 pb-28">{children}</main>
+        <main className="flex-1" style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}>
+          {children}
+        </main>
         <BottomNav />
       </div>
     </LanguageProvider>

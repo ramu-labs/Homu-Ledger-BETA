@@ -24,12 +24,17 @@ export default function BottomNav() {
   return (
     <nav
       className="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 z-50"
-      // Pad the nav itself by the iPhone home-indicator inset so the bar
-      // sits visually above it on notch devices, instead of being covered.
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      // Installed iOS Chrome reports the standalone viewport differently from
+      // Safari. Keep the fixed nav's own box tall enough to include the home
+      // indicator safe area so the background reaches the physical bottom and
+      // page content cannot show through underneath it.
+      style={{ height: "calc(84px + env(safe-area-inset-bottom))" }}
     >
-      <div className="relative h-[84px]">
-        <div className="absolute inset-x-0 bottom-0 h-[72px] border-t border-black/[0.06] bg-[var(--surface)]/85 backdrop-blur-xl" />
+      <div className="relative h-full">
+        <div
+          className="absolute inset-x-0 bottom-0 border-t border-black/[0.06] bg-[var(--surface)] shadow-[0_-8px_24px_rgba(42,37,32,0.06)]"
+          style={{ height: "calc(72px + env(safe-area-inset-bottom))" }}
+        />
 
         {/* Each side cell is 1/3 of the bar's width with content centred
             inside. To pull the icons closer to the centre + button (away
@@ -38,7 +43,10 @@ export default function BottomNav() {
             `pl-8` on the left tab pushes its content right, `pr-8` on the
             right tab pushes its content left. The cell stays the same
             size so the tap target doesn't shrink. */}
-        <div className="absolute inset-x-0 bottom-0 grid h-[72px] grid-cols-3 items-center">
+        <div
+          className="absolute inset-x-0 grid h-[72px] grid-cols-3 items-center"
+          style={{ bottom: "env(safe-area-inset-bottom)" }}
+        >
           <NavTab
             href="/transactions"
             label={t("nav.transactions")}
