@@ -43,6 +43,27 @@ export async function generatePromoCode(
 }
 
 /**
+ * Delete an unredeemed promo code. The DB-side `delete_promo_code` RPC
+ * enforces every meaningful invariant (caller must be a developer, code
+ * must exist, code must not already be redeemed) so this server action
+ * is just a thin wrapper that translates errors into something the UI
+ * can show and revalidates the listing page.
+ */
+export async function deletePromoCode(
+  id: string
+): Promise<{ ok?: true; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase.rpc("delete_promo_code", { p_id: id });
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings/promo-codes");
+  return { ok: true };
+}
+
+/**
  * Redeem a promo code. The user must be authenticated (so this runs after
  * the auth account is created during signup, or from a settings page later).
  *

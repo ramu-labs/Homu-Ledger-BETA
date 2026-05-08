@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Plus, Copy, Check, Sparkles } from "lucide-react";
+import { ChevronLeft, Plus, Copy, Check, Sparkles, Trash2 } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
-import { generatePromoCode } from "@/app/actions/promo-codes";
+import { generatePromoCode, deletePromoCode } from "@/app/actions/promo-codes";
 import { cn } from "@/lib/cn";
 import type { DbPromoCode, SubscriptionTier } from "@/lib/types";
 
@@ -30,6 +30,25 @@ export default function PromoCodesShell({ initialCodes }: Props) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Two-tap delete confirmation: first tap arms the button on a code
+  // (`pendingDeleteId === c.id`), second tap actually deletes. Auto-cancels
+  // after 3 s of inactivity so an accidental tap can never linger and turn
+  // into a real delete by mistake.
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function clearPendingTimer() {
+    if (pendingTimerRef.current) {
+      clearTimeout(pendingTimerRef.current);
+      pendingTimerRef.current = null;
+    }
+  }
+
+  // Cancel the pending state on unmount or when codes list changes.
+  useEffect(() => {
+    return () => clearPendingTimer();
+  }, []);
 
   const stats = useMemo(() => {
     const byTier = Object.fromEntries(
@@ -68,6 +87,36 @@ export default function PromoCodesShell({ initialCodes }: Props) {
     } catch {
       // Clipboard API unavailable — silent fallback (user can long-press)
     }
+  }
+
+  function handleDeleteTap(id: string) {
+    // First tap on this row → arm it. The button visibly changes so the
+    // user knows the next tap is destructive. Auto-cancel after 3 s.
+    if (pendingDeleteId !== id) {
+      clearPendingTimer();
+      setPendingDeleteId(id);
+      pendingTimerRef.current = setTimeout(() => {
+        setPendingDeleteId((cur) => (cur === id ? null : cur));
+        pendingTimerRef.current = null;
+      }, 3000);
+      return;
+    }
+    // Second tap on the same row → actually delete.
+    clearPendingTimer();
+    setPendingDeleteId(null);
+    void runDelete(id);
+  }
+
+  async function runDelete(id: string) {
+    setDeletingId(id);
+    setError(null);
+    const result = await deletePromoCode(id);
+    setDeletingId(null);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setCodes((prev) => prev.filter((c) => c.id !== id));
   }
 
   return (
@@ -189,19 +238,47 @@ export default function PromoCodesShell({ initialCodes }: Props) {
                         )}
                       </div>
                     </div>
-                    {!isRedeemed && (
-                      <button
-                        onClick={() => handleCopy(c.id, c.code)}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--background)] text-[var(--label-secondary)] ring-1 ring-black/[0.06] active:scale-95 transition-transform"
-                        aria-label={t("promo.copy")}
-                      >
-                        {copiedId === c.id ? (
-                          <Check className="h-4 w-4 text-emerald-600" strokeWidth={2.5} />
-                        ) : (
-                          <Copy className="h-4 w-4" strokeWidth={2} />
-                        )}
-                      </button>
-                    )}
+                    {!isRedeemed && (() => {
+                      const isPendingDelete = pendingDeleteId === c.id;
+                      const isDeleting = deletingId === c.id;
+                      return (
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button
+                            onClick={() => handleCopy(c.id, c.code)}
+                            disabled={isDeleting}
+                            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--background)] text-[var(--label-secondary)] ring-1 ring-black/[0.06] active:scale-95 transition-transform disabled:opacity-50"
+                            aria-label={t("promo.copy")}
+                          >
+                            {copiedId === c.id ? (
+                              <Check className="h-4 w-4 text-emerald-600" strokeWidth={2.5} />
+                            ) : (
+                              <Copy className="h-4 w-4" strokeWidth={2} />
+                            )}
+                          </button>
+                          {/* Trash with two-tap confirmation: arms on first
+                              tap (turns red, auto-cancels after 3 s),
+                              actually deletes on the second tap. */}
+                          <button
+                            onClick={() => handleDeleteTap(c.id)}
+                            disabled={isDeleting}
+                            className={cn(
+                              "flex h-9 items-center justify-center rounded-full ring-1 transition-all active:scale-95 disabled:opacity-60",
+                              isPendingDelete
+                                ? "w-auto px-3 gap-1.5 bg-rose-500 text-white ring-rose-500"
+                                : "w-9 bg-[var(--background)] text-rose-600 ring-black/[0.06]"
+                            )}
+                            aria-label={isPendingDelete ? t("promo.deleteConfirm") : t("promo.delete")}
+                          >
+                            <Trash2 className="h-4 w-4 shrink-0" strokeWidth={2} />
+                            {isPendingDelete && (
+                              <span className="text-[12px] font-semibold whitespace-nowrap">
+                                {t("promo.deleteConfirm")}
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </li>
               );

@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.3.3",
+    date: "May 8, 2026",
+    changes: [
+      { type: "new", en: "Developer-only: delete generated promo codes that haven't been redeemed yet — tap the trash icon, confirm by tapping it once more (auto-cancels after 3 seconds)", id: "Khusus developer: hapus kode promo yang dibuat tapi belum digunakan — ketuk ikon tempat sampah, konfirmasi dengan ketuk sekali lagi (otomatis batal setelah 3 detik)" },
+    ],
+  },
+  {
     version: "1.3.2",
     date: "May 8, 2026",
     changes: [
