@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 
 export type UploadResult =
-  | { ok: true; url: string }
+  | { ok: true; path: string }
   | { ok: false; error: string };
 
 /**
@@ -17,9 +17,10 @@ export type UploadResult =
  *   3. We can give the upload its own try/catch and timeout so a flaky network
  *      surfaces as a real error message instead of a frozen button.
  *
- * The bucket has an INSERT policy that allows any authenticated user to
- * upload (`bucket_id = 'transaction-photos'`), so the browser's anon-key
- * client with a logged-in session can write directly.
+ * The bucket is private. Storage policies allow authenticated members to
+ * upload only below their ledger folder (`<householdId>/...`). The app stores
+ * the storage object path, then server-rendered pages create short-lived signed
+ * URLs for display.
  */
 export async function uploadTransactionPhoto(
   householdId: string,
@@ -47,10 +48,7 @@ export async function uploadTransactionPhoto(
     const { data, error } = await Promise.race([uploadPromise, timeoutPromise]);
     if (error) return { ok: false, error: error.message };
     if (!data) return { ok: false, error: "Upload failed — no data returned." };
-    const { data: { publicUrl } } = supabase.storage
-      .from("transaction-photos")
-      .getPublicUrl(data.path);
-    return { ok: true, url: publicUrl };
+    return { ok: true, path: data.path };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Upload failed." };
   }
