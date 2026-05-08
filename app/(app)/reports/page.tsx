@@ -65,6 +65,13 @@ export default async function ReportsPage() {
     if (p?.id) members[p.id] = p;
   }
 
+  // Single timestamp captured at server-render time. We pass it through to
+  // ReportsShell so the initial server-rendered HTML and the initial
+  // client-side hydration use the SAME `now`, instead of each computing
+  // their own `new Date()` which would diverge across day boundaries or
+  // different timezones and produce a hydration warning.
+  const nowISO = new Date().toISOString();
+
   return (
     <ReportsShell
       transactions={transactions}
@@ -73,6 +80,7 @@ export default async function ReportsPage() {
       members={members}
       currency={household.currency ?? "IDR"}
       iconStyle={profile.icon_style ?? "3d"}
+      nowISO={nowISO}
     />
   );
 }

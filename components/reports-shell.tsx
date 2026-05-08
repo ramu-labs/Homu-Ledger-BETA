@@ -31,19 +31,21 @@ function toDateInputValue(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function getPeriodRange(period: Period): { start: Date; end: Date } {
-  const today = new Date();
-  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+function getPeriodRange(period: Period, now: Date): { start: Date; end: Date } {
+  // `now` is passed in (originally from a server snapshot) so this fn
+  // is fully deterministic for a given period+now pair — same input on
+  // SSR and on first client render means no hydration mismatch.
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   switch (period) {
     case "7d": { const s = new Date(end); s.setDate(s.getDate() - 6); return { start: s, end }; }
     case "30d": { const s = new Date(end); s.setDate(s.getDate() - 29); return { start: s, end }; }
     case "Last month": {
-      const s = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const e = new Date(today.getFullYear(), today.getMonth(), 0);
+      const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const e = new Date(now.getFullYear(), now.getMonth(), 0);
       return { start: s, end: e };
     }
     default: {
-      const s = new Date(today.getFullYear(), today.getMonth(), 1);
+      const s = new Date(now.getFullYear(), now.getMonth(), 1);
       return { start: s, end };
     }
   }
@@ -68,9 +70,20 @@ type Props = {
   members: Record<string, DbMember>;
   currency: string;
   iconStyle?: IconStyle;
+  /** Server-side timestamp used as the deterministic "now" for both SSR
+   *  and the first client render. Avoids a hydration mismatch on the
+   *  date-range label, which would otherwise be computed from two
+   *  different `new Date()` calls (server and client). */
+  nowISO: string;
 };
 
-export default function ReportsShell({ transactions, categories, wallets, members, currency, iconStyle = "3d" }: Props) {
+export default function ReportsShell({ transactions, categories, wallets, members, currency, iconStyle = "3d", nowISO }: Props) {
+  // Parse the server-provided ISO string ONCE per mount so this is a
+  // stable reference for the lifetime of the component. We deliberately
+  // don't update it later — for a Reports view the user's "now" is close
+  // enough to the page-load instant that drift across a single session
+  // doesn't matter, and freezing it sidesteps the whole hydration issue.
+  const now = useMemo(() => new Date(nowISO), [nowISO]);
   const [period, setPeriod] = useState<Period>("30d");
   const [showDropdown, setShowDropdown] = useState(false);
   const [txType, setTxType] = useState<TxType>("expenses");
@@ -90,9 +103,8 @@ export default function ReportsShell({ transactions, categories, wallets, member
     );
   }
 
-  const today = new Date();
-  const todayStr = toDateInputValue(today);
-  const thirtyAgo = new Date(today); thirtyAgo.setDate(thirtyAgo.getDate() - 29);
+  const todayStr = toDateInputValue(now);
+  const thirtyAgo = new Date(now); thirtyAgo.setDate(thirtyAgo.getDate() - 29);
   const [customStart, setCustomStart] = useState(toDateInputValue(thirtyAgo));
   const [customEnd, setCustomEnd] = useState(todayStr);
 
@@ -121,7 +133,7 @@ export default function ReportsShell({ transactions, categories, wallets, member
         const [ey, em, ed] = customEnd.split("-").map(Number);
         return { start: new Date(sy, sm - 1, sd), end: new Date(ey, em - 1, ed) };
       })()
-    : getPeriodRange(period);
+    : getPeriodRange(period, now);
   const rangeLabel = formatDateRange(start, end);
 
   // Filter by selected wallets first (empty list = no filter, show all),
