@@ -110,9 +110,14 @@ export default function ReportsShell({ transactions, categories, wallets, member
     });
   }
 
-  const todayStr = toDateInputValue(now);
-  const thirtyAgo = new Date(now); thirtyAgo.setDate(thirtyAgo.getDate() - 29);
-  const [customStart, setCustomStart] = useState(toDateInputValue(thirtyAgo));
+  const todayStr = useMemo(() => toDateInputValue(now), [now]);
+  // Lazy initializer — only computes the 30-days-ago date string once on
+  // mount, instead of allocating a Date every render and discarding it.
+  const [customStart, setCustomStart] = useState(() => {
+    const thirtyAgo = new Date(now);
+    thirtyAgo.setDate(thirtyAgo.getDate() - 29);
+    return toDateInputValue(thirtyAgo);
+  });
   const [customEnd, setCustomEnd] = useState(todayStr);
   const segmentKey = `${period}|${txType}|${breakdown}|${walletIds.join(",")}|${customStart}|${customEnd}`;
   const selectedSegmentIndex = selectedSegment?.key === segmentKey ? selectedSegment.index : null;

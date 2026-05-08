@@ -101,6 +101,5 @@ export type DbTransaction = {
   wallets: DbWallet | null;
   /** Set on transfer rows after deduplication: the OTHER wallet in the pair. */
   peer_wallet?: DbWallet | null;
-  signed_photo_url?: string | null;
   photo_url: string | null;
 };

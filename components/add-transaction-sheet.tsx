@@ -134,14 +134,13 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
       setDate(editing.date);
       // Photos are stored as bare object paths; sign on demand only when the
       // edit sheet actually opens (avoids signing every photo on page load).
+      // Show null while the signed URL is fetched — typical RTT is <300ms,
+      // and the "Photo" row keeps its layout via min-height.
+      setPhotoPreview(null);
       if (editing.photo_url) {
-        const tentative = editing.signed_photo_url ?? null;
-        setPhotoPreview(tentative); // show prior signed URL if still cached
         signTransactionPhoto(editing.photo_url).then((res) => {
           if (res.url) setPhotoPreview(res.url);
         });
-      } else {
-        setPhotoPreview(null);
       }
     } else {
       setType("expense");

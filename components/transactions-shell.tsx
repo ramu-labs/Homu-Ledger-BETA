@@ -141,17 +141,20 @@ export default function TransactionsShell({
   // Ledger switcher
   const [showLedgerSwitcher, setShowLedgerSwitcher] = useState(false);
 
-  // Extra categories / wallets added inline (optimistic)
+  // Extra categories / wallets added inline (optimistic). Both arrays are
+  // memoized — passing fresh array references to AddTransactionSheet on
+  // every render makes the sheet's `[open, editing, wallets]` effect re-fire
+  // and stomp local state (date, photo preview, etc.) on every parent re-render.
   const [extraCategories, setExtraCategories] = useState<DbCategory[]>([]);
   const [extraWallets, setExtraWallets] = useState<DbWallet[]>([]);
-  const allCategories = [
-    ...categories,
-    ...extraCategories.filter((e) => !categories.find((c) => c.id === e.id)),
-  ];
-  const allWallets = [
-    ...wallets,
-    ...extraWallets.filter((e) => !wallets.find((w) => w.id === e.id)),
-  ];
+  const allCategories = useMemo(
+    () => [...categories, ...extraCategories.filter((e) => !categories.find((c) => c.id === e.id))],
+    [categories, extraCategories]
+  );
+  const allWallets = useMemo(
+    () => [...wallets, ...extraWallets.filter((e) => !wallets.find((w) => w.id === e.id))],
+    [wallets, extraWallets]
+  );
 
   const hasActiveFilter = activeCategories.length > 0 || activeWallets.length > 0 || activeDateFilter !== "all";
 
@@ -215,12 +218,24 @@ export default function TransactionsShell({
   // Two-tier behaviour: first try to grow `displayCount` against the local
   // cache; once we've shown everything we have, fetch the next batch from
   // /api/transactions using the OLDEST visible row as the cursor.
+  //
+  // We mirror the rapidly-changing reactive bits (filtered length, last
+  // transaction id, in-flight flag) into refs so the scroll listener and
+  // load callback stay stable — without that, the listener would detach
+  // and reattach on every fetch, and the callback identity would churn
+  // every re-render.
   const filteredLengthRef = useRef(filteredTransactions.length);
   filteredLengthRef.current = filteredTransactions.length;
+  const oldestRef = useRef<DbTransaction | null>(null);
+  oldestRef.current = transactions[transactions.length - 1] ?? null;
+  const fetchingMoreRef = useRef(false);
+  fetchingMoreRef.current = fetchingMore;
+  const endOfHistoryRef = useRef(false);
+  endOfHistoryRef.current = endOfHistory;
 
   const loadOlderFromServer = useCallback(async () => {
-    if (fetchingMore || endOfHistory) return;
-    const oldest = transactions[transactions.length - 1];
+    if (fetchingMoreRef.current || endOfHistoryRef.current) return;
+    const oldest = oldestRef.current;
     if (!oldest) return;
     setFetchingMore(true);
     try {
@@ -246,7 +261,7 @@ export default function TransactionsShell({
     } finally {
       setFetchingMore(false);
     }
-  }, [fetchingMore, endOfHistory, transactions]);
+  }, []);
 
   useEffect(() => {
     function handleScroll() {
@@ -265,7 +280,7 @@ export default function TransactionsShell({
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll(); // check immediately in case already in view
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [filteredTransactions.length, loadOlderFromServer]);
+  }, [loadOlderFromServer]);
 
   // Focus search input when opened
   useEffect(() => {

@@ -1,4 +1,5 @@
 {
+  "id": "https://homu.ramu.app/",
   "name": "Homu",
   "short_name": "Homu",
   "description": "Shared expense tracker for couples & families",
@@ -8,6 +9,7 @@
   "theme_color": "#1a1a1a",
   "background_color": "#f5f0eb",
   "orientation": "portrait-primary",
+  "lang": "en",
   "icons": [
     {
       "src": "/icons/icon-192.png",
