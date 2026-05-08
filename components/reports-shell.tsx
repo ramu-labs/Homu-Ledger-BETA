@@ -83,11 +83,20 @@ export default function ReportsShell({ transactions, categories, wallets, member
   const [showDropdown, setShowDropdown] = useState(false);
   const [txType, setTxType] = useState<TxType>("expenses");
   const [breakdown, setBreakdown] = useState<Breakdown>("category");
-  // null = All wallets (no filter). Otherwise a specific wallet id.
-  const [walletId, setWalletId] = useState<string | null>(null);
+  // Empty array = All wallets (no filter). Otherwise the report is scoped
+  // to transactions whose `wallet_id` is in this set. Using string[] (not
+  // Set) keeps render comparisons cheap and JSON-serialisable in case we
+  // later persist this filter in URL params or localStorage.
+  const [walletIds, setWalletIds] = useState<string[]>([]);
   const [showWalletDropdown, setShowWalletDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const walletDropdownRef = useRef<HTMLDivElement>(null);
+
+  function toggleWallet(id: string) {
+    setWalletIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
 
   const today = new Date();
   const todayStr = toDateInputValue(today);
@@ -106,7 +115,13 @@ export default function ReportsShell({ transactions, categories, wallets, member
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  const selectedWallet = walletId ? wallets.find((w) => w.id === walletId) ?? null : null;
+  const selectedWallets = wallets.filter((w) => walletIds.includes(w.id));
+  const selectedWalletLabel = (() => {
+    if (selectedWallets.length === 0) return "All";
+    if (selectedWallets.length === 1) return selectedWallets[0].name;
+    if (selectedWallets.length === wallets.length) return "All";
+    return `${selectedWallets.length} wallets`;
+  })();
 
   const { start, end } = period === "custom"
     ? (() => {
@@ -117,13 +132,14 @@ export default function ReportsShell({ transactions, categories, wallets, member
     : getPeriodRange(period);
   const rangeLabel = formatDateRange(start, end);
 
-  // Filter by wallet first (if a specific wallet is selected), then by the
-  // selected period. Doing it in this order means every downstream
-  // calculation — income/expenses cards, daily trend, donut breakdown,
-  // category list, member list — automatically respects the wallet filter
-  // without us having to thread `walletId` through each useMemo.
+  // Filter by selected wallets first (empty list = no filter, show all),
+  // then by the selected period. Doing it in this order means every
+  // downstream calculation — income/expenses cards, daily trend, donut
+  // breakdown, category list, member list — automatically respects the
+  // wallet filter without us having to thread `walletIds` through each
+  // useMemo.
   const periodTx = transactions
-    .filter((t) => walletId == null || t.wallet_id === walletId)
+    .filter((t) => walletIds.length === 0 || (t.wallet_id != null && walletIds.includes(t.wallet_id)))
     .filter((t) => txInRange(t, start, end));
   const income   = periodTx.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const expenses = periodTx.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
@@ -146,7 +162,7 @@ export default function ReportsShell({ transactions, categories, wallets, member
     }
     return days;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period, txType, transactions, customStart, customEnd, walletId]);
+  }, [period, txType, transactions, customStart, customEnd, walletIds]);
 
   const barColor = txType === "expenses" ? "#f43f5e" : "#10b981";
 
@@ -195,20 +211,20 @@ export default function ReportsShell({ transactions, categories, wallets, member
           stays visually centred regardless of the side button widths. */}
       <header className="sticky top-0 z-10 bg-[var(--background)]/85 px-5 pt-4 pb-3 backdrop-blur-xl">
         <div className="flex items-center gap-2">
-          {/* LEFT — wallet filter */}
+          {/* LEFT — wallet filter (multi-select) */}
           <div className="relative shrink-0" ref={walletDropdownRef}>
             <TapButton
               onTap={() => setShowWalletDropdown((v) => !v)}
               className="flex items-center gap-1.5 rounded-full bg-[var(--surface)] px-2.5 py-1.5 text-[13px] font-medium text-[var(--foreground)] ring-1 ring-black/[0.06] shadow-sm [touch-action:manipulation]"
               aria-label="Filter by wallet"
             >
-              {selectedWallet ? (
+              {selectedWallets.length === 1 ? (
                 <span
                   className="flex h-5 w-5 items-center justify-center rounded-full"
-                  style={{ backgroundColor: selectedWallet.color }}
+                  style={{ backgroundColor: selectedWallets[0].color }}
                 >
                   <CategoryIcon
-                    symbol={selectedWallet.symbol}
+                    symbol={selectedWallets[0].symbol}
                     iconStyle={iconStyle}
                     size={11}
                     emojiSize="11px"
@@ -218,9 +234,7 @@ export default function ReportsShell({ transactions, categories, wallets, member
               ) : (
                 <WalletIcon className="h-4 w-4 text-[var(--label-secondary)]" strokeWidth={2} />
               )}
-              <span className="max-w-[88px] truncate">
-                {selectedWallet ? selectedWallet.name : "All"}
-              </span>
+              <span className="max-w-[100px] truncate">{selectedWalletLabel}</span>
               <ChevronDown
                 className={cn(
                   "h-3.5 w-3.5 text-[var(--label-secondary)] transition-transform",
@@ -230,16 +244,19 @@ export default function ReportsShell({ transactions, categories, wallets, member
               />
             </TapButton>
             {showWalletDropdown && (
-              <div className="absolute left-0 top-full mt-2 w-56 overflow-hidden rounded-2xl bg-[var(--surface)] shadow-xl ring-1 ring-black/[0.08] z-20">
-                {/* "All wallets" — clears the filter */}
+              <div className="absolute left-0 top-full mt-2 w-60 overflow-hidden rounded-2xl bg-[var(--surface)] shadow-xl ring-1 ring-black/[0.08] z-20">
+                {/* "All wallets" — clears the multi-select. Tapping this
+                    closes the dropdown because the user has expressed
+                    a final choice. Per-wallet rows below DON'T close the
+                    dropdown so the user can rapidly toggle several. */}
                 <TapButton
                   onTap={() => {
-                    setWalletId(null);
+                    setWalletIds([]);
                     setShowWalletDropdown(false);
                   }}
                   className={cn(
                     "flex w-full items-center gap-2.5 px-4 py-3 text-[14px] transition-colors [touch-action:manipulation]",
-                    walletId === null
+                    walletIds.length === 0
                       ? "bg-black/[0.03] font-semibold text-[var(--foreground)]"
                       : "font-medium text-[var(--label-secondary)] active:bg-black/[0.02]",
                   )}
@@ -248,7 +265,7 @@ export default function ReportsShell({ transactions, categories, wallets, member
                     <WalletIcon className="h-[14px] w-[14px] text-[var(--label-secondary)]" strokeWidth={2} />
                   </span>
                   <span className="flex-1 text-left">All wallets</span>
-                  {walletId === null && (
+                  {walletIds.length === 0 && (
                     <Check className="h-4 w-4 text-[var(--foreground)]" strokeWidth={2.5} />
                   )}
                 </TapButton>
@@ -256,14 +273,11 @@ export default function ReportsShell({ transactions, categories, wallets, member
                   <div className="border-t border-[var(--separator)]" />
                 )}
                 {wallets.map((w) => {
-                  const isSel = walletId === w.id;
+                  const isSel = walletIds.includes(w.id);
                   return (
                     <TapButton
                       key={w.id}
-                      onTap={() => {
-                        setWalletId(w.id);
-                        setShowWalletDropdown(false);
-                      }}
+                      onTap={() => toggleWallet(w.id)}
                       className={cn(
                         "flex w-full items-center gap-2.5 px-4 py-3 text-[14px] transition-colors [touch-action:manipulation]",
                         isSel
@@ -284,7 +298,19 @@ export default function ReportsShell({ transactions, categories, wallets, member
                         />
                       </span>
                       <span className="flex-1 truncate text-left">{w.name}</span>
-                      {isSel && <Check className="h-4 w-4 text-[var(--foreground)]" strokeWidth={2.5} />}
+                      {/* Checkbox-style indicator — filled when selected,
+                          outline when not, so it's obvious this is a
+                          toggle rather than a single-select radio. */}
+                      <span
+                        className={cn(
+                          "flex h-5 w-5 items-center justify-center rounded-md ring-1 transition-colors",
+                          isSel
+                            ? "bg-[var(--foreground)] text-white ring-[var(--foreground)]"
+                            : "bg-transparent text-transparent ring-black/[0.15]",
+                        )}
+                      >
+                        <Check className="h-3 w-3" strokeWidth={3} />
+                      </span>
                     </TapButton>
                   );
                 })}

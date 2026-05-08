@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.3.1",
+    date: "May 8, 2026",
+    changes: [
+      { type: "improvement", en: "Reports wallet filter now supports picking multiple wallets at once — tap each wallet to toggle it, or tap All wallets to clear", id: "Filter dompet di Laporan kini bisa memilih beberapa dompet sekaligus — ketuk tiap dompet untuk menyalakan/mematikan, atau ketuk Semua dompet untuk reset" },
+    ],
+  },
+  {
     version: "1.3.0",
     date: "May 8, 2026",
     changes: [
