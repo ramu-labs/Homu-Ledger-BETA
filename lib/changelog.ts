@@ -29,6 +29,16 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.3.6",
+    date: "May 8, 2026",
+    changes: [
+      { type: "fix", en: "Transaction page no longer crashes on load — balance totals are now fetched with a direct paginated query instead of a missing database function", id: "Halaman Transaksi tidak lagi error saat dimuat — total saldo kini diambil dengan kueri langsung, bukan fungsi database yang tidak ada" },
+      { type: "improvement", en: "Transaction rows slide in with a gentle stagger on page load and after refresh, and the newest row flashes green to confirm it was saved", id: "Baris transaksi muncul dengan efek stagger halus saat halaman dimuat, dan baris terbaru berkedip hijau sebagai konfirmasi simpan" },
+      { type: "improvement", en: "Balance count-up animation — the total balance smoothly counts to the real value instead of snapping instantly", id: "Animasi hitung naik saldo — total saldo bergerak mulus ke nilai sebenarnya, bukan langsung muncul" },
+      { type: "improvement", en: "Add Transaction sheet slides up with a spring bounce, and filter chips now have a snappier press feel", id: "Sheet Tambah Transaksi muncul dengan animasi pegas, dan chip filter kini terasa lebih responsif saat ditekan" },
+    ],
+  },
+  {
     version: "1.3.5",
     date: "May 8, 2026",
     changes: [

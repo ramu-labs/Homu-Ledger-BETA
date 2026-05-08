@@ -50,3 +50,36 @@ input[type="date"]::-webkit-clear-button {
   display: none;
   -webkit-appearance: none;
 }
+
+/* ── Micro-animations ───────────────────────────────────────────────────── */
+
+/* Transaction row: fade + slide up (GPU-composited, no layout cost) */
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-row-in {
+  animation: row-in 0.22s ease both;
+  will-change: opacity, transform;
+}
+
+/* New transaction flash: brief emerald highlight on the first row */
+@keyframes tx-flash {
+  0%   { background-color: transparent; }
+  25%  { background-color: rgba(16, 185, 129, 0.12); }
+  100% { background-color: transparent; }
+}
+.animate-tx-flash {
+  animation: tx-flash 0.9s ease both;
+}
+
+/* Filter chip pop: slight scale bounce on activation */
+@keyframes chip-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.88); }
+  75%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+.animate-chip-pop {
+  animation: chip-pop 0.22s ease both;
+}

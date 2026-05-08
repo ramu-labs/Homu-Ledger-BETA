@@ -30,7 +30,8 @@ type Props = {
 };
 
 function todayString() {
-  return new Date().toISOString().split("T")[0];
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export default function AddTransactionSheet({ open, onClose, categories, wallets, onWalletAdded, editing, currency = "IDR", memberships = [], currentHouseholdId, iconStyle = "3d" }: Props) {
@@ -60,6 +61,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
   const [creatingRecurring, setCreatingRecurring] = useState(false);
   const [recurringSuccess, setRecurringSuccess] = useState(false);
   const [showPhotoViewer, setShowPhotoViewer] = useState(false);
+  const previewObjectUrlRef = useRef<string | null>(null);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -129,7 +131,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
       setWalletId(editing.wallet_id ?? defaultWallet?.id ?? null);
       setToWalletId(altWallet?.id ?? null);
       setDate(editing.date);
-      setPhotoPreview(editing.photo_url ?? null);
+      setPhotoPreview(editing.signed_photo_url ?? editing.photo_url ?? null);
     } else {
       setType("expense");
       setAmount("");
@@ -156,6 +158,16 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     setRecurringSuccess(false);
   }, [open, editing, wallets]);
 
+  useEffect(() => {
+    if (open || !previewObjectUrlRef.current) return;
+    URL.revokeObjectURL(previewObjectUrlRef.current);
+    previewObjectUrlRef.current = null;
+  }, [open]);
+
+  useEffect(() => () => {
+    if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+  }, []);
+
   function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
     setAmount(e.target.value.replace(/\D/g, ""));
   }
@@ -167,12 +179,19 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     // happen instantly, then quietly swap in the compressed File for upload.
     // Compression is fast (<1s for typical iPhone photos) but on a slow
     // device we don't want the camera roll → preview transition to feel laggy.
-    setPhotoPreview(URL.createObjectURL(file));
+    if (previewObjectUrlRef.current) URL.revokeObjectURL(previewObjectUrlRef.current);
+    const previewUrl = URL.createObjectURL(file);
+    previewObjectUrlRef.current = previewUrl;
+    setPhotoPreview(previewUrl);
     const compressed = await compressPhoto(file);
     setPhoto(compressed);
   }
 
   function removePhoto() {
+    if (previewObjectUrlRef.current) {
+      URL.revokeObjectURL(previewObjectUrlRef.current);
+      previewObjectUrlRef.current = null;
+    }
     setPhoto(null);
     setPhotoPreview(null);
     if (fileRef.current) fileRef.current.value = "";
@@ -216,7 +235,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     // This avoids relaying multi-MB iPhone photos through Vercel's 4.5 MB
     // server-action body limit, which was causing the Save button to hang
     // indefinitely on iOS Chrome with a real receipt photo attached.
-    let photoUrl: string | null = null;
+    let photoPath: string | null = null;
     if (photo) {
       if (!currentHouseholdId) {
         setError("No household selected — please refresh and try again.");
@@ -229,10 +248,10 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
         setLoading(false);
         return;
       }
-      photoUrl = upload.url;
+      photoPath = upload.path;
     } else if (editing?.photo_url && photoPreview) {
       // No new photo picked, but the existing one wasn't removed — keep it.
-      photoUrl = editing.photo_url;
+      photoPath = editing.photo_url;
     }
 
     const fd = new FormData();
@@ -242,7 +261,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     fd.set("category_id", categoryId ?? "");
     fd.set("wallet_id", walletId ?? "");
     fd.set("date", date);
-    if (photoUrl) fd.set("photo_url", photoUrl);
+    if (photoPath) fd.set("photo_url", photoPath);
 
     const result = editing
       ? await updateTransaction(editing.id, fd)
@@ -333,7 +352,8 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
       <div
         ref={sheetRef}
         className={cn(
-          "fixed bottom-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 h-[95dvh] flex flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300 overflow-x-hidden [touch-action:pan-y]",
+          "fixed bottom-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 h-[95dvh] flex flex-col rounded-t-3xl bg-[var(--surface)] overflow-x-hidden [touch-action:pan-y]",
+          "transition-transform duration-[380ms] [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)]",
           open ? "translate-y-0" : "translate-y-full"
         )}
       >
@@ -719,7 +739,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
                     disabled={moving}
                     className="flex w-full items-center gap-3 px-4 py-3 border-t border-[var(--separator)] active:bg-black/[0.02] disabled:opacity-60"
                   >
-                    <span className="text-[20px]">{(household as any).symbol ?? "🏠"}</span>
+                    <span className="text-[20px]">{household.symbol ?? "🏠"}</span>
                     <span className="flex-1 text-left text-[14px] font-medium text-[var(--foreground)]">{household.name}</span>
                     {moving && <span className="text-[12px] text-[var(--label-secondary)]">Moving…</span>}
                   </button>

@@ -4,10 +4,7 @@ import TransactionsShell from "@/components/transactions-shell";
 import type { DbTransaction, DbCategory, DbWallet, DbMember, DbHousehold, DbHouseholdMembership, DbRecurringItem, DbPendingInvitation } from "@/lib/types";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
-type LedgerTotalRow = {
-  type: "income" | "expense";
-  amount: number;
-};
+type LedgerTotalRow = { type: "income" | "expense"; amount: number };
 type TransactionRowWithRelations = Omit<DbTransaction, "amount" | "categories" | "wallets" | "peer_wallet"> & {
   amount: number;
   categories: DbCategory | DbCategory[] | null;
@@ -30,7 +27,6 @@ async function fetchLedgerTotalRows(
   householdId: string
 ): Promise<LedgerTotalRow[]> {
   const rows: LedgerTotalRow[] = [];
-
   for (let from = 0; ; from += QUERY_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("transactions")
@@ -38,13 +34,61 @@ async function fetchLedgerTotalRows(
       .eq("household_id", householdId)
       .is("transfer_pair_id", null)
       .range(from, from + QUERY_PAGE_SIZE - 1);
-
     if (error) throw new Error(`Failed to load ledger totals: ${error.message}`);
     rows.push(...((data ?? []) as LedgerTotalRow[]));
     if (!data || data.length < QUERY_PAGE_SIZE) break;
   }
+  return rows;
+}
+
+async function fetchLedgerTransactions(
+  supabase: Supabase,
+  householdId: string
+): Promise<TransactionRowWithRelations[]> {
+  const rows: TransactionRowWithRelations[] = [];
+
+  for (let from = 0; ; from += QUERY_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color), wallets(id, name, symbol, color, initial_balance, is_default)")
+      .eq("household_id", householdId)
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, from + QUERY_PAGE_SIZE - 1);
+
+    if (error) throw new Error(`Failed to load transactions: ${error.message}`);
+    rows.push(...((data ?? []) as TransactionRowWithRelations[]));
+    if (!data || data.length < QUERY_PAGE_SIZE) break;
+  }
 
   return rows;
+}
+
+function transactionPhotoPath(value: string): string {
+  const publicPrefix = "/storage/v1/object/public/transaction-photos/";
+  const publicIndex = value.indexOf(publicPrefix);
+  if (publicIndex === -1) return value;
+  return decodeURIComponent(value.slice(publicIndex + publicPrefix.length));
+}
+
+async function attachSignedPhotoUrls(
+  supabase: Supabase,
+  transactions: DbTransaction[]
+): Promise<DbTransaction[]> {
+  return Promise.all(transactions.map(async (transaction) => {
+    if (!transaction.photo_url) return transaction;
+    const path = transactionPhotoPath(transaction.photo_url);
+    const { data, error } = await supabase.storage
+      .from("transaction-photos")
+      .createSignedUrl(path, 60 * 60);
+
+    return {
+      ...transaction,
+      photo_url: path,
+      signed_photo_url: error ? transaction.photo_url : data?.signedUrl ?? null,
+    };
+  }));
 }
 
 export default async function TransactionsPage() {
@@ -68,7 +112,7 @@ export default async function TransactionsPage() {
 
   if (!household) redirect("/onboarding");
 
-  const [{ data: categoriesRaw }, { data: walletsRaw }, { data: membersRaw }, { data: txRaw }, { data: membershipsRaw }, { data: recurringRaw }, { data: invitationsRaw }, totalRows] = await Promise.all([
+  const [{ data: categoriesRaw }, { data: walletsRaw }, { data: membersRaw }, txRaw, { data: membershipsRaw }, { data: recurringRaw }, { data: invitationsRaw }, totals] = await Promise.all([
     supabase
       .from("categories")
       .select("id, name, symbol, color")
@@ -84,13 +128,7 @@ export default async function TransactionsPage() {
       .from("household_members")
       .select("profile:profiles(id, name, initials, avatar_color)")
       .eq("household_id", household.id),
-    supabase
-      .from("transactions")
-      .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color), wallets(id, name, symbol, color, initial_balance, is_default)")
-      .eq("household_id", household.id)
-      .order("date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(200),
+    fetchLedgerTransactions(supabase, household.id),
     supabase
       .from("household_members")
       .select("household_id, role, household:households(id, name, currency, symbol)")
@@ -131,12 +169,12 @@ export default async function TransactionsPage() {
     if (p?.id) members[p.id] = p;
   }
 
-  const allTransactions: DbTransaction[] = ((txRaw ?? []) as TransactionRowWithRelations[]).map((t) => ({
+  const allTransactions: DbTransaction[] = await attachSignedPhotoUrls(supabase, (txRaw ?? []).map((t) => ({
     ...t,
     amount: Number(t.amount),
     categories: firstRelation(t.categories),
     wallets: firstRelation(t.wallets),
-  }));
+  })));
 
   // Build pair_id → peer wallet map for transfer rendering. The DEST side
   // (type='income') of each transfer holds the destination wallet info; we
@@ -179,15 +217,9 @@ export default async function TransactionsPage() {
     }];
   });
 
-  // Exclude transfers from income/expense aggregates — they net to zero across
-  // the ledger (source expense + dest income same amount), so including them
-  // would inflate both columns without changing the balance.
-  const income = totalRows
-    .filter((t) => t.type === "income")
-    .reduce((s, t) => s + t.amount, 0);
-  const expenses = totalRows
-    .filter((t) => t.type === "expense")
-    .reduce((s, t) => s + t.amount, 0);
+  const totalRows = totals;
+  const income = totalRows.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const expenses = totalRows.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
   const balance = Number(household.opening_balance) + income - expenses;
 
   return (

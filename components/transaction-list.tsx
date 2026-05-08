@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, ArrowRightLeft } from "lucide-react";
 import { formatAmount, formatAmountSigned, formatShortDate } from "@/lib/format";
 import { CategoryIcon } from "@/components/category-icon";
@@ -27,6 +27,14 @@ export default function TransactionList({ transactions, members, currency = "IDR
     setTodayKey(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
   }, []);
 
+  // Track the top-most transaction ID so we can flash it when a new one appears.
+  const prevTopIdRef = useRef<string | null>(null);
+  const flashId = transactions[0]?.id ?? null;
+  const isNewTop = flashId !== null && flashId !== prevTopIdRef.current;
+  useEffect(() => {
+    prevTopIdRef.current = flashId;
+  });
+
   if (transactions.length === 0) {
     return (
       <div className="mx-5 mt-2 rounded-2xl bg-[var(--surface)] px-6 py-14 text-center ring-1 ring-black/[0.04]">
@@ -43,7 +51,7 @@ export default function TransactionList({ transactions, members, currency = "IDR
 
   return (
     <ul className="mx-5 mt-2 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] divide-y divide-[var(--separator)]">
-      {transactions.map((t) => {
+      {transactions.map((t, index) => {
         const isTransfer = !!t.transfer_pair_id;
         const cat = t.categories ?? FALLBACK_CAT;
         const creator = t.created_by ? (members[t.created_by] ?? null) : null;
@@ -55,11 +63,26 @@ export default function TransactionList({ transactions, members, currency = "IDR
         const fromWallet = t.wallets;
         const toWallet = t.peer_wallet ?? null;
 
+        // Stagger the first 8 rows (roughly one screen of content on mobile).
+        // Rows beyond that still animate in but with a fixed max delay so
+        // scroll-triggered batches don't feel sluggish.
+        const staggerMs = Math.min(index, 7) * 35;
+        const isFlash = index === 0 && isNewTop;
+
+        // When the top row is new AND we also need the row-in animation,
+        // we use the `animation` shorthand with comma-separated values so
+        // both keyframes play simultaneously (one for opacity/transform,
+        // one for the background flash).
+        const rowStyle: React.CSSProperties = isFlash
+          ? { animation: `row-in 0.22s ${staggerMs}ms ease both, tx-flash 0.9s ${staggerMs}ms ease both` }
+          : { animationDelay: `${staggerMs}ms` };
+
         return (
           <li
             key={t.id}
             onClick={() => onTap?.(t)}
-            className="flex items-center gap-3 px-4 py-3.5 min-h-[60px] active:bg-black/[0.02] transition-colors cursor-pointer"
+            className="flex items-center gap-3 px-4 py-3.5 min-h-[60px] active:bg-black/[0.02] transition-colors cursor-pointer animate-row-in"
+            style={rowStyle}
           >
             {isTransfer ? (
               // ── TRANSFER ROW ──────────────────────────────────────────────

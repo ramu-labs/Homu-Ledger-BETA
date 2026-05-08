@@ -540,7 +540,7 @@ function FilterSheet({
               key={key}
               onClick={() => setPendingDateFilter(key)}
               className={cn(
-                "rounded-full px-3.5 py-1.5 text-[13px] font-medium ring-1 transition-all",
+                "rounded-full px-3.5 py-1.5 text-[13px] font-medium ring-1 transition-all duration-150 active:scale-90 [touch-action:manipulation]",
                 pendingDateFilter === key
                   ? "bg-[var(--foreground)] text-white ring-[var(--foreground)]"
                   : "bg-[var(--surface)] text-[var(--foreground)] ring-black/[0.08]"
@@ -589,7 +589,7 @@ function FilterSheet({
                     key={w.id}
                     onClick={() => toggleWallet(w.id)}
                     className={cn(
-                      "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium ring-1 transition-all",
+                      "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium ring-1 transition-all duration-150 active:scale-90 [touch-action:manipulation]",
                       selected
                         ? "text-white ring-transparent"
                         : "bg-[var(--surface)] text-[var(--foreground)] ring-black/[0.08]"
@@ -622,7 +622,7 @@ function FilterSheet({
                 key={cat.id}
                 onClick={() => toggleCategory(cat.id)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium ring-1 transition-all",
+                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium ring-1 transition-all duration-150 active:scale-90 [touch-action:manipulation]",
                   selected
                     ? "text-white ring-transparent"
                     : "bg-[var(--surface)] text-[var(--foreground)] ring-black/[0.08]"

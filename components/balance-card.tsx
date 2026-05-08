@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { formatAmount, formatAmountWithSign } from "@/lib/format";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
@@ -12,8 +13,37 @@ type Props = {
   currency?: string;
 };
 
+function useCountUp(target: number, duration = 600) {
+  const [display, setDisplay] = useState(target);
+  const prevRef = useRef(target);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const from = prevRef.current;
+    const to = target;
+    prevRef.current = target;
+
+    // Skip animation for identical values or very small deltas
+    if (from === to) return;
+
+    const start = performance.now();
+    function tick(now: number) {
+      const progress = Math.min((now - start) / duration, 1);
+      // Ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(from + (to - from) * eased);
+      if (progress < 1) rafRef.current = requestAnimationFrame(tick);
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); };
+  }, [target, duration]);
+
+  return display;
+}
+
 export default function BalanceCard({ balance, income, expenses, currency = "IDR" }: Props) {
   const t = useT();
+  const animatedBalance = useCountUp(balance);
   return (
     <section className="px-5 pt-6 pb-2">
       <div className="flex flex-col items-center text-center">
@@ -26,7 +56,7 @@ export default function BalanceCard({ balance, income, expenses, currency = "IDR
             balance < 0 ? "text-rose-600" : "text-[var(--foreground)]"
           )}
         >
-          {formatAmountWithSign(balance, currency)}
+          {formatAmountWithSign(animatedBalance, currency)}
         </p>
       </div>
 
