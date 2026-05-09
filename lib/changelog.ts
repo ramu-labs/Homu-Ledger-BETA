@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.5.4",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Bottom navigation no longer floats above the screen edge — the white background now reaches the physical bottom on iPhone, and the icons sit just above the home indicator instead of leaving an empty band below them", id: "Navigasi bawah tidak lagi mengambang di atas tepi layar — latar putih kini menyentuh dasar layar di iPhone, dan ikon duduk persis di atas home indicator tanpa menyisakan ruang kosong di bawahnya" },
+    ],
+  },
+  {
     version: "1.5.3",
     date: "May 9, 2026",
     changes: [

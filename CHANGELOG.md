@@ -2,6 +2,10 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.5.4 - May 9, 2026
+
+- Fixed the bottom navigation looking floaty in the installed iPhone PWA. The bar background now fills through `env(safe-area-inset-bottom)` to the physical bottom of the screen (previously the whole nav was lifted off the bottom by half the inset, leaving a beige strip below the white). Icons are positioned at `bottom: 8px` and the icon row was tightened from 72px to 60px so they sit just above the home indicator instead of in the middle of the bar.
+
 ## v1.5.3 - May 9, 2026
 
 - Fixed the empty white strip below the bottom-nav icons in the installed iPhone PWA. The bar background no longer stretches through the home-indicator safe area; instead the whole nav (background + icons) sits half-way into the inset (~17px above the physical bottom on iPhone, flush on Android/desktop).
