@@ -2,6 +2,12 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.10.1 - May 9, 2026
+
+User reported the cream strip was still present in v1.10.0 (= v1.8.3 baseline) even though that's the version they last reported as working. Tried one more variable: popup height.
+
+Changed Add Transaction and Add Recurring popup wrapper height from `h-dvh` to `h-[100lvh] min-h-screen`. In iOS PWA standalone, `100dvh` can compute shorter than the physical viewport (the dynamic viewport excludes the home-indicator zone in some standalone WebKit configurations). `100lvh` is the *large* viewport height (always equal to or greater than `100dvh`) and `min-h-screen` adds a safety floor at `100vh`. With either of those reaching the physical bottom, the popup fully covers the home-indicator zone — no strip.
+
 ## v1.10.0 - May 9, 2026
 
 Rolled back to the v1.8.3 codebase. v1.9.0–v1.9.3 attempts at animation polish, scroll-bleed mitigation, and the home-indicator-strip mitigation each introduced new regressions, so reverted entirely.

@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.10.1",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Popup height changed from `h-dvh` to `h-[100lvh] min-h-screen`. iOS PWA standalone can compute `100dvh` shorter than the physical viewport even with explicit body bounds, leaving a strip uncovered. `100lvh` (large viewport height) plus a `min-h-screen` floor force the popup to span the full physical screen", id: "Tinggi popup diubah dari `h-dvh` menjadi `h-[100lvh] min-h-screen`. iOS PWA standalone bisa menghitung `100dvh` lebih pendek dari viewport fisik meskipun body sudah diberi batas eksplisit, sehingga ada strip yang tidak tertutup. `100lvh` (large viewport height) plus floor `min-h-screen` memaksa popup memenuhi seluruh layar fisik" },
+    ],
+  },
+  {
     version: "1.10.0",
     date: "May 9, 2026",
     changes: [
