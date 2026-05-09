@@ -23,13 +23,11 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 z-50"
-      // The whole bar (background + icons) reaches the physical bottom of the
-      // screen so it never looks "floating" above a strip of page background.
-      // Bar background fills through env(safe-area-inset-bottom); icons are
-      // positioned just above the iPhone home indicator so they don't sit in
-      // the empty area at the bottom.
-      style={{ height: "calc(72px + env(safe-area-inset-bottom))" }}
+      className="fixed bottom-0 left-1/2 h-[72px] w-full max-w-md -translate-x-1/2 z-50"
+      // Bar reaches the physical bottom of the screen and is exactly tall
+      // enough to contain the icons — no empty white above OR below them.
+      // The home indicator overlays the bottom of the bar (iOS auto-adjusts
+      // its contrast against the white surface).
     >
       <div className="relative h-full">
         <div className="absolute inset-0 border-t border-black/[0.06] bg-[var(--surface)] shadow-[0_-8px_24px_rgba(42,37,32,0.06)]" />
@@ -41,13 +39,7 @@ export default function BottomNav() {
             `pl-8` on the left tab pushes its content right, `pr-8` on the
             right tab pushes its content left. The cell stays the same
             size so the tap target doesn't shrink. */}
-        <div
-          className="absolute inset-x-0 grid h-[60px] grid-cols-3 items-center"
-          // Sit 8px above the physical bottom — clears the home-indicator
-          // strip without leaving the tall empty zone the safe-area inset
-          // would create.
-          style={{ bottom: "8px" }}
-        >
+        <div className="absolute inset-x-0 bottom-0 grid h-[72px] grid-cols-3 items-center">
           <NavTab
             href="/transactions"
             label={t("nav.transactions")}

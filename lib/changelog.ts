@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.5.5",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Bottom navigation bar is now exactly as tall as the icons — no empty white strip above them. The bar still reaches the physical bottom of the screen so nothing looks floating", id: "Bar navigasi bawah kini setinggi ikon — tidak ada strip putih kosong di atasnya. Bar tetap menyentuh dasar layar sehingga tidak terlihat mengambang" },
+    ],
+  },
+  {
     version: "1.5.4",
     date: "May 9, 2026",
     changes: [
