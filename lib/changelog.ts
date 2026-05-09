@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.7.5",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Add Transaction and Add Recurring popups in the installed iPhone app: the home-indicator safe-area zone below the popup is now coloured the same as the sheet (white) instead of showing the page background. Also restored normal scrolling inside the popup, which the previous attempt had broken", id: "Popup Tambah Transaksi dan Tambah Pengulangan di aplikasi iPhone terinstal: zona safe area di atas home indicator kini berwarna sama dengan sheet (putih), bukan latar halaman. Scroll di dalam popup juga kembali normal setelah perbaikan sebelumnya sempat merusaknya" },
+    ],
+  },
+  {
     version: "1.7.4",
     date: "May 9, 2026",
     changes: [

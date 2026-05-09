@@ -86,6 +86,13 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     document.body.style.width = "100%";
     document.body.style.overflowX = "hidden";
 
+    // Recolour <html> to the sheet's surface colour. iOS PWA standalone
+    // renders the home-indicator safe-area zone using the html element's
+    // background, so this hides the page-bg strip that would otherwise show
+    // below the sheet's submit button when bottom: 0 clips at the visual
+    // viewport boundary.
+    document.documentElement.style.backgroundColor = "var(--surface)";
+
     // Belt-and-suspenders: also block any touchmove that escapes the sheet.
     function onTouchMove(e: TouchEvent) {
       const sheet = sheetRef.current;
@@ -106,6 +113,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
         document.body.style.top = "";
         document.body.style.width = "";
         document.body.style.overflowX = "";
+        document.documentElement.style.backgroundColor = "";
         window.scrollTo(0, scrollY);
         closeTimeoutRef.current = null;
       }, 420);
@@ -370,10 +378,11 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
         onClick={onClose}
       />
 
-      {/* Slide-animated wrapper. We extend the box past the visual viewport
-          bottom by `env(safe-area-inset-bottom)` because iOS PWA standalone
-          can clip `bottom: 0` at the visual viewport boundary (above the
-          home-indicator zone), leaving a strip of page background visible. */}
+      {/* Slide-animated wrapper covering the full viewport. The sheet's bg
+          ending exactly at the visual viewport bottom (iOS PWA standalone
+          quirk) is hidden by recolouring the <html> element to var(--surface)
+          while the sheet is open — see the body-lock effect above — so the
+          home-indicator safe-area zone is the same colour as the sheet. */}
       <div
         ref={sheetRef}
         className={cn(
@@ -381,7 +390,6 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
           "transition-transform duration-[420ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
           open ? "translate-y-0" : "translate-y-full"
         )}
-        style={{ bottom: "calc(0px - env(safe-area-inset-bottom))" }}
       >
         {/* The actual sheet card: max-width-constrained, full height of the
             wrapper (which is the full viewport), with the surface background.

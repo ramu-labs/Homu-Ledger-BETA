@@ -2,6 +2,12 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.7.5 - May 9, 2026
+
+- Reverted v1.7.4's `bottom: -env(safe-area-inset-bottom)` hack on the sheet wrapper — it was extending the sheet past the visual viewport, which broke scroll inside the form (only the submit button responded to touch) and pushed the footer off-screen. Standard `fixed inset-0` is back.
+- New approach for the cream strip below the popup: while the sheet is open, set `document.documentElement.style.backgroundColor = var(--surface)`. iOS PWA standalone renders the home-indicator safe-area zone using the `<html>` element's bg, so when the sheet is open the safe-area zone is the same colour as the sheet (no visible strip). The colour is reset 420ms after close (after the slide-out animation finishes).
+- Bumped service-worker `CACHE_NAME` to `homu-v12`.
+
 ## v1.7.4 - May 9, 2026
 
 - iOS PWA standalone evidently clips `position: fixed; bottom: 0` at the visual viewport boundary (above the home-indicator safe-area zone), leaving a strip of page background visible below the popup even with the v1.7.2/v1.7.3 wrapper-pattern + `h-full` approach. Added inline style `bottom: calc(0px - env(safe-area-inset-bottom))` on the slide-animated outer wrapper of both Add Transaction and Add Recurring sheets so the box (and therefore its bg) extends past the visual viewport bottom into the home-indicator zone.
