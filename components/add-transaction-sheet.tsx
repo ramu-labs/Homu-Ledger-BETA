@@ -370,19 +370,18 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
         onClick={onClose}
       />
 
-      {/* Slide-animated wrapper: fixed inset-0 covers the full viewport so
-          the sheet's bg always reaches every edge of the iPhone screen,
-          including past the home-indicator safe area where bottom-0/h-dvh
-          combinations on iOS PWA standalone can fall short. */}
+      {/* Slide-animated wrapper. We extend the box past the visual viewport
+          bottom by `env(safe-area-inset-bottom)` because iOS PWA standalone
+          can clip `bottom: 0` at the visual viewport boundary (above the
+          home-indicator zone), leaving a strip of page background visible. */}
       <div
         ref={sheetRef}
         className={cn(
           "fixed inset-0 z-[70] flex justify-center overflow-x-hidden [touch-action:pan-y]",
-          // Smooth Apple-style ease-out — no overshoot, calmer arrival than
-          // the previous spring (0.34, 1.56, 0.64, 1) which felt distracting.
           "transition-transform duration-[420ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
           open ? "translate-y-0" : "translate-y-full"
         )}
+        style={{ bottom: "calc(0px - env(safe-area-inset-bottom))" }}
       >
         {/* The actual sheet card: max-width-constrained, full height of the
             wrapper (which is the full viewport), with the surface background.

@@ -2,6 +2,11 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.7.4 - May 9, 2026
+
+- iOS PWA standalone evidently clips `position: fixed; bottom: 0` at the visual viewport boundary (above the home-indicator safe-area zone), leaving a strip of page background visible below the popup even with the v1.7.2/v1.7.3 wrapper-pattern + `h-full` approach. Added inline style `bottom: calc(0px - env(safe-area-inset-bottom))` on the slide-animated outer wrapper of both Add Transaction and Add Recurring sheets so the box (and therefore its bg) extends past the visual viewport bottom into the home-indicator zone.
+- Bumped service-worker `CACHE_NAME` to `homu-v11` so the new chunks load on relaunch.
+
 ## v1.7.3 - May 9, 2026
 
 - Forced explicit `h-full` on the inner sheet card (Add Transaction + Add Recurring) so its `bg-[var(--surface)]` reaches the very bottom of the iPhone screen. v1.7.2's wrapper relied on flexbox `align-items: stretch` (the default), which evidently wasn't always extending the inner card through the home-indicator zone on iOS PWA standalone.

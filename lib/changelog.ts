@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.7.4",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Add Transaction and Add Recurring popups: forced the wrapper to extend past the visual viewport bottom by env(safe-area-inset-bottom) so the white background reliably covers the iPhone home-indicator zone (iOS PWA standalone was clipping bottom: 0 above the safe area, leaving a strip of page background visible)", id: "Popup Tambah Transaksi dan Tambah Pengulangan: pembungkus dipaksa keluar melewati batas viewport visual sebesar env(safe-area-inset-bottom), supaya latar putih benar-benar menutupi zona home indicator iPhone (iOS PWA standalone memotong bottom: 0 di atas safe area sehingga strip latar halaman masih terlihat)" },
+    ],
+  },
+  {
     version: "1.7.3",
     date: "May 9, 2026",
     changes: [
