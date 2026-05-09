@@ -23,18 +23,18 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 z-50"
-      // Installed iOS Chrome reports the standalone viewport differently from
-      // Safari. Keep the fixed nav's own box tall enough to include the home
-      // indicator safe area so the background reaches the physical bottom and
-      // page content cannot show through underneath it.
-      style={{ height: "calc(84px + env(safe-area-inset-bottom))" }}
+      className="fixed left-1/2 w-full max-w-md -translate-x-1/2 z-50"
+      // Float the entire bar (background + icons) above the home indicator
+      // by half the safe-area inset so it doesn't visually swallow the
+      // indicator zone. On platforms without an inset, the bar sits flush
+      // to the physical bottom.
+      style={{
+        bottom: "calc(env(safe-area-inset-bottom, 0px) / 2)",
+        height: "84px",
+      }}
     >
       <div className="relative h-full">
-        <div
-          className="absolute inset-x-0 bottom-0 border-t border-black/[0.06] bg-[var(--surface)] shadow-[0_-8px_24px_rgba(42,37,32,0.06)]"
-          style={{ height: "calc(72px + env(safe-area-inset-bottom))" }}
-        />
+        <div className="absolute inset-x-0 bottom-0 h-[72px] border-t border-black/[0.06] bg-[var(--surface)] shadow-[0_-8px_24px_rgba(42,37,32,0.06)]" />
 
         {/* Each side cell is 1/3 of the bar's width with content centred
             inside. To pull the icons closer to the centre + button (away
@@ -43,14 +43,7 @@ export default function BottomNav() {
             `pl-8` on the left tab pushes its content right, `pr-8` on the
             right tab pushes its content left. The cell stays the same
             size so the tap target doesn't shrink. */}
-        <div
-          className="absolute inset-x-0 grid h-[72px] grid-cols-3 items-center"
-          // Sit halfway into the home-indicator inset rather than fully above
-          // it. Full inset (~34px on iPhone) felt visually floaty; half (~17px)
-          // still keeps icons clear of the indicator. Falls back to 0 on
-          // platforms without an inset.
-          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) / 2)" }}
-        >
+        <div className="absolute inset-x-0 bottom-0 grid h-[72px] grid-cols-3 items-center">
           <NavTab
             href="/transactions"
             label={t("nav.transactions")}

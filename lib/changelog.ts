@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.5.3",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Bottom navigation no longer leaves an empty white strip below the icons. The whole bar (background + icons) now floats above the home indicator instead of stretching all the way to the physical bottom", id: "Navigasi bawah tidak lagi menyisakan strip putih kosong di bawah ikon. Seluruh bar (latar + ikon) kini mengambang di atas home indicator, bukan memanjang sampai dasar layar" },
+    ],
+  },
+  {
     version: "1.5.2",
     date: "May 9, 2026",
     changes: [
