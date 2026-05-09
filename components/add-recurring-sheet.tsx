@@ -58,13 +58,21 @@ export default function AddRecurringSheet({
   const selectedCategory = categories.find((c) => c.id === categoryId) ?? null;
   const scrollYRef = useRef(0);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Lock body scroll while sheet is open (iOS Safari requires position:fixed),
   // and explicitly block any touchmove that escapes the sheet — this is what
   // prevents the page underneath from scrolling on iOS PWAs even when body
-  // lock is in place.
+  // lock is in place. The unlock is deferred until after the slide-out
+  // animation finishes so the page behind doesn't visibly jump while the
+  // sheet is closing.
   useEffect(() => {
     if (!open) return;
+
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
 
     scrollYRef.current = window.scrollY;
     document.body.style.position = "fixed";
@@ -81,11 +89,15 @@ export default function AddRecurringSheet({
     document.addEventListener("touchmove", onTouchMove, { passive: false });
 
     return () => {
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.width = "";
-      window.scrollTo(0, scrollYRef.current);
       document.removeEventListener("touchmove", onTouchMove);
+      const savedScrollY = scrollYRef.current;
+      closeTimeoutRef.current = setTimeout(() => {
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
+        window.scrollTo(0, savedScrollY);
+        closeTimeoutRef.current = null;
+      }, 420);
     };
   }, [open]);
 
@@ -183,23 +195,25 @@ export default function AddRecurringSheet({
         onClick={onClose}
       />
 
+      {/* Slide-animated wrapper: covers the full viewport (fixed inset-0) so
+          the sheet's bg always reaches every edge of the iPhone screen,
+          including past the home-indicator safe area where bottom-0/h-dvh
+          combinations on iOS PWA standalone can fall short. */}
       <div
         ref={sheetRef}
         className={cn(
-          "fixed inset-y-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 flex flex-col rounded-t-3xl bg-[var(--surface)] [touch-action:pan-y]",
+          "fixed inset-0 z-[70] flex justify-center [touch-action:pan-y]",
           "transition-transform duration-[420ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
           open ? "translate-y-0" : "translate-y-full"
         )}
-        // Respect the iPhone Dynamic Island / status bar at the top so the
-        // close button is reachable. Bottom padding is applied on the footer
-        // itself so the submit button sits a sensible distance above the
-        // home indicator. Use inset-y-0 (top:0 bottom:0) instead of
-        // bottom-0 + h-dvh so the sheet always reaches the physical bottom
-        // of the screen — h-dvh on iOS PWA standalone can report shorter
-        // than the full viewport, leaving a strip of page background
-        // visible underneath.
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
+        {/* The actual sheet card: max-width-constrained, full height of the
+            wrapper (which is the full viewport), with the surface background.
+            paddingTop respects the Dynamic Island so the close X is tappable. */}
+        <div
+          className="w-full max-w-md flex flex-col rounded-t-3xl bg-[var(--surface)]"
+          style={{ paddingTop: "env(safe-area-inset-top)" }}
+        >
         <div className="flex shrink-0 justify-center pt-3 pb-1">
           <div className="h-1 w-10 rounded-full bg-black/10" />
         </div>
@@ -444,6 +458,7 @@ export default function AddRecurringSheet({
             )}
           </div>
         </form>
+        </div>
       </div>
 
       {showCategoryPicker && (

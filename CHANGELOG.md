@@ -2,6 +2,11 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.7.2 - May 9, 2026
+
+- Restructured Add Transaction and Add Recurring sheets so the white surface bg actually reaches every edge of the iPhone screen. The slide-animated wrapper is now `fixed inset-0` (definitely covers the viewport in all iOS PWA standalone configurations); the actual sheet card is a flex child inside that wrapper, max-width-constrained, stretching to full height. v1.7.1's `inset-y-0` direct approach didn't reliably extend through the home-indicator safe area on iOS PWA.
+- Body-scroll unlock + scroll-position restore is now deferred until after the 420ms slide-out animation finishes (was firing immediately on close, which caused the page underneath to visibly jump while the sheet was still animating away).
+
 ## v1.7.1 - May 9, 2026
 
 - Fixed the Add Transaction and Add Recurring popups not reaching the bottom of the iPhone screen, and the close animation flashing the page background strip during slide-out. The sheets now use `inset-y-0` (top:0 bottom:0) instead of `bottom-0 + h-dvh` — `h-dvh` was reporting shorter than the full viewport on iOS PWA standalone mode, leaving the safe-area zone uncovered.

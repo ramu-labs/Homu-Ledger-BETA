@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.7.2",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Add Transaction and Add Recurring popups now truly cover the whole iPhone screen — no cream strip below the submit button, and the close animation no longer makes the page underneath jump while the sheet is sliding away", id: "Popup Tambah Transaksi dan Tambah Pengulangan kini benar-benar menutupi seluruh layar iPhone — tidak ada strip cream di bawah tombol simpan, dan animasi menutup tidak lagi membuat halaman di belakang melompat saat popup sedang bergerak turun" },
+    ],
+  },
+  {
     version: "1.7.1",
     date: "May 9, 2026",
     changes: [
