@@ -211,7 +211,7 @@ export default function AddRecurringSheet({
             wrapper (which is the full viewport), with the surface background.
             paddingTop respects the Dynamic Island so the close X is tappable. */}
         <div
-          className="w-full max-w-md flex flex-col rounded-t-3xl bg-[var(--surface)]"
+          className="w-full max-w-md h-full flex flex-col rounded-t-3xl bg-[var(--surface)]"
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
         <div className="flex shrink-0 justify-center pt-3 pb-1">

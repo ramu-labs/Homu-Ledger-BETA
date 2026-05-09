@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.7.3",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Add Transaction and Add Recurring popups: forced explicit h-full on the sheet card so its white background fills the entire iPhone viewport reliably (the implicit flexbox stretch wasn't always extending through the home-indicator zone). Bumped the service-worker cache so stale assets aren't served on first launch", id: "Popup Tambah Transaksi dan Tambah Pengulangan: tinggi penuh dipaksa pada kartu sheet sehingga latar putih benar-benar memenuhi seluruh layar iPhone (peregangan flexbox bawaan kadang tidak mencapai zona home indicator). Versi cache service worker juga dinaikkan agar aset lama tidak terpakai saat pertama dibuka" },
+    ],
+  },
+  {
     version: "1.7.2",
     date: "May 9, 2026",
     changes: [

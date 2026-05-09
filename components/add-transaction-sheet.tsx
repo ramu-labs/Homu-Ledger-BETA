@@ -388,7 +388,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
             wrapper (which is the full viewport), with the surface background.
             paddingTop respects the Dynamic Island so the close X is tappable. */}
         <div
-          className="w-full max-w-md flex flex-col rounded-t-3xl bg-[var(--surface)] overflow-x-hidden"
+          className="w-full max-w-md h-full flex flex-col rounded-t-3xl bg-[var(--surface)] overflow-x-hidden"
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
         {/* Drag handle */}
