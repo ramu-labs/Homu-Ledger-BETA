@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.5.2",
+    date: "May 9, 2026",
+    changes: [
+      { type: "improvement", en: "Bottom navigation icons sit lower in the bar — the gap above the iPhone home indicator was halved so Transactions, Add, and Reports no longer feel floaty", id: "Ikon navigasi bawah turun lebih rendah — jarak ke home indicator iPhone dipangkas separuh sehingga Transaksi, Tambah, dan Laporan tidak terasa mengambang" },
+    ],
+  },
+  {
     version: "1.5.1",
     date: "May 9, 2026",
     changes: [

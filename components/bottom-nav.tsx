@@ -45,7 +45,11 @@ export default function BottomNav() {
             size so the tap target doesn't shrink. */}
         <div
           className="absolute inset-x-0 grid h-[72px] grid-cols-3 items-center"
-          style={{ bottom: "env(safe-area-inset-bottom)" }}
+          // Sit halfway into the home-indicator inset rather than fully above
+          // it. Full inset (~34px on iPhone) felt visually floaty; half (~17px)
+          // still keeps icons clear of the indicator. Falls back to 0 on
+          // platforms without an inset.
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) / 2)" }}
         >
           <NavTab
             href="/transactions"
