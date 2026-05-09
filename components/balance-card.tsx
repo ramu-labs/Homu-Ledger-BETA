@@ -13,7 +13,7 @@ type Props = {
   currency?: string;
 };
 
-function useCountUp(target: number, duration = 600) {
+function useCountUp(target: number, duration = 1100) {
   const [display, setDisplay] = useState(target);
   const prevRef = useRef(target);
   const rafRef = useRef<number | null>(null);
@@ -29,8 +29,8 @@ function useCountUp(target: number, duration = 600) {
     const start = performance.now();
     function tick(now: number) {
       const progress = Math.min((now - start) / duration, 1);
-      // Ease-out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
+      // easeOutQuart — slower start, smoother arrival than ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 4);
       setDisplay(from + (to - from) * eased);
       if (progress < 1) rafRef.current = requestAnimationFrame(tick);
     }

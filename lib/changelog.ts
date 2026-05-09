@@ -29,6 +29,17 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.9.0",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Add Transaction and Add Recurring popups close smoothly now — the page underneath no longer freezes/jolts during the slide-out. The body-scroll unlock is deferred until the close animation finishes (which is finally safe to do now that v1.8.3's explicit-bounds body-lock keeps the bottom nav anchored correctly throughout)", id: "Popup Tambah Transaksi dan Tambah Pengulangan kini menutup dengan halus — halaman di belakang tidak lagi membeku atau melompat saat slide turun. Pembukaan kunci scroll body kini ditunda hingga animasi penutupan selesai (sekarang aman karena v1.8.3 menahan bar bawah tetap di posisi yang benar selama kunci aktif)" },
+      { type: "improvement", en: "Slowed and softened the transaction-list reveal animation: 0.22s ease → 0.5s easeOutQuart with a slightly bigger slide-up. Feels more considered and less twitchy", id: "Animasi munculnya daftar transaksi diperlambat dan dilembutkan: 0.22d ease → 0.5d easeOutQuart dengan slide ke atas yang sedikit lebih besar. Terasa lebih kalem dan tidak gugup" },
+      { type: "improvement", en: "Slowed the total-balance count-up animation: 600ms ease-out cubic → 1100ms easeOutQuart so the number glides to its final value instead of snapping", id: "Animasi hitung naik total saldo diperlambat: 600ms ease-out cubic → 1100ms easeOutQuart sehingga angkanya meluncur halus ke nilai akhir, bukan terhenti tiba-tiba" },
+      { type: "improvement", en: "Softened the filter-chip pop on activation: 0.22s sharp pop → 0.32s gentler settle with smoother easing", id: "Pop chip filter saat diaktifkan dilembutkan: 0.22d pop tajam → 0.32d settle yang lebih halus dengan easing yang lebih lembut" },
+      { type: "improvement", en: "All bottom-sheet modals (Add Category, Edit Category, Edit Wallet, Wallet Picker, Category Picker) now use the same calm Apple-style ease as the main popups for visual consistency", id: "Semua modal sheet bawah (Tambah Kategori, Edit Kategori, Edit Dompet, Pemilih Dompet, Pemilih Kategori) kini memakai easing Apple yang sama tenangnya dengan popup utama, agar tampak konsisten" },
+    ],
+  },
+  {
     version: "1.8.3",
     date: "May 9, 2026",
     changes: [

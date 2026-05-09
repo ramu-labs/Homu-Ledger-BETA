@@ -2,6 +2,17 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.9.0 - May 9, 2026
+
+Animation polish across the app.
+
+- **Popup close jolt** fixed. Body-scroll unlock + scroll-position restore on Add Transaction / Add Recurring close is now deferred until after the 420ms slide-out animation finishes. Was firing immediately, which caused the page underneath to snap to its scroll position mid-animation (the user perceived this as a "freeze + jolt"). Safe to defer now that v1.8.3's explicit-bounds body-lock keeps fixed children (the bottom nav) anchored correctly throughout the lock.
+- **Transaction-row reveal** (`row-in`): 0.22s ease → 0.5s `cubic-bezier(0.22, 1, 0.36, 1)` (easeOutQuart) with translate-up bumped from 8px to 10px. Calmer.
+- **Balance count-up** (`useCountUp`): 600ms ease-out cubic → 1100ms easeOutQuart. Number glides instead of snapping.
+- **Filter-chip pop** (`chip-pop`): 0.22s ease → 0.32s `cubic-bezier(0.22, 1, 0.36, 1)` with gentler scale range (0.92 → 1.04 instead of 0.88 → 1.06).
+- **Secondary sheet modals** (Add Category, Edit Category, Edit Wallet, Wallet Picker, Category Picker): updated transition timing to `360ms cubic-bezier(0.32, 0.72, 0, 1)` for visual consistency with the main popups.
+- **`tx-flash`**: 0.9s → 1.1s — matches the calmer feel.
+
 ## v1.8.3 - May 9, 2026
 
 Combined fix for both iOS PWA standalone bugs we've been bouncing between:

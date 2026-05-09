@@ -76,14 +76,14 @@ export default function AddCategorySheet({ open, onClose, onAdded, iconStyle = "
     <>
       <div
         className={cn(
-          "fixed inset-0 z-[100] bg-black/40 transition-opacity duration-300",
+          "fixed inset-0 z-[100] bg-black/40 transition-opacity duration-[360ms]",
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
         onClick={handleClose}
       />
       <div
         className={cn(
-          "fixed bottom-0 left-1/2 z-[110] w-full max-w-md -translate-x-1/2 flex flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300",
+          "fixed bottom-0 left-1/2 z-[110] w-full max-w-md -translate-x-1/2 flex flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-[360ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
           open ? "translate-y-0" : "translate-y-full"
         )}
       >

@@ -50,7 +50,7 @@ export default function CategoryPicker({
       {/* Half-screen sheet with slide-up animation */}
       <div
         className={cn(
-          "fixed bottom-0 left-1/2 z-[90] flex h-[65dvh] w-full max-w-md -translate-x-1/2 flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300 ease-out",
+          "fixed bottom-0 left-1/2 z-[90] flex h-[65dvh] w-full max-w-md -translate-x-1/2 flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-[360ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
           visible ? "translate-y-0" : "translate-y-full"
         )}
       >

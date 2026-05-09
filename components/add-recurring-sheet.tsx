@@ -57,6 +57,7 @@ export default function AddRecurringSheet({
 
   const selectedCategory = categories.find((c) => c.id === categoryId) ?? null;
   const sheetRef = useRef<HTMLDivElement>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Body-scroll lock with explicit viewport bounds. We use `position: fixed`
   // (the only reliable scroll lock on iOS Safari) BUT give body explicit
@@ -66,6 +67,11 @@ export default function AddRecurringSheet({
   // which sits above the home-indicator zone — the cream-strip bug.
   useEffect(() => {
     if (!open) return;
+
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
 
     const scrollY = window.scrollY;
     const prev = {
@@ -93,14 +99,19 @@ export default function AddRecurringSheet({
     document.addEventListener("touchmove", onTouchMove, { passive: false });
 
     return () => {
-      document.body.style.position = prev.position;
-      document.body.style.top = prev.top;
-      document.body.style.bottom = prev.bottom;
-      document.body.style.left = prev.left;
-      document.body.style.right = prev.right;
-      document.body.style.width = prev.width;
-      window.scrollTo(0, scrollY);
       document.removeEventListener("touchmove", onTouchMove);
+      // Defer body unlock + scroll restore until after the slide-out
+      // animation completes — see add-transaction-sheet for rationale.
+      closeTimeoutRef.current = setTimeout(() => {
+        document.body.style.position = prev.position;
+        document.body.style.top = prev.top;
+        document.body.style.bottom = prev.bottom;
+        document.body.style.left = prev.left;
+        document.body.style.right = prev.right;
+        document.body.style.width = prev.width;
+        window.scrollTo(0, scrollY);
+        closeTimeoutRef.current = null;
+      }, 420);
     };
   }, [open]);
 
