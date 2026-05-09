@@ -14,12 +14,30 @@
 html, body {
   overflow-x: hidden;
   max-width: 100vw;
-  background: var(--background);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Different bg on <html> vs <body>:
+ * iOS PWA standalone clips `position: fixed; bottom: 0` at the visual
+ * viewport bottom (above the home-indicator safe-area zone). The bottom
+ * nav and modal sheets that anchor to bottom-0 therefore end above the
+ * physical bottom, leaving the html element's bg visible as a strip in
+ * that zone.
+ *
+ * Setting <html>'s bg to var(--surface) makes that strip the same colour
+ * as the bottom nav and the sheets — so the gap is invisible. <body>'s
+ * bg stays var(--background) so the actual page content area still has
+ * the warm cream look.
+ */
+html {
+  background: var(--surface);
+}
+body {
+  background: var(--background);
 }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }

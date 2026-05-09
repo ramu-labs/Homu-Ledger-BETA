@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.7.6",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Bottom navigation bar in the installed iPhone app: the cream strip below it (visible behind the home indicator) is gone. Same fix also covers the strip below the Add Transaction and Add Recurring popups when they're open, so the floating-bar flash on close is gone too", id: "Bar navigasi bawah di aplikasi iPhone terinstal: strip cream di bawahnya (yang terlihat di balik home indicator) sudah hilang. Perbaikan ini juga menutup strip di bawah popup Tambah Transaksi dan Tambah Pengulangan saat terbuka, jadi kilatan bar mengambang ketika menutup popup ikut hilang" },
+    ],
+  },
+  {
     version: "1.7.5",
     date: "May 9, 2026",
     changes: [

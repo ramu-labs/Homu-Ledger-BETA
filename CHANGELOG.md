@@ -2,6 +2,10 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.7.6 - May 9, 2026
+
+- Fixed the cream strip below the bottom navigation bar in the installed iPhone PWA (and the matching "floating bar" flash visible on popup close, which was the same bar appearing momentarily after the popup slid away). Root cause is iOS PWA standalone clipping `position: fixed; bottom: 0` at the *visual* viewport bottom, above the home-indicator safe-area zone — so any element anchored to bottom-0 (bottom nav, sheet wrappers) ends above the physical screen bottom and the html element's bg shows through in that strip. Globals.css now sets `html { background: var(--surface) }` and `body { background: var(--background) }` separately. The strip is therefore the same surface colour as the bottom nav and the popup sheets, making it invisible — without needing fragile bottom-extension hacks that broke scroll in v1.7.4.
+
 ## v1.7.5 - May 9, 2026
 
 - Reverted v1.7.4's `bottom: -env(safe-area-inset-bottom)` hack on the sheet wrapper — it was extending the sheet past the visual viewport, which broke scroll inside the form (only the submit button responded to touch) and pushed the footer off-screen. Standard `fixed inset-0` is back.
