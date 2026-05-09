@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.9.1",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Forced an extra service-worker cache invalidation pass so devices that cached chunks from older versions are guaranteed to fetch fresh code on the next launch", id: "Memaksa satu siklus pembersihan cache service worker tambahan agar perangkat yang masih menyimpan chunk dari versi lama dipastikan mengambil kode baru saat aplikasi dibuka berikutnya" },
+    ],
+  },
+  {
     version: "1.9.0",
     date: "May 9, 2026",
     changes: [

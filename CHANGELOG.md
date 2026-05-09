@@ -2,6 +2,10 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.9.1 - May 9, 2026
+
+- Bumped service-worker `CACHE_NAME` from `homu-v19` → `homu-v20` to force eviction of any chunks that may still be cached from earlier builds. The SW activate handler deletes every cache that doesn't match `CACHE_NAME`, so on next launch all stale `_next/static` assets are cleared.
+
 ## v1.9.0 - May 9, 2026
 
 Animation polish across the app.
