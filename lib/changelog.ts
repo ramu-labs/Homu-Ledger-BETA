@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.7.1",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Add Transaction and Add Recurring popups now reach the very bottom of the iPhone screen — the strip of page background that used to show under the popup is gone, and the closing animation no longer flashes that strip", id: "Popup Tambah Transaksi dan Tambah Pengulangan kini benar-benar menyentuh dasar layar iPhone — strip latar halaman yang muncul di bawah popup sudah hilang, dan animasi menutup tidak lagi memperlihatkan strip itu" },
+    ],
+  },
+  {
     version: "1.7.0",
     date: "May 9, 2026",
     changes: [

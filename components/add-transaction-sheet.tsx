@@ -362,7 +362,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
       <div
         ref={sheetRef}
         className={cn(
-          "fixed bottom-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 h-dvh flex flex-col rounded-t-3xl bg-[var(--surface)] overflow-x-hidden [touch-action:pan-y]",
+          "fixed inset-y-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 flex flex-col rounded-t-3xl bg-[var(--surface)] overflow-x-hidden [touch-action:pan-y]",
           // Smooth Apple-style ease-out — no overshoot, calmer arrival than
           // the previous spring (0.34, 1.56, 0.64, 1) which felt distracting.
           "transition-transform duration-[420ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
@@ -370,6 +370,10 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
         )}
         // Respect the iPhone Dynamic Island / status bar at the top so the
         // close button is reachable. Footer handles its own bottom safe area.
+        // Use inset-y-0 (top:0 bottom:0) instead of bottom-0 + h-dvh so the
+        // sheet always reaches the physical bottom of the screen — h-dvh on
+        // iOS PWA standalone can report shorter than the full viewport,
+        // leaving a strip of page background visible underneath.
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         {/* Drag handle */}
