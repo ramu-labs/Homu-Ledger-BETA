@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.9.2",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Reverted the prev-snapshot pattern and the 420ms close-defer in the popup body-lock. The snapshot could capture locked values when popup open/close events overlapped, leaving the body permanently locked or causing fixed children to anchor wrong. Body-lock styles are now unconditionally cleared on close. Trade-off: the close-jolt comes back briefly, which we can smooth in a future release once the cream strip is conclusively gone", id: "Mengembalikan pola snapshot sebelumnya dan penundaan 420ms saat menutup popup pada body-lock. Snapshot bisa menangkap nilai dalam keadaan terkunci saat acara buka/tutup popup tumpang tindih, sehingga body bisa terkunci permanen atau elemen tetap salah posisi. Style body-lock kini dibersihkan tanpa syarat saat ditutup. Konsekuensinya: jolt kecil saat menutup kembali muncul, akan dihaluskan kemudian setelah strip krem benar-benar hilang" },
+    ],
+  },
+  {
     version: "1.9.1",
     date: "May 9, 2026",
     changes: [

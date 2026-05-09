@@ -67,32 +67,21 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
-  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!open) return;
 
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-
     // Body-scroll lock with explicit viewport bounds. We use `position: fixed`
-    // (the only reliable scroll lock on iOS Safari) BUT give body explicit
-    // top/bottom/left/right so its box fills the viewport. Without explicit
-    // bottom, iOS PWA standalone collapses body's height and resolves
-    // `position: fixed; bottom: 0` children to body's collapsed bottom edge,
-    // which sits above the home-indicator zone — the cream-strip bug.
+    // (the only reliable scroll lock on iOS Safari) and give body explicit
+    // top/bottom/left/right so its box fills the viewport, otherwise iOS PWA
+    // standalone collapses body's height and the bottom-anchored fixed
+    // children (popup, bottom nav) end above the home-indicator zone — the
+    // cream-strip bug. Cleanup unconditionally clears the lock-related
+    // properties; we don't try to restore a snapshot of pre-lock styles
+    // because the snapshot pattern can stale-capture locked values when
+    // popup-open/close events overlap (a close from a previous popup hasn't
+    // settled before the next open captures `prev`).
     const scrollY = window.scrollY;
-    const prev = {
-      position: document.body.style.position,
-      top: document.body.style.top,
-      bottom: document.body.style.bottom,
-      left: document.body.style.left,
-      right: document.body.style.right,
-      width: document.body.style.width,
-      overflowX: document.body.style.overflowX,
-    };
     document.body.style.position = "fixed";
     document.body.style.top = `-${scrollY}px`;
     document.body.style.bottom = "0";
@@ -111,26 +100,15 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     document.addEventListener("touchmove", onTouchMove, { passive: false });
 
     return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.bottom = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      document.body.style.overflowX = "";
+      window.scrollTo(0, scrollY);
       document.removeEventListener("touchmove", onTouchMove);
-      // Defer the body unlock + scroll restore until after the popup's
-      // slide-out animation finishes (420ms). Otherwise the page underneath
-      // visibly snaps to its scrollY position while the popup is still
-      // mid-animation, which the user perceives as a "freeze + jolt" at
-      // close. With v1.8.3's explicit-bounds body lock, fixed children
-      // (the bottom nav) stay anchored correctly throughout the lock, so
-      // deferring the unlock no longer causes the floating-nav side-effect
-      // we saw in v1.7.x.
-      closeTimeoutRef.current = setTimeout(() => {
-        document.body.style.position = prev.position;
-        document.body.style.top = prev.top;
-        document.body.style.bottom = prev.bottom;
-        document.body.style.left = prev.left;
-        document.body.style.right = prev.right;
-        document.body.style.width = prev.width;
-        document.body.style.overflowX = prev.overflowX;
-        window.scrollTo(0, scrollY);
-        closeTimeoutRef.current = null;
-      }, 420);
     };
   }, [open]);
 

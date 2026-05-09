@@ -2,6 +2,16 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.9.2 - May 9, 2026
+
+User reported the cream strip + scroll-bleed regression on v1.9.0 even after a clean PWA reinstall (so v1.9.1's SW cache bump and Cause #1 are ruled out). Cause #2 from the analysis: the `prev` snapshot pattern in the body-lock effect can stale-capture locked values when popup open/close events overlap (a previous popup's deferred unlock hasn't fired before the next open captures `prev`), leaving body's lock-style state corrupted on subsequent operations.
+
+This release reverts both:
+- The `prev` snapshot — body-lock cleanup now **unconditionally** clears the lock-related style properties on close (they're the only ones we set, so wiping them is safe).
+- The 420ms `setTimeout` defer — cleanup runs immediately on close.
+
+Trade-off: v1.9.0's smoother close (no page-jump-on-close) regresses to a small jolt as `window.scrollTo` restores the page position mid-slide. We'll revisit smoothing the close differently once the strip is conclusively gone.
+
 ## v1.9.1 - May 9, 2026
 
 - Bumped service-worker `CACHE_NAME` from `homu-v19` → `homu-v20` to force eviction of any chunks that may still be cached from earlier builds. The SW activate handler deletes every cache that doesn't match `CACHE_NAME`, so on next launch all stale `_next/static` assets are cleared.
