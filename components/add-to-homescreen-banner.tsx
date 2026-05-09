@@ -55,7 +55,7 @@ export default function AddToHomescreenBanner() {
   if (mode === "android" && !deferredPrompt) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100]">
+    <div className="fixed top-[env(safe-area-inset-top)] left-0 right-0 z-[100]">
       {/* Banner row */}
       <div className="flex items-center gap-2 bg-[var(--foreground)] px-4 py-3 shadow-lg">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-xl">

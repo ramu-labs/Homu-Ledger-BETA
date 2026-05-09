@@ -240,7 +240,7 @@ export default function ReportsShell({ transactions, categories, wallets, member
           RIGHT : period dropdown
           The middle column gets `flex-1` and `text-center` so the date
           stays visually centred regardless of the side button widths. */}
-      <header className="sticky top-0 z-10 bg-[var(--background)]/85 px-5 pt-4 pb-3 backdrop-blur-xl">
+      <header className="sticky top-[env(safe-area-inset-top)] z-10 bg-[var(--background)]/85 px-5 pt-4 pb-3 backdrop-blur-xl">
         <div className="flex items-center gap-2">
           {/* LEFT — wallet filter (multi-select) */}
           <div className="relative shrink-0" ref={walletDropdownRef}>

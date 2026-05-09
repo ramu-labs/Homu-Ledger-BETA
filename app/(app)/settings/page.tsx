@@ -209,7 +209,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.5.0</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.5.1</p>
     </div>
   );
 }

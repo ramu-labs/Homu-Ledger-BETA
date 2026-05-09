@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.5.1",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Top of every page is no longer hidden behind the iPhone status bar in the installed app — the profile, ledger switcher, search, and filter buttons are now tappable again", id: "Bagian atas tiap halaman tidak lagi tertutup status bar iPhone di aplikasi terinstal — tombol profil, pengganti buku, pencarian, dan filter kini bisa ditekan lagi" },
+    ],
+  },
+  {
     version: "1.5.0",
     date: "May 9, 2026",
     changes: [

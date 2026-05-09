@@ -2,6 +2,10 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.5.1 - May 9, 2026
+
+- Fixed the top of every page being hidden behind the iPhone status bar in the installed PWA. The layout, the Reports sticky header, and the Add-to-Home-Screen banner now all respect `env(safe-area-inset-top)` so the profile, ledger switcher, search, and filter buttons are tappable again.
+
 ## v1.5.0 - May 9, 2026
 
 - Added the ability to delete a ledger from Settings → Ledger name. Tap the trash icon at the top-right and confirm; the ledger and all of its wallets, categories, transactions, recurring items, and members are permanently removed. The user's only ledger cannot be deleted — they must create or join another first.
