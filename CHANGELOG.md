@@ -2,6 +2,13 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.13.1 - May 10, 2026
+
+Bottom-nav follow-up tweaks:
+- **Wider gaps**: `gap-1` → `gap-3` between buttons, plus container padding `p-1.5` → `p-2`. Tabs and centre + button now have more breathing room.
+- **Lower position**: `bottom: calc(env(safe-area-inset-bottom) + 4px)` (was `+ 8px`). Sits closer to the home-indicator zone without overlapping it.
+- **Hidden on Settings**: returns `null` when `pathname.startsWith("/settings")`. Settings screens have their own back-button navigation context, no need for the global bar there.
+
 ## v1.13.0 - May 10, 2026
 
 **Bottom navigation refinements** (per user feedback on v1.12.0):

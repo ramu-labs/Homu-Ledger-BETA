@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.13.1",
+    date: "May 10, 2026",
+    changes: [
+      { type: "improvement", en: "Bottom navigation tweaks: wider spacing between buttons, position lowered slightly closer to the home indicator, and the bar is now hidden on Settings screens (which have their own back-button navigation)", id: "Penyesuaian navigasi bawah: jarak antar tombol lebih lebar, posisinya sedikit diturunkan mendekati home indicator, dan bar disembunyikan di layar Pengaturan (yang sudah punya navigasi tombol kembali sendiri)" },
+    ],
+  },
+  {
     version: "1.13.0",
     date: "May 10, 2026",
     changes: [

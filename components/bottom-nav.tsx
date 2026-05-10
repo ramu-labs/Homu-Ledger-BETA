@@ -28,6 +28,11 @@ export default function BottomNav() {
   const onTransactions = pathname.startsWith("/transactions");
   const onReports = pathname.startsWith("/reports");
 
+  // Hide on Settings (and its subroutes) — those screens have their own
+  // navigation context (back button + section list) and don't need the
+  // global bottom bar in the way.
+  if (pathname.startsWith("/settings")) return null;
+
   function openAddTransaction() {
     if (onTransactions) {
       window.dispatchEvent(new CustomEvent("fl:open-add-transaction"));
@@ -40,9 +45,9 @@ export default function BottomNav() {
     <nav
       aria-label="Primary"
       className="fixed left-1/2 z-50 -translate-x-1/2"
-      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)" }}
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4px)" }}
     >
-      <div className="flex items-center gap-1 rounded-full bg-[var(--surface)] p-1.5 shadow-[0_12px_36px_rgba(42,37,32,0.18)] ring-1 ring-black/[0.04]">
+      <div className="flex items-center gap-3 rounded-full bg-[var(--surface)] p-2 shadow-[0_12px_36px_rgba(42,37,32,0.18)] ring-1 ring-black/[0.04]">
         <NavTab
           href="/transactions"
           label={t("nav.transactions")}
