@@ -2,6 +2,16 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.12.0 - May 9, 2026
+
+Rebuilt the bottom navigation as a floating capsule. The bar is now a single rounded-full pill containing the two side tabs (Transactions, Reports) and the centred + button. It sits `bottom: calc(env(safe-area-inset-bottom) + 16px)` so it always floats clear of the iPhone home indicator and doesn't touch the screen edges.
+
+Press animations:
+- **Side tabs:** scale-95 on press; the active tab gets a soft `var(--foreground)/6` background pill and reveals its label (Transactions / Reports) which animates open. Inactive tabs show icon-only and the label collapses to width 0.
+- **Center + button:** scale-90 on press with the shadow softening simultaneously, simulating a button being pushed in. `transition-[transform,box-shadow] duration-150 ease-out`.
+
+Same wiring (custom event for in-page +, `?new=1` for cross-page +), so the existing AddTransactionSheet flow is unchanged.
+
 ## v1.11.0 - May 9, 2026
 
 Rebuilt the popup chrome from scratch (form contents, validation, photo upload, etc. unchanged). Two structural changes:

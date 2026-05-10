@@ -6,6 +6,21 @@ import { cn } from "@/lib/cn";
 import { TapLink, TapButton } from "@/components/tap";
 import { useT } from "@/lib/i18n/provider";
 
+/**
+ * Floating-capsule bottom navigation.
+ *
+ * Sits 16px above the iPhone home-indicator zone, doesn't touch the screen
+ * edges. Three items live inside a single rounded-full pill: two side tabs
+ * (Transactions, Reports) and a centred + button.
+ *
+ * Anchored to the bottom of the viewport via `bottom: calc(env(safe-area-
+ * inset-bottom) + 16px)` so it always clears the home indicator.
+ *
+ * Press animations:
+ * - Side tabs: subtle scale-95 on press, background-tint when active.
+ * - Centre + button: scale-90 on press with the shadow softening as it
+ *   compresses, simulating a button being pushed in.
+ */
 export default function BottomNav() {
   const t = useT();
   const pathname = usePathname();
@@ -23,49 +38,32 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-1/2 h-[72px] w-full max-w-md -translate-x-1/2 z-50"
-      // Bar reaches the physical bottom of the screen and is exactly tall
-      // enough to contain the icons — no empty white above OR below them.
-      // The home indicator overlays the bottom of the bar (iOS auto-adjusts
-      // its contrast against the white surface).
+      aria-label="Primary"
+      className="fixed left-1/2 z-50 -translate-x-1/2"
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
     >
-      <div className="relative h-full">
-        <div className="absolute inset-0 border-t border-black/[0.06] bg-[var(--surface)] shadow-[0_-8px_24px_rgba(42,37,32,0.06)]" />
+      <div className="flex items-center gap-1 rounded-full bg-[var(--surface)] p-1.5 shadow-[0_12px_36px_rgba(42,37,32,0.18)] ring-1 ring-black/[0.04]">
+        <NavTab
+          href="/transactions"
+          label={t("nav.transactions")}
+          active={onTransactions}
+          icon={<Wallet className="h-5 w-5" strokeWidth={onTransactions ? 2.4 : 1.85} />}
+        />
 
-        {/* Each side cell is 1/3 of the bar's width with content centred
-            inside. To pull the icons closer to the centre + button (away
-            from the screen edges, which felt visually unbalanced), we
-            shrink the side cells' usable space from their OUTER edge —
-            `pl-8` on the left tab pushes its content right, `pr-8` on the
-            right tab pushes its content left. The cell stays the same
-            size so the tap target doesn't shrink. */}
-        <div className="absolute inset-x-0 bottom-0 grid h-[72px] grid-cols-3 items-center">
-          <NavTab
-            href="/transactions"
-            label={t("nav.transactions")}
-            active={onTransactions}
-            icon={<Wallet className="h-6 w-6" strokeWidth={onTransactions ? 2.25 : 1.75} />}
-            className="pl-8"
-          />
+        <TapButton
+          onTap={openAddTransaction}
+          aria-label="Add transaction"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--foreground)] text-white shadow-[0_6px_18px_rgba(0,0,0,0.22)] transition-[transform,box-shadow] duration-150 ease-out active:scale-90 active:shadow-[0_2px_8px_rgba(0,0,0,0.18)] [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]"
+        >
+          <Plus className="h-6 w-6" strokeWidth={2.5} />
+        </TapButton>
 
-          <div className="flex items-center justify-center">
-            <TapButton
-              onTap={openAddTransaction}
-              aria-label="Add transaction"
-              className="flex h-16 w-16 -translate-y-4 items-center justify-center rounded-full bg-[var(--foreground)] text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] active:scale-95 transition-transform [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]"
-            >
-              <Plus className="h-7 w-7" strokeWidth={2.25} />
-            </TapButton>
-          </div>
-
-          <NavTab
-            href="/reports"
-            label={t("nav.reports")}
-            active={onReports}
-            icon={<PieChart className="h-6 w-6" strokeWidth={onReports ? 2.25 : 1.75} />}
-            className="pr-8"
-          />
-        </div>
+        <NavTab
+          href="/reports"
+          label={t("nav.reports")}
+          active={onReports}
+          icon={<PieChart className="h-5 w-5" strokeWidth={onReports ? 2.4 : 1.85} />}
+        />
       </div>
     </nav>
   );
@@ -76,27 +74,32 @@ function NavTab({
   label,
   active,
   icon,
-  className,
 }: {
   href: string;
   label: string;
   active: boolean;
   icon: React.ReactNode;
-  /** Extra classes applied to the link — used by the parent to add
-   *  asymmetric padding that shifts the icon toward the centre + button. */
-  className?: string;
 }) {
   return (
     <TapLink
       href={href}
+      aria-label={label}
       className={cn(
-        "flex h-full flex-col items-center justify-center gap-0.5 text-[10px] font-medium tracking-wide transition-colors [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]",
-        active ? "text-[var(--foreground)]" : "text-[var(--label-tertiary)]",
-        className,
+        "flex h-12 items-center justify-center gap-1.5 rounded-full transition-all duration-200 ease-out active:scale-95 [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]",
+        active
+          ? "bg-[var(--foreground)]/[0.06] px-4 text-[var(--foreground)]"
+          : "px-4 text-[var(--label-tertiary)]"
       )}
     >
       {icon}
-      <span>{label}</span>
+      <span
+        className={cn(
+          "overflow-hidden whitespace-nowrap text-[12px] font-semibold tracking-tight transition-all duration-200 ease-out",
+          active ? "max-w-[120px] opacity-100" : "max-w-0 opacity-0"
+        )}
+      >
+        {label}
+      </span>
     </TapLink>
   );
 }

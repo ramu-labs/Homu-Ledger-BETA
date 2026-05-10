@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.12.0",
+    date: "May 9, 2026",
+    changes: [
+      { type: "new", en: "New floating-capsule bottom navigation. Sits 16px above the home indicator with side-margins from the screen edges, the active tab gets a soft pill highlight and shows its label, the + button has a tactile press animation (scale + shadow change). Same buttons and behaviour, fresh look", id: "Navigasi bawah baru berbentuk kapsul mengambang. Berada 16px di atas home indicator dengan jarak dari tepi layar, tab aktif mendapat sorotan pill lembut dan menampilkan label, dan tombol + memiliki animasi tekan yang terasa di tangan (skala + bayangan). Tombol dan fungsinya sama, tampilan baru" },
+    ],
+  },
+  {
     version: "1.11.0",
     date: "May 9, 2026",
     changes: [
