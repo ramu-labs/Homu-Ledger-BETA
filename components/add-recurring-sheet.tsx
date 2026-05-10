@@ -58,30 +58,18 @@ export default function AddRecurringSheet({
   const selectedCategory = categories.find((c) => c.id === categoryId) ?? null;
   const sheetRef = useRef<HTMLDivElement>(null);
 
-  // Body-scroll lock with explicit viewport bounds. We use `position: fixed`
-  // (the only reliable scroll lock on iOS Safari) BUT give body explicit
-  // top/bottom/left/right so its box fills the viewport. Without explicit
-  // bottom, iOS PWA standalone collapses body's height and resolves
-  // `position: fixed; bottom: 0` children to body's collapsed bottom edge,
-  // which sits above the home-indicator zone — the cream-strip bug.
+  // Body-scroll lock. We use plain overflow:hidden on html + body (instead
+  // of position:fixed body, which on iOS PWA standalone causes fixed
+  // bottom-0 children to anchor to body's collapsed bounds — the cream-strip
+  // bug we kept hitting). The touchmove guard handles iOS Safari momentum-
+  // scroll which can otherwise bypass overflow:hidden.
   useEffect(() => {
     if (!open) return;
 
-    const scrollY = window.scrollY;
-    const prev = {
-      position: document.body.style.position,
-      top: document.body.style.top,
-      bottom: document.body.style.bottom,
-      left: document.body.style.left,
-      right: document.body.style.right,
-      width: document.body.style.width,
-    };
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.bottom = "0";
-    document.body.style.left = "0";
-    document.body.style.right = "0";
-    document.body.style.width = "100%";
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
 
     function onTouchMove(e: TouchEvent) {
       const sheet = sheetRef.current;
@@ -93,13 +81,8 @@ export default function AddRecurringSheet({
     document.addEventListener("touchmove", onTouchMove, { passive: false });
 
     return () => {
-      document.body.style.position = prev.position;
-      document.body.style.top = prev.top;
-      document.body.style.bottom = prev.bottom;
-      document.body.style.left = prev.left;
-      document.body.style.right = prev.right;
-      document.body.style.width = prev.width;
-      window.scrollTo(0, scrollY);
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
       document.removeEventListener("touchmove", onTouchMove);
     };
   }, [open]);
@@ -198,19 +181,25 @@ export default function AddRecurringSheet({
         onClick={onClose}
       />
 
-      {/* Sheet — single-div structure matching v1.5.5 (which worked in iOS
-          PWA standalone). The wrapper-pattern variants introduced in v1.7.x
-          interacted badly with iOS standalone's containing-block resolution
-          when the body is `position: fixed`-locked. paddingTop respects the
-          Dynamic Island so the close X is tappable. */}
+      {/* Sheet — anchored to TOP-0 with explicit height: 100lvh, instead of
+          BOTTOM-0 with h-dvh. iOS PWA standalone clips `position: fixed;
+          bottom: 0` above the home-indicator zone (the cream-strip bug).
+          By anchoring to top-0 and giving an explicit height, the sheet's
+          bottom edge is just `top + height` (= top + full-screen) — no
+          separate bottom anchor for iOS to clip. The slide-in/out uses
+          translate-y(0) ↔ translate-y(100%); translateY is relative to the
+          element's own height regardless of how it's positioned. */}
       <div
         ref={sheetRef}
         className={cn(
-          "fixed bottom-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 h-dvh flex flex-col rounded-t-3xl bg-[var(--surface)] [touch-action:pan-y]",
+          "fixed top-0 left-1/2 z-[70] w-full max-w-md -translate-x-1/2 flex flex-col rounded-t-3xl bg-[var(--surface)] [touch-action:pan-y]",
           "transition-transform duration-[420ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]",
           open ? "translate-y-0" : "translate-y-full"
         )}
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
+        style={{
+          height: "100lvh",
+          paddingTop: "env(safe-area-inset-top)",
+        }}
       >
         <div className="flex shrink-0 justify-center pt-3 pb-1">
           <div className="h-1 w-10 rounded-full bg-black/10" />

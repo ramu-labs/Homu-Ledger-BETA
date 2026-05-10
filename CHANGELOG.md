@@ -2,6 +2,20 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.11.0 - May 9, 2026
+
+Rebuilt the popup chrome from scratch (form contents, validation, photo upload, etc. unchanged). Two structural changes:
+
+**1. Sheet anchored to TOP, not BOTTOM:**
+- Was: `fixed bottom-0 ... h-dvh` — iOS PWA standalone clips `bottom: 0` above the home-indicator zone, which is the root of the cream-strip bug.
+- Now: `fixed top-0 ... style={{ height: "100lvh" }}` — sheet's bottom edge is just `top + height` (= top + full-screen). No separate bottom anchor for iOS to clip. The slide-in/out animation works identically because translateY is relative to the element's own height regardless of where it's anchored.
+
+**2. Body-scroll lock simplified:**
+- Was: `position: fixed` body lock with explicit bounds (multiple variations attempted in v1.7.x–v1.10.x, none reliably solved the cream strip).
+- Now: plain `overflow: hidden` on `<html>` and `<body>`. Less aggressive, doesn't trigger the iOS containing-block bug. The existing `touchmove` preventer handles iOS Safari's momentum-scroll bypass.
+
+UI, fields, footer, easing — all unchanged. Same `420ms cubic-bezier(0.32, 0.72, 0, 1)` slide.
+
 ## v1.10.2 - May 9, 2026
 
 User confirmed v1.10.1 broke things worse — `h-[100lvh] min-h-screen` extended the popup *above* the visible viewport, pushing the close X off-screen behind the status bar and pushing form content into the Dynamic Island area.

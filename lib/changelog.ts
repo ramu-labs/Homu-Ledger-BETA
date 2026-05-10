@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.11.0",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Rebuilt the Add Transaction and Add Recurring popup mechanics from scratch. Sheet is now anchored to `top: 0` with explicit `height: 100lvh` instead of `bottom: 0; h-dvh`, which sidesteps the iOS PWA standalone bug that was clipping the sheet above the home-indicator zone. Body-scroll lock simplified to `overflow: hidden` on html and body. Same UI, same slide-up animation, same form contents — just clean underlying mechanics", id: "Membangun ulang mekanisme popup Tambah Transaksi dan Tambah Pengulangan dari awal. Sheet kini diikat ke `top: 0` dengan `height: 100lvh` eksplisit, bukan `bottom: 0; h-dvh`, sehingga menghindari bug iOS PWA standalone yang memotong sheet di atas zona home indicator. Kunci body-scroll disederhanakan menjadi `overflow: hidden` pada html dan body. UI dan animasi sama, isi form sama — hanya mekanisme di baliknya yang dibersihkan" },
+    ],
+  },
+  {
     version: "1.10.2",
     date: "May 9, 2026",
     changes: [
