@@ -84,6 +84,40 @@ input[type="date"]::-webkit-clear-button {
   will-change: transform, opacity;
 }
 
+/* Bottom-anchored sheet entry: slide up from below the viewport. Used by
+   the Filter sheet and any conditionally-rendered bottom sheet that
+   should animate in on mount. */
+@keyframes sheet-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.animate-sheet-slide-up {
+  animation: sheet-slide-up 360ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  will-change: transform;
+}
+
+/* Companion overlay fade-in for the same sheet. */
+@keyframes overlay-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-overlay-fade-in {
+  animation: overlay-fade-in 280ms ease-out both;
+}
+
+/* Search bar reveal: slide-down + fade-in when the search field is opened
+   from the header. Combines transform and opacity so the bar feels like
+   it pushes content down rather than appearing instantly. */
+@keyframes search-reveal {
+  from { transform: translateY(-8px); opacity: 0; max-height: 0; }
+  to   { transform: translateY(0); opacity: 1; max-height: 5rem; }
+}
+.animate-search-reveal {
+  animation: search-reveal 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity, max-height;
+  overflow: hidden;
+}
+
 /* Filter chip pop: slight scale bounce on activation */
 @keyframes chip-pop {
   0%   { transform: scale(1); }

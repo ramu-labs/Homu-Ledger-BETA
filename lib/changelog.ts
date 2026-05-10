@@ -29,6 +29,15 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.13.3",
+    date: "May 10, 2026",
+    changes: [
+      { type: "fix", en: "Photo viewer's close X is no longer hidden behind the iPhone status bar — the header now respects the safe-area top inset", id: "Tombol X di photo viewer tidak lagi tertutup status bar iPhone — header kini menghormati safe area atas" },
+      { type: "improvement", en: "Filter sheet now slides up smoothly when opened (was appearing instantly)", id: "Sheet Filter kini meluncur naik dengan halus saat dibuka (sebelumnya muncul tiba-tiba)" },
+      { type: "improvement", en: "Search bar slides down and fades in when the search button is pressed (was appearing instantly)", id: "Bar pencarian meluncur turun dan memudar masuk saat tombol pencarian ditekan (sebelumnya muncul tiba-tiba)" },
+    ],
+  },
+  {
     version: "1.13.2",
     date: "May 10, 2026",
     changes: [

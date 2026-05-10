@@ -89,7 +89,10 @@ export default function PhotoViewer({ url, downloadName, onClose }: Props) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="flex shrink-0 items-center justify-between p-4">
+      <div
+        className="flex shrink-0 items-center justify-between p-4"
+        style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}
+      >
         <span className="text-[14px] font-medium text-white/80">
           {tr("tx.photo")}
         </span>

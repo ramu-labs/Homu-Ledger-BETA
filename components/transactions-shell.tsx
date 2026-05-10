@@ -378,7 +378,7 @@ export default function TransactionsShell({
 
           {/* Search bar */}
           {searchOpen && (
-            <div className="px-5 pt-3">
+            <div className="px-5 pt-3 animate-search-reveal">
               <div className="relative">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
                 <input
@@ -510,10 +510,10 @@ export default function TransactionsShell({
       {filterOpen && (
         <>
           <div
-            className="fixed inset-0 z-[55] bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[55] bg-black/30 backdrop-blur-[2px] animate-overlay-fade-in"
             onClick={() => setFilterOpen(false)}
           />
-          <div className="fixed bottom-0 left-1/2 z-[60] w-full max-w-md -translate-x-1/2 rounded-t-3xl bg-[var(--background)] shadow-2xl max-h-[75vh] flex flex-col">
+          <div className="fixed bottom-0 left-1/2 z-[60] w-full max-w-md -translate-x-1/2 rounded-t-3xl bg-[var(--background)] shadow-2xl max-h-[75vh] flex flex-col animate-sheet-slide-up">
             <FilterSheet
               categories={allCategories}
               wallets={allWallets}

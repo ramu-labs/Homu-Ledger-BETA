@@ -2,6 +2,14 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.13.3 - May 10, 2026
+
+- **Photo viewer**: header now uses `paddingTop: max(1rem, env(safe-area-inset-top))` so the close X clears the iPhone status bar / Dynamic Island.
+- **Filter sheet**: applied `animate-sheet-slide-up` (translateY 100% → 0, 360ms cubic-bezier(0.32, 0.72, 0, 1)) on the sheet container and `animate-overlay-fade-in` (opacity 0 → 1, 280ms) on the backdrop. Sheet now glides up from the bottom instead of appearing instantly.
+- **Search bar**: applied `animate-search-reveal` (translateY −8px + opacity 0 → 0, max-height 0 → 5rem, 240ms) when the search field opens from the header. Bar slides down and fades in.
+
+Three new keyframes added to `globals.css`: `sheet-slide-up`, `overlay-fade-in`, `search-reveal`.
+
 ## v1.13.2 - May 10, 2026
 
 Bottom-nav follow-up:
