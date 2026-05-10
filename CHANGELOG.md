@@ -2,6 +2,14 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.10.2 - May 9, 2026
+
+User confirmed v1.10.1 broke things worse — `h-[100lvh] min-h-screen` extended the popup *above* the visible viewport, pushing the close X off-screen behind the status bar and pushing form content into the Dynamic Island area.
+
+Reverted the popup wrapper height back to `h-dvh`, restoring the v1.8.3 / v1.10.0 baseline. Popup wrapper now matches what the user originally reported as working.
+
+The cream-strip mystery remains unresolved on v1.10.0/v1.10.2. Next step is for me to actually try to reproduce visually in a non-PWA context to understand what's happening — pure code analysis hasn't been enough.
+
 ## v1.10.1 - May 9, 2026
 
 User reported the cream strip was still present in v1.10.0 (= v1.8.3 baseline) even though that's the version they last reported as working. Tried one more variable: popup height.

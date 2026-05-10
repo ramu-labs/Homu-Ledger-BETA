@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.10.2",
+    date: "May 9, 2026",
+    changes: [
+      { type: "fix", en: "Reverted v1.10.1's popup height change. `h-[100lvh] min-h-screen` made the popup taller than the visible viewport, pushing the close button and form contents above the iPhone status bar where they couldn't be tapped. Popup is back to `h-dvh` (the v1.8.3 baseline)", id: "Mengembalikan perubahan tinggi popup di v1.10.1. `h-[100lvh] min-h-screen` membuat popup lebih tinggi dari viewport terlihat, sehingga tombol tutup dan isi form terdorong ke atas status bar iPhone dan tidak bisa diketuk. Popup kembali ke `h-dvh` (baseline v1.8.3)" },
+    ],
+  },
+  {
     version: "1.10.1",
     date: "May 9, 2026",
     changes: [
