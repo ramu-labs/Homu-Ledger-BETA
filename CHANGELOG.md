@@ -2,6 +2,13 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.13.2 - May 10, 2026
+
+Bottom-nav follow-up:
+- **Wider gaps**: `gap-3` → `gap-4` (16px between items, was 12px).
+- **Lower position**: `bottom: env(safe-area-inset-bottom)` (was `+ 4px`). Bar's bottom edge now sits exactly at the top of the home-indicator safe area.
+- **Tighter shadow**: replaced the diffuse `0 12px 36px rgba(...)/0.18` drop with a layered `0 6px 18px rgba(...)/0.12, 0 1px 4px rgba(...)/0.08`. The smaller secondary shadow gives a crisp lift while the larger primary shadow softens it, so the bar reads as a distinct floating layer against the cream page bg even though the surface colour is close to the page.
+
 ## v1.13.1 - May 10, 2026
 
 Bottom-nav follow-up tweaks:

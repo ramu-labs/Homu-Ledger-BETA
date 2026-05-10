@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.13.2",
+    date: "May 10, 2026",
+    changes: [
+      { type: "improvement", en: "Bottom navigation: a little wider (more space between buttons), sits even closer to the home indicator, and the shadow is now tighter so the bar reads as a distinct floating layer against the warm cream page background", id: "Navigasi bawah: sedikit lebih lebar (lebih banyak jarak antar tombol), posisinya lebih dekat ke home indicator, dan bayangannya kini lebih rapat sehingga bar terbaca sebagai lapisan mengambang yang jelas di atas latar krem halaman" },
+    ],
+  },
+  {
     version: "1.13.1",
     date: "May 10, 2026",
     changes: [

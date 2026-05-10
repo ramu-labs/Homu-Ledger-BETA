@@ -45,9 +45,13 @@ export default function BottomNav() {
     <nav
       aria-label="Primary"
       className="fixed left-1/2 z-50 -translate-x-1/2"
-      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4px)" }}
+      style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="flex items-center gap-3 rounded-full bg-[var(--surface)] p-2 shadow-[0_12px_36px_rgba(42,37,32,0.18)] ring-1 ring-black/[0.04]">
+      {/* Tighter shadow — close to the bar (small y-offset, moderate blur)
+          plus a tiny secondary shadow for crisp lift. Reads as depth against
+          the warm cream page bg even though the bar's surface colour is
+          close to the page. */}
+      <div className="flex items-center gap-4 rounded-full bg-[var(--surface)] p-2 shadow-[0_6px_18px_rgba(42,37,32,0.12),0_1px_4px_rgba(42,37,32,0.08)] ring-1 ring-black/[0.04]">
         <NavTab
           href="/transactions"
           label={t("nav.transactions")}
