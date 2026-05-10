@@ -2,6 +2,10 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.13.4 - May 10, 2026
+
+- **Search bar bottom outline fix**: dropped the `max-height` keyframe and the `overflow: hidden` from `.animate-search-reveal`. The `overflow: hidden` was clipping the input's `ring-1` outline (Tailwind rings are box-shadow-based and extend slightly outside the box). The animation is now pure `transform` (translateY −8px → 0) + `opacity` (0 → 1) over 240ms — same feel, no clipping.
+
 ## v1.13.3 - May 10, 2026
 
 - **Photo viewer**: header now uses `paddingTop: max(1rem, env(safe-area-inset-top))` so the close X clears the iPhone status bar / Dynamic Island.

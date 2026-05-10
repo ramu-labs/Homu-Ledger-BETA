@@ -106,16 +106,15 @@ input[type="date"]::-webkit-clear-button {
 }
 
 /* Search bar reveal: slide-down + fade-in when the search field is opened
-   from the header. Combines transform and opacity so the bar feels like
-   it pushes content down rather than appearing instantly. */
+   from the header. Pure transform + opacity, no overflow:hidden — that
+   was clipping the input's bottom ring outline. */
 @keyframes search-reveal {
-  from { transform: translateY(-8px); opacity: 0; max-height: 0; }
-  to   { transform: translateY(0); opacity: 1; max-height: 5rem; }
+  from { transform: translateY(-8px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
 }
 .animate-search-reveal {
   animation: search-reveal 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  will-change: transform, opacity, max-height;
-  overflow: hidden;
+  will-change: transform, opacity;
 }
 
 /* Filter chip pop: slight scale bounce on activation */

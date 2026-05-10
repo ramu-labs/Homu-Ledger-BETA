@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.13.4",
+    date: "May 10, 2026",
+    changes: [
+      { type: "fix", en: "Search bar's bottom outline ring is no longer clipped during the slide-down animation. Removed the `overflow: hidden` from the reveal animation that was cropping it", id: "Garis luar bawah pada bar pencarian tidak lagi terpotong saat animasi muncul. `overflow: hidden` pada animasi yang menyebabkan pemotongan sudah dihilangkan" },
+    ],
+  },
+  {
     version: "1.13.3",
     date: "May 10, 2026",
     changes: [
