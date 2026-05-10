@@ -2,6 +2,18 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.13.0 - May 10, 2026
+
+**Bottom navigation refinements** (per user feedback on v1.12.0):
+
+- **Bigger** — each tab is `h-14 w-20` (was `h-12`); centre + is `h-14 w-14` (was `h-12 w-12`).
+- **Lower** — sits `bottom: calc(env(safe-area-inset-bottom) + 8px)` (was `+ 16px`).
+- **Labels always visible** — each side tab is now a vertical stack: icon on top, label (Transactions / Reports) below in `text-[10px] font-semibold`. No more max-width animation on the label.
+- **Centre + button stays put** — side tabs are now fixed-size `h-14 w-20` rectangles regardless of active state (only colour and background pill change between states), so layout never reflows around the centre button. Active state shows a `var(--foreground)/6` background pill behind the side tab.
+- **Side tab press animations removed** — only the centre + button retains its tactile `scale-90 + softer shadow` press effect; side tabs intentionally have no scale animation so they don't visually shift the centre button on touch.
+
+**Restored iOS rubber-band scroll** — removed `overscroll-behavior: none` from `html, body` in `globals.css`. The Transactions and Reports pages (which scroll the document body) now bounce naturally at the top and bottom edges, matching iOS native feel. Popup scroll-bleed prevention still works because the popup applies `overflow: hidden` directly on body during open + uses a touchmove guard.
+
 ## v1.12.0 - May 9, 2026
 
 Rebuilt the bottom navigation as a floating capsule. The bar is now a single rounded-full pill containing the two side tabs (Transactions, Reports) and the centred + button. It sits `bottom: calc(env(safe-area-inset-bottom) + 16px)` so it always floats clear of the iPhone home indicator and doesn't touch the screen edges.

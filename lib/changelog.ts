@@ -29,6 +29,14 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.13.0",
+    date: "May 10, 2026",
+    changes: [
+      { type: "improvement", en: "Bottom navigation refined: bigger tabs, sits closer to the bottom (8px above the home indicator instead of 16px), and labels (Transactions, Reports) are now always visible below their icons. The active tab still gets a soft pill highlight, but tabs no longer change size — so the centre + button never gets nudged out of its position", id: "Navigasi bawah disempurnakan: tab lebih besar, posisi lebih rendah (8px di atas home indicator, dari sebelumnya 16px), dan label (Transaksi, Laporan) kini selalu tampil di bawah ikonnya. Tab aktif tetap mendapat sorotan pill lembut, tapi tab tidak lagi berubah ukuran — jadi tombol + di tengah tidak akan tergeser dari posisinya" },
+      { type: "improvement", en: "Restored iOS-native rubber-band scroll on the Transactions and Reports pages. Reaching the top or bottom of the list now bounces gently instead of stopping abruptly", id: "Mengembalikan rubber-band scroll khas iOS di halaman Transaksi dan Laporan. Saat mencapai bagian atas atau bawah, daftar kini memantul lembut, bukan berhenti tiba-tiba" },
+    ],
+  },
+  {
     version: "1.12.0",
     date: "May 9, 2026",
     changes: [
