@@ -6,7 +6,7 @@ import { addCategory } from "@/app/actions/categories";
 import { cn } from "@/lib/cn";
 import { CATEGORY_LUCIDE_ICONS, makeLucideSymbol } from "@/lib/category-icons";
 import { CategoryIcon } from "@/components/category-icon";
-import type { DbCategory } from "@/lib/types";
+import type { DbCategory, TransactionType } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 
 const SOFT_PALETTE = [
@@ -24,6 +24,10 @@ const SYMBOLS = [
 
 type Props = {
   open: boolean;
+  /** Which kind of category we're adding. Determines which list (Expense /
+   *  Income) it appears in after creation. Defaults to "expense" for
+   *  backwards compatibility with callers that don't pass it. */
+  type?: TransactionType;
   onClose: () => void;
   onAdded: (cat: DbCategory) => void;
   iconStyle?: IconStyle;
@@ -31,7 +35,7 @@ type Props = {
 
 type IconMode = "emoji" | "symbol";
 
-export default function AddCategorySheet({ open, onClose, onAdded, iconStyle = "3d" }: Props) {
+export default function AddCategorySheet({ open, type = "expense", onClose, onAdded, iconStyle = "3d" }: Props) {
   const [name, setName] = useState("");
   const [iconMode, setIconMode] = useState<IconMode>("symbol");
   const [emoji, setEmoji] = useState("");
@@ -61,6 +65,7 @@ export default function AddCategorySheet({ open, onClose, onAdded, iconStyle = "
     fd.set("name", name);
     fd.set("symbol", currentSymbol);
     fd.set("color", selectedColor);
+    fd.set("type", type);
     const result = await addCategory(fd);
     if (result.error) {
       setError(result.error);
@@ -92,7 +97,9 @@ export default function AddCategorySheet({ open, onClose, onAdded, iconStyle = "
         </div>
 
         <div className="flex shrink-0 items-center justify-between px-5 pb-3">
-          <h2 className="text-[17px] font-semibold text-[var(--foreground)]">New Category</h2>
+          <h2 className="text-[17px] font-semibold text-[var(--foreground)]">
+            New {type === "income" ? "Income" : "Expense"} Category
+          </h2>
           <button onClick={handleClose}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.05] text-[var(--label-secondary)]"
           >

@@ -2,6 +2,29 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.14.0 - May 10, 2026
+
+### Categories
+
+- **Delete category now actually persists.** The old RLS policy `"categories: members can delete non-default"` silently filtered out the seeded `is_default=true` rows, so deleting them appeared to succeed (no DB error) but the row stayed in the table. Migration `0018` replaces it with `"categories: members can delete"` — household members can delete any category in their household, defaults included.
+- **Two-tap delete confirmation** in the Edit Category sheet: the first tap turns the button red and shows "Tap again to confirm" with a 3-second auto-disarm; the second tap performs the delete.
+- **Transactions and recurring items reassign to "Uncategorized"** when their category is deleted. The FK already has `on delete set null`, so the DB does it automatically. The transaction/recurring list and reports now display `null` category as **Uncategorized** (was previously labeled "Other").
+- **Expense / Income split**. Categories now have a `type` enum column. Existing rows default to `expense`; the previously-misplaced `Salary` default is reclassified to `income`. Three new income defaults are seeded for every existing household: **Salary**, **Bonus**, **Reimburse**. The seed trigger for newly-created households also seeds these. Settings → Categories has Expense / Income tabs, the picker in Add Transaction / Add Recurring filters by the current type, and switching type clears a now-invalid selection.
+
+### Settings UX
+
+- **Sticky headers** on every Settings page (`sticky top-0 z-20 bg-[var(--background)]/95 backdrop-blur`). Back button is always reachable.
+- **Owner-only ledger delete.** `/settings/name` now reads `?owner=1` from the URL (set by `/settings` only when the current user is the household owner) and hides the delete button for non-owners. The server-side check in `deleteCurrentHousehold` was already in place; this just cleans up the UI.
+
+### Reports
+
+- **Daily-trend chart tap highlight removed.** Added `[-webkit-tap-highlight-color:transparent]`, `select-none`, and `[&_*]:outline-none` to the chart container so tapping a bar no longer draws the iOS blue rectangle.
+- **Full-day tooltip format.** New helper `formatDayWithWeekday(YYYY-MM-DD) → "Mon, 11 May 2026"` and a Recharts `labelFormatter` that reads each bar's stored `dateKey` to produce that label.
+
+### ⚠️ Database migration required
+
+`supabase/migrations/0018_categories_type_and_delete_policy.sql` must be applied before v1.14.0 is functional. Apply via the Supabase dashboard → SQL editor, or `supabase db push` if using the CLI. Without it, every category-typed query will fail at runtime.
+
 ## v1.13.4 - May 10, 2026
 
 - **Search bar bottom outline fix**: dropped the `max-height` keyframe and the `overflow: hidden` from `.animate-search-reveal`. The `overflow: hidden` was clipping the input's `ring-1` outline (Tailwind rings are box-shadow-based and extend slightly outside the box). The animation is now pure `transform` (translateY −8px → 0) + `opacity` (0 → 1) over 240ms — same feel, no clipping.

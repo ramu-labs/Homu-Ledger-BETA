@@ -406,7 +406,17 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => {
+                    // Clear the selected category if it doesn't belong to
+                    // the new type — otherwise the picker chip below would
+                    // show e.g. "Salary" while the user is on Expense.
+                    if (t !== type) {
+                      const sel = allCategories.find((c) => c.id === categoryId);
+                      const newKind = t === "income" ? "income" : "expense";
+                      if (sel && sel.type !== newKind) setCategoryId(null);
+                    }
+                    setType(t);
+                  }}
                   className={cn(
                     "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
                     type === t && t === "expense"
@@ -778,11 +788,13 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
         </form>
       </div>
 
-      {/* Category picker */}
+      {/* Category picker — filtered to the current transaction's type
+          (transfers don't have a category, so we don't reach this branch). */}
       {showCategoryPicker && (
         <CategoryPicker
           categories={allCategories}
           selected={categoryId}
+          type={type === "income" ? "income" : "expense"}
           onSelect={setCategoryId}
           onClose={() => setShowCategoryPicker(false)}
           onCategoryAdded={(cat) => setExtraCategories((prev) => [...prev, cat])}

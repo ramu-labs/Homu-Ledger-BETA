@@ -59,7 +59,7 @@ export default async function MembersPage() {
 
   return (
     <div className="pb-10">
-      <header className="flex items-center justify-between px-5 pt-4 pb-2">
+      <header className="sticky top-0 z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-2 backdrop-blur">
         <Link
           href="/settings"
           aria-label="Back"

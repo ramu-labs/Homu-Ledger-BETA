@@ -29,6 +29,18 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.14.0",
+    date: "May 10, 2026",
+    changes: [
+      { type: "fix", en: "Delete category actually works now — the old RLS policy was silently blocking deletion of the seeded default categories, which made them reappear after leaving the page", id: "Hapus kategori kini benar-benar bekerja — kebijakan RLS lama diam-diam memblokir penghapusan kategori bawaan, sehingga kategori muncul kembali setelah meninggalkan halaman" },
+      { type: "improvement", en: "Categories settings split into Expense and Income tabs, with three new income defaults (Salary, Bonus, Reimburse) seeded for every household. The category picker in Add Transaction / Add Recurring automatically filters by the type you're entering, and switching type clears a now-invalid category selection", id: "Pengaturan Kategori dipecah menjadi tab Pengeluaran dan Pemasukan, dengan tiga kategori pemasukan baru (Gaji, Bonus, Reimburse) disiapkan otomatis untuk setiap buku. Pemilih kategori di Tambah Transaksi / Tambah Pengulangan kini otomatis menyaring sesuai tipe yang dipilih, dan beralih tipe akan membersihkan pilihan kategori yang tidak relevan" },
+      { type: "improvement", en: "Deleting a category now asks for a two-tap confirm (the second tap shows a red button). Transactions and recurring items previously assigned to a deleted category move to Uncategorized automatically", id: "Menghapus kategori kini meminta konfirmasi dua-ketuk (ketukan kedua tombol berubah merah). Transaksi dan item berulang yang sebelumnya dikaitkan dengan kategori yang dihapus akan otomatis pindah ke Uncategorized" },
+      { type: "improvement", en: "Headers on all Settings pages now stick to the top when scrolling — the back button is always reachable without scrolling up", id: "Header di seluruh halaman Pengaturan kini menempel di atas saat di-scroll — tombol kembali selalu terjangkau tanpa perlu scroll ke atas" },
+      { type: "improvement", en: "Only the ledger owner sees the delete-ledger button now (the server-side check was already in place; this gates the UI too)", id: "Hanya pemilik buku yang melihat tombol hapus buku (cek di server sudah ada sebelumnya; sekarang UI juga ikut menyembunyikan)" },
+      { type: "fix", en: "Daily-trend chart: tapping a bar no longer shows the iOS blue tap-highlight square, and the tooltip now shows the full day format (e.g. Mon, 11 May 2026)", id: "Grafik tren harian: mengetuk batang tidak lagi memunculkan kotak biru iOS, dan tooltip kini menampilkan format hari penuh (mis. Sen, 11 Mei 2026)" },
+    ],
+  },
+  {
     version: "1.13.4",
     date: "May 10, 2026",
     changes: [

@@ -1,5 +1,5 @@
 // Bump this version whenever you want to force-evict old caches.
-const CACHE_NAME = "homu-v32";
+const CACHE_NAME = "homu-v33";
 
 // Install: nothing to pre-cache. Pages require auth, so pre-fetching them
 // would cache the login redirect as the page response (wrong). Static assets

@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import { cn } from "@/lib/cn";
 import { TapButton } from "@/components/tap";
-import { formatAmount } from "@/lib/format";
+import { formatAmount, formatDayWithWeekday } from "@/lib/format";
 import { CategoryIcon } from "@/components/category-icon";
 import type { DbTransaction, DbCategory, DbMember, DbWallet } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
@@ -175,14 +175,18 @@ export default function ReportsShell({ transactions, categories, wallets, member
 
   // --- Trend bar chart data (daily) ---
   const trendData = useMemo(() => {
-    const days: { label: string; amount: number }[] = [];
+    // `label` is the short tick text under each bar (just the day-of-month
+    // number). `dateKey` is the full YYYY-MM-DD that the tooltip formats
+    // into "Mon, 11 May 2026". Keep both so the X axis stays compact.
+    const days: { label: string; dateKey: string; amount: number }[] = [];
     const cur = new Date(start);
     while (cur <= end) {
       const y = cur.getFullYear(), m = cur.getMonth() + 1, d = cur.getDate();
+      const dateKey = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       const amount = activeTx
         .filter((t) => { const [ty,tm,td] = t.date.split("-").map(Number); return ty===y && tm===m && td===d; })
         .reduce((s, t) => s + t.amount, 0);
-      days.push({ label: String(d), amount });
+      days.push({ label: String(d), dateKey, amount });
       cur.setDate(cur.getDate() + 1);
     }
     return days;
@@ -424,8 +428,13 @@ export default function ReportsShell({ transactions, categories, wallets, member
         </div>
       </div>
 
-      {/* Daily bar chart */}
-      <div className="mx-5 mt-4 rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] px-2 pt-4 pb-2">
+      {/* Daily bar chart.
+          The container disables the iOS tap-highlight rectangle that
+          Safari draws around tapped SVG elements, and `select-none` blocks
+          the long-press text-selection box on the axis tick labels. */}
+      <div
+        className="mx-5 mt-4 rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] px-2 pt-4 pb-2 select-none [-webkit-tap-highlight-color:transparent] [&_*]:outline-none"
+      >
         <p className="px-2 mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
           Daily trend
         </p>
@@ -441,6 +450,10 @@ export default function ReportsShell({ transactions, categories, wallets, member
             <Tooltip
               cursor={{ fill: "rgba(0,0,0,0.04)", radius: 4 }}
               contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.12)", fontSize: 13 }}
+              labelFormatter={(_label, payload) => {
+                const p = Array.isArray(payload) ? payload[0]?.payload : null;
+                return p?.dateKey ? formatDayWithWeekday(p.dateKey) : "";
+              }}
               formatter={(v) => [formatAmount((v as number) ?? 0, currency), txType === "expenses" ? "Expenses" : "Income"]}
             />
             <Bar dataKey="amount" fill={barColor} radius={[4, 4, 0, 0]} />

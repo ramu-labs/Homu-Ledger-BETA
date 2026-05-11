@@ -76,7 +76,7 @@ export default async function ReportsPage() {
       .eq("household_id", household.id),
     supabase
       .from("categories")
-      .select("id, name, symbol, color")
+      .select("id, name, symbol, color, type")
       .eq("household_id", household.id)
       .order("created_at", { ascending: true }),
     supabase

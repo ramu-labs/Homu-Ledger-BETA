@@ -60,7 +60,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="pb-10">
-      <header className="flex items-center justify-between px-5 pt-4 pb-2">
+      <header className="sticky top-0 z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-2 backdrop-blur">
         <TapLink
           href="/transactions"
           aria-label="Back"
@@ -105,9 +105,13 @@ export default async function SettingsPage() {
             {t("settings.household")}
           </p>
           <div className="mx-5 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04]">
-            {/* Ledger name — tappable to rename */}
+            {/* Ledger name — tappable to rename. We pass an `owner=1` flag
+                only when the current user is the household owner; the
+                /settings/name page reads it to gate the delete-ledger
+                button. The server action enforces the same check, so the
+                flag is just for UI cleanliness. */}
             <TapLink
-              href={`/settings/name?current=${encodeURIComponent(household.name)}`}
+              href={`/settings/name?current=${encodeURIComponent(household.name)}${household.owner_id === user.id ? "&owner=1" : ""}`}
               className="flex items-center justify-between px-4 pt-3.5 pb-2 active:bg-black/[0.02] transition-colors [touch-action:manipulation]"
             >
               <p className="truncate text-[15px] font-semibold text-[var(--foreground)]">{household.name}</p>
@@ -209,7 +213,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.13.4</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.14.0</p>
     </div>
   );
 }

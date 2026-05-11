@@ -17,6 +17,10 @@ function LedgerNamePageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const initial = params.get("current") ?? "";
+  // /settings adds `&owner=1` only when the current user is the household
+  // owner. The server action enforces the same check; this flag just
+  // controls whether the delete button is visible in the UI.
+  const isOwner = params.get("owner") === "1";
   const [, startTransition] = useTransition();
   const [name, setName] = useState(initial);
   const [saving, setSaving] = useState(false);
@@ -59,7 +63,7 @@ function LedgerNamePageInner() {
 
   return (
     <div className="pb-10">
-      <header className="flex items-center justify-between px-5 pt-4 pb-4">
+      <header className="sticky top-0 z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-4 backdrop-blur">
         <button
           onClick={() => router.back()}
           aria-label="Back"
@@ -70,16 +74,20 @@ function LedgerNamePageInner() {
         <h1 className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">
           Ledger name
         </h1>
-        <button
-          onClick={() => {
-            setDeleteError(null);
-            setConfirmOpen(true);
-          }}
-          aria-label="Delete ledger"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface)] text-rose-600 ring-1 ring-black/[0.05] shadow-[0_1px_2px_rgba(0,0,0,0.03)] active:scale-95 transition-transform"
-        >
-          <Trash2 className="h-[18px] w-[18px]" strokeWidth={2.25} />
-        </button>
+        {isOwner ? (
+          <button
+            onClick={() => {
+              setDeleteError(null);
+              setConfirmOpen(true);
+            }}
+            aria-label="Delete ledger"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface)] text-rose-600 ring-1 ring-black/[0.05] shadow-[0_1px_2px_rgba(0,0,0,0.03)] active:scale-95 transition-transform"
+          >
+            <Trash2 className="h-[18px] w-[18px]" strokeWidth={2.25} />
+          </button>
+        ) : (
+          <div className="h-9 w-9" />
+        )}
       </header>
 
       <p className="px-6 pb-4 text-[13px] text-[var(--label-secondary)]">

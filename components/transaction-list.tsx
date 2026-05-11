@@ -16,7 +16,7 @@ type Props = {
   onTap?: (tx: DbTransaction) => void;
 };
 
-const FALLBACK_CAT = { name: "Other", symbol: "📋", color: "#6b7280" };
+const FALLBACK_CAT = { name: "Uncategorized", symbol: "📋", color: "#6b7280" };
 
 export default function TransactionList({ transactions, members, currency = "IDR", iconStyle = "3d", onTap }: Props) {
   const tr = useT();

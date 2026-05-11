@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import EditCategorySheet from "@/components/edit-category-sheet";
 import AddCategorySheet from "@/components/add-category-sheet";
 import { CategoryIcon } from "@/components/category-icon";
-import type { DbCategory } from "@/lib/types";
+import { cn } from "@/lib/cn";
+import type { DbCategory, TransactionType } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 
 type Props = {
@@ -20,6 +21,7 @@ export default function CategoriesShell({ categories: initial, iconStyle = "3d" 
   const [editing, setEditing] = useState<DbCategory | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TransactionType>("expense");
 
   function openEdit(cat: DbCategory) {
     setEditing(cat);
@@ -38,10 +40,15 @@ export default function CategoriesShell({ categories: initial, iconStyle = "3d" 
     setCategories((prev) => [cat, ...prev]);
   }
 
+  const visible = useMemo(
+    () => categories.filter((c) => c.type === activeTab),
+    [categories, activeTab]
+  );
+
   return (
     <>
       <div className="pb-10">
-        <header className="flex items-center justify-between px-5 pt-4 pb-2">
+        <header className="sticky top-0 z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-2 backdrop-blur">
           <button
             onClick={() => router.back()}
             aria-label="Back"
@@ -59,12 +66,30 @@ export default function CategoriesShell({ categories: initial, iconStyle = "3d" 
           </button>
         </header>
 
-        <section className="mt-5">
-          <ul className="mx-5 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] divide-y divide-[var(--separator)]">
-            {categories.map((cat) => (
-              <CategoryRow key={cat.id} cat={cat} iconStyle={iconStyle} onTap={openEdit} />
-            ))}
-          </ul>
+        {/* Tabs */}
+        <div className="px-5 mt-4">
+          <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
+            <TabBtn active={activeTab === "expense"} onClick={() => setActiveTab("expense")}>
+              Expense
+            </TabBtn>
+            <TabBtn active={activeTab === "income"} onClick={() => setActiveTab("income")}>
+              Income
+            </TabBtn>
+          </div>
+        </div>
+
+        <section className="mt-4">
+          {visible.length === 0 ? (
+            <p className="mx-5 rounded-2xl bg-[var(--surface)] p-6 text-center text-[13px] text-[var(--label-secondary)] ring-1 ring-black/[0.04]">
+              No {activeTab} categories yet. Tap + to add one.
+            </p>
+          ) : (
+            <ul className="mx-5 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] divide-y divide-[var(--separator)]">
+              {visible.map((cat) => (
+                <CategoryRow key={cat.id} cat={cat} iconStyle={iconStyle} onTap={openEdit} />
+              ))}
+            </ul>
+          )}
         </section>
       </div>
 
@@ -79,6 +104,7 @@ export default function CategoriesShell({ categories: initial, iconStyle = "3d" 
 
       <AddCategorySheet
         open={addOpen}
+        type={activeTab}
         onClose={() => setAddOpen(false)}
         onAdded={handleAdded}
         iconStyle={iconStyle}
@@ -87,7 +113,40 @@ export default function CategoriesShell({ categories: initial, iconStyle = "3d" 
   );
 }
 
-function CategoryRow({ cat, iconStyle = "3d", onTap }: { cat: DbCategory; iconStyle?: IconStyle; onTap: (c: DbCategory) => void }) {
+function TabBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
+        active
+          ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
+          : "text-[var(--label-secondary)]"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function CategoryRow({
+  cat,
+  iconStyle = "3d",
+  onTap,
+}: {
+  cat: DbCategory;
+  iconStyle?: IconStyle;
+  onTap: (c: DbCategory) => void;
+}) {
   return (
     <li>
       <button

@@ -226,7 +226,13 @@ export default function AddRecurringSheet({
                 <button
                   key={opt}
                   type="button"
-                  onClick={() => setType(opt)}
+                  onClick={() => {
+                    if (opt !== type) {
+                      const sel = categories.find((c) => c.id === categoryId);
+                      if (sel && sel.type !== opt) setCategoryId(null);
+                    }
+                    setType(opt);
+                  }}
                   className={cn(
                     "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
                     type === opt && opt === "expense"
@@ -451,6 +457,7 @@ export default function AddRecurringSheet({
         <CategoryPicker
           categories={categories}
           selected={categoryId}
+          type={type}
           onSelect={setCategoryId}
           onClose={() => setShowCategoryPicker(false)}
           onCategoryAdded={onCategoryAdded}

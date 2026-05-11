@@ -48,6 +48,7 @@ export default function EditCategorySheet({
   const [selectedColor, setSelectedColor] = useState(SOFT_PALETTE[0]);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function EditCategorySheet({
     setError(null);
     setLoading(false);
     setDeleting(false);
+    setConfirmDelete(false);
     // Detect symbol type:
     //   - "lu:foo" (Lucide id)  -> symbol mode (Icons grid in 2D)
     //   - emoji in our grid     -> symbol mode (emoji grid in 3D)
@@ -95,11 +97,20 @@ export default function EditCategorySheet({
 
   async function handleDelete() {
     if (!category) return;
+    // First tap arms the confirm state; second tap (within 3s) actually
+    // performs the delete. The 3s auto-disarm keeps the UI from staying
+    // in a primed state if the user navigates away mid-flow.
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      setTimeout(() => setConfirmDelete(false), 3000);
+      return;
+    }
     setDeleting(true);
     const result = await deleteCategory(category.id);
     if (result.error) {
       setError(result.error);
       setDeleting(false);
+      setConfirmDelete(false);
     } else {
       onDeleted(category.id);
       onClose();
@@ -297,10 +308,19 @@ export default function EditCategorySheet({
               type="button"
               onClick={handleDelete}
               disabled={loading || deleting}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-medium text-rose-600 disabled:opacity-60"
+              className={cn(
+                "flex h-11 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-medium disabled:opacity-60 transition-colors",
+                confirmDelete
+                  ? "bg-rose-600 text-white"
+                  : "text-rose-600"
+              )}
             >
               <Trash2 className="h-4 w-4" strokeWidth={2} />
-              {deleting ? "Deleting…" : "Delete Category"}
+              {deleting
+                ? "Deleting…"
+                : confirmDelete
+                ? "Tap again to confirm"
+                : "Delete Category"}
             </button>
           </div>
         </form>

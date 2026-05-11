@@ -30,6 +30,7 @@ export type DbCategory = {
   name: string;
   symbol: string;
   color: string;
+  type: TransactionType;
   is_default?: boolean;
 };
 

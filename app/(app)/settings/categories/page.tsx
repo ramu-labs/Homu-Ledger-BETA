@@ -18,7 +18,7 @@ export default async function CategoriesPage() {
 
   const { data: categoriesRaw } = await supabase
     .from("categories")
-    .select("id, name, symbol, color, is_default")
+    .select("id, name, symbol, color, type, is_default")
     .eq("household_id", profile.household_id)
     .order("is_default", { ascending: false })
     .order("name", { ascending: true });

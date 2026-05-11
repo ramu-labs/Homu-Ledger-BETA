@@ -53,7 +53,7 @@ async function fetchLedgerTransactions(
 ): Promise<TransactionRowWithRelations[]> {
   const { data, error } = await supabase
     .from("transactions")
-    .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color), wallets(id, name, symbol, color, initial_balance, is_default)")
+    .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color, type), wallets(id, name, symbol, color, initial_balance, is_default)")
     .eq("household_id", householdId)
     .order("date", { ascending: false })
     .order("created_at", { ascending: false })
@@ -100,7 +100,7 @@ export default async function TransactionsPage() {
   const [{ data: categoriesRaw }, { data: walletsRaw }, { data: membersRaw }, txRaw, { data: membershipsRaw }, { data: recurringRaw }, { data: invitationsRaw }, totals] = await Promise.all([
     supabase
       .from("categories")
-      .select("id, name, symbol, color")
+      .select("id, name, symbol, color, type")
       .eq("household_id", household.id)
       .order("created_at", { ascending: true }),
     supabase
@@ -120,7 +120,7 @@ export default async function TransactionsPage() {
       .eq("profile_id", profile.id),
     supabase
       .from("recurring_items")
-      .select("id, type, amount, name, category_id, wallet_id, frequency, next_due_date, repeat_until, created_by, created_at, categories(id, name, symbol, color), wallets(id, name, symbol, color, initial_balance, is_default)")
+      .select("id, type, amount, name, category_id, wallet_id, frequency, next_due_date, repeat_until, created_by, created_at, categories(id, name, symbol, color, type), wallets(id, name, symbol, color, initial_balance, is_default)")
       .eq("household_id", household.id)
       .order("created_at", { ascending: false }),
     supabase

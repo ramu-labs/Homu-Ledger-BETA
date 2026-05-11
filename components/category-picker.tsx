@@ -5,12 +5,17 @@ import { X, Plus, Check } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
 import AddCategorySheet from "@/components/add-category-sheet";
 import { cn } from "@/lib/cn";
-import type { DbCategory } from "@/lib/types";
+import type { DbCategory, TransactionType } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 
 type Props = {
   categories: DbCategory[];
   selected: string | null;
+  /** Limits the picker to categories of this type. Caller passes the
+   *  transaction's current type so we don't show e.g. "Salary" when the
+   *  user is adding an expense. Newly created categories inherit the
+   *  same type. */
+  type: TransactionType;
   onSelect: (id: string | null) => void;
   onClose: () => void;
   onCategoryAdded: (cat: DbCategory) => void;
@@ -20,6 +25,7 @@ type Props = {
 export default function CategoryPicker({
   categories,
   selected,
+  type,
   onSelect,
   onClose,
   onCategoryAdded,
@@ -27,6 +33,7 @@ export default function CategoryPicker({
 }: Props) {
   const [showAdd, setShowAdd] = useState(false);
   const [localCategories, setLocalCategories] = useState<DbCategory[]>(categories);
+  const visibleCategories = localCategories.filter((c) => c.type === type);
   // Slide-up animation: start translated down, animate to 0 on mount
   const [visible, setVisible] = useState(false);
 
@@ -72,13 +79,13 @@ export default function CategoryPicker({
 
         {/* Scrollable grid — min-h-0 is required for flex-1 to scroll correctly */}
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2">
-          {localCategories.length === 0 ? (
+          {visibleCategories.length === 0 ? (
             <div className="flex h-24 items-center justify-center">
-              <p className="text-[14px] text-[var(--label-secondary)]">No categories yet. Add one below.</p>
+              <p className="text-[14px] text-[var(--label-secondary)]">No {type} categories yet. Add one below.</p>
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-2">
-              {localCategories.map((cat) => {
+              {visibleCategories.map((cat) => {
                 const isSelected = selected === cat.id;
                 return (
                   <button
@@ -134,6 +141,7 @@ export default function CategoryPicker({
       {/* Add Category sheet — z-[100/110] sits above the picker */}
       <AddCategorySheet
         open={showAdd}
+        type={type}
         onClose={() => setShowAdd(false)}
         onAdded={handleAdded}
         iconStyle={iconStyle}

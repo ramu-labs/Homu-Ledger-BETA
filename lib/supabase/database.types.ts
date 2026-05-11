@@ -34,6 +34,7 @@ export type Database = {
           is_default: boolean
           name: string
           symbol: string
+          type: "income" | "expense"
         }
         Insert: {
           color: string
@@ -43,6 +44,7 @@ export type Database = {
           is_default?: boolean
           name: string
           symbol: string
+          type?: "income" | "expense"
         }
         Update: {
           color?: string
@@ -52,6 +54,7 @@ export type Database = {
           is_default?: boolean
           name?: string
           symbol?: string
+          type?: "income" | "expense"
         }
         Relationships: [
           {

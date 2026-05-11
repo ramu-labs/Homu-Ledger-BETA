@@ -8,7 +8,7 @@ import type { TKey } from "@/lib/i18n/dictionaries";
 import type { DbRecurringItem } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 
-const FALLBACK_CAT = { name: "Other", symbol: "📋", color: "#6b7280" };
+const FALLBACK_CAT = { name: "Uncategorized", symbol: "📋", color: "#6b7280" };
 
 const DAYS_EN = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const DAYS_ID = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];

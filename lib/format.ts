@@ -32,6 +32,26 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
+const MONTHS_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+const DAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/**
+ * Format "YYYY-MM-DD" as "Mon, 11 May 2026". Used by the daily-trend
+ * chart tooltip. Computes the weekday in local time using the parsed
+ * components (Date.parse on a bare YYYY-MM-DD interprets it as UTC,
+ * which can yield the wrong weekday in negative-UTC-offset timezones).
+ */
+export function formatDayWithWeekday(date: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  if (!y || !m || !d) return date;
+  const local = new Date(y, m - 1, d);
+  return `${DAYS_SHORT[local.getDay()]}, ${d} ${MONTHS_SHORT[m - 1]} ${y}`;
+}
+
 /**
  * Format a YYYY-MM-DD date as a short label.
  * Pass `todayKey` (also "YYYY-MM-DD") so the "Today" decision is deterministic

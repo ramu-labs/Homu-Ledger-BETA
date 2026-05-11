@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { DbRecurringItem } from "@/lib/types";
 
 const SELECT_FIELDS =
-  "id, type, amount, name, category_id, wallet_id, frequency, next_due_date, repeat_until, created_by, created_at, categories(id, name, symbol, color), wallets(id, name, symbol, color, initial_balance, is_default)";
+  "id, type, amount, name, category_id, wallet_id, frequency, next_due_date, repeat_until, created_by, created_at, categories(id, name, symbol, color, type), wallets(id, name, symbol, color, initial_balance, is_default)";
 
 function parseItem(data: any): DbRecurringItem {
   return {
