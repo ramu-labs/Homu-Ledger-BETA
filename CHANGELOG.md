@@ -2,6 +2,12 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.16.1 - May 12, 2026
+
+### Reports
+
+- **Category drilldown.** Tap any category row (or the Uncategorized row) in the Reports breakdown to open a bottom sheet listing every transaction that contributed to that category's total for the currently-selected period. The sheet's date range follows the report's period filter — change the period and tap a category again to see a different slice. Each row shows the transaction name, date (with weekday), wallet, and signed amount.
+
 ## v1.16.0 - May 12, 2026
 
 ### Dark mode

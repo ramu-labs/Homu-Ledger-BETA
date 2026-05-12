@@ -99,6 +99,9 @@ export default function ReportsShell({ transactions, categories, wallets, member
   // when nothing is selected). Tapping a segment opens a small popup above
   // it; tapping the same one again or outside the bar closes it.
   const [selectedSegment, setSelectedSegment] = useState<SelectedSegment | null>(null);
+  // Category drilldown: when a category row is tapped, this holds its id
+  // (or "__uncategorized__" for the catch-all bucket). null = sheet closed.
+  const [drilldownCategoryId, setDrilldownCategoryId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const walletDropdownRef = useRef<HTMLDivElement>(null);
   const stackedBarRef = useRef<HTMLDivElement>(null);
@@ -569,6 +572,7 @@ export default function ReportsShell({ transactions, categories, wallets, member
               grandTotal={grandTotal}
               currency={currency}
               iconStyle={iconStyle}
+              onCategoryTap={(id) => setDrilldownCategoryId(id)}
             />
           ) : (
             <MemberBreakdown
@@ -581,6 +585,29 @@ export default function ReportsShell({ transactions, categories, wallets, member
         </>
       )}
     </div>
+    {drilldownCategoryId !== null && (() => {
+      const cat = drilldownCategoryId === "__uncategorized__"
+        ? { id: "__uncategorized__", name: "Uncategorized", symbol: "📋", color: "#6b7280" }
+        : categories.find((c) => c.id === drilldownCategoryId);
+      if (!cat) return null;
+      const drilldownTx = activeTx.filter((t) =>
+        drilldownCategoryId === "__uncategorized__"
+          ? !t.category_id || !categories.find((c) => c.id === t.category_id)
+          : t.category_id === drilldownCategoryId
+      );
+      const drilldownTotal = drilldownTx.reduce((s, t) => s + t.amount, 0);
+      return (
+        <CategoryDrilldownSheet
+          category={cat}
+          transactions={drilldownTx}
+          total={drilldownTotal}
+          rangeLabel={rangeLabel}
+          currency={currency}
+          iconStyle={iconStyle}
+          onClose={() => setDrilldownCategoryId(null)}
+        />
+      );
+    })()}
     </PullToRefresh>
   );
 }
@@ -589,10 +616,11 @@ type CategoryRow = { id: string; name: string; symbol: string; color: string; to
 type MemberRow = { id: string; name: string; initials: string; avatar_color: string; total: number };
 
 const CategoryBreakdown = memo(function CategoryBreakdown({
-  items, uncategorizedTotal, grandTotal, currency, iconStyle,
+  items, uncategorizedTotal, grandTotal, currency, iconStyle, onCategoryTap,
 }: {
   items: CategoryRow[]; uncategorizedTotal: number; grandTotal: number;
   currency: string; iconStyle: IconStyle;
+  onCategoryTap: (id: string) => void;
 }) {
   return (
     <div className="px-5 pt-3 pb-6">
@@ -600,7 +628,11 @@ const CategoryBreakdown = memo(function CategoryBreakdown({
         {items.map((c) => {
           const pct = grandTotal > 0 ? (c.total / grandTotal) * 100 : 0;
           return (
-            <li key={c.id} className="px-4 py-3">
+            <li
+              key={c.id}
+              onClick={() => onCategoryTap(c.id)}
+              className="px-4 py-3 active:bg-black/[0.02] transition-colors cursor-pointer [touch-action:manipulation]"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <span className="flex h-8 w-8 items-center justify-center rounded-full text-base" style={{ backgroundColor: `${c.color}1A` }}>
@@ -620,7 +652,10 @@ const CategoryBreakdown = memo(function CategoryBreakdown({
           );
         })}
         {uncategorizedTotal > 0 && (
-          <li className="px-4 py-3">
+          <li
+            onClick={() => onCategoryTap("__uncategorized__")}
+            className="px-4 py-3 active:bg-black/[0.02] transition-colors cursor-pointer [touch-action:manipulation]"
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full text-base bg-black/[0.05]">📋</span>
@@ -640,6 +675,90 @@ const CategoryBreakdown = memo(function CategoryBreakdown({
     </div>
   );
 });
+
+// ─── Category drilldown sheet ──────────────────────────────────────────────
+// Bottom sheet listing every transaction that contributed to a tapped
+// category's total in the current report period.
+function CategoryDrilldownSheet({
+  category, transactions, total, rangeLabel, currency, iconStyle, onClose,
+}: {
+  category: { id: string; name: string; symbol: string; color: string };
+  transactions: DbTransaction[];
+  total: number;
+  rangeLabel: string;
+  currency: string;
+  iconStyle: IconStyle;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-[55] bg-black/30 backdrop-blur-[2px] animate-overlay-fade-in"
+        onClick={onClose}
+      />
+      <div className="fixed bottom-0 left-1/2 z-[60] w-full max-w-md -translate-x-1/2 rounded-t-3xl bg-[var(--background)] shadow-2xl max-h-[80vh] flex flex-col animate-sheet-slide-up">
+        <div className="px-5 pt-4 pb-3 shrink-0">
+          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-black/[0.12]" />
+          <div className="flex items-center gap-3">
+            <span
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+              style={{ backgroundColor: `${category.color}1A` }}
+            >
+              <CategoryIcon
+                symbol={category.symbol}
+                iconStyle={iconStyle}
+                size={20}
+                emojiSize="18px"
+                color={iconStyle === "2d" ? category.color : undefined}
+              />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">
+                {category.name}
+              </p>
+              <p className="text-[12px] text-[var(--label-secondary)]">{rangeLabel}</p>
+            </div>
+            <p className="shrink-0 text-[17px] font-semibold tabular-nums text-[var(--foreground)]">
+              {formatAmount(total, currency)}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 pb-8">
+          {transactions.length === 0 ? (
+            <p className="py-8 text-center text-[13px] text-[var(--label-secondary)]">
+              No transactions in this period.
+            </p>
+          ) : (
+            <ul className="overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] divide-y divide-[var(--separator)]">
+              {transactions.map((t) => (
+                <li key={t.id} className="flex items-center gap-3 px-4 py-3.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[15px] font-medium text-[var(--foreground)]">
+                      {t.name}
+                    </p>
+                    <p className="text-[12px] text-[var(--label-secondary)]">
+                      {formatDayWithWeekday(t.date)}
+                      {t.wallets ? ` · ${t.wallets.name}` : ""}
+                    </p>
+                  </div>
+                  <p
+                    className={`shrink-0 text-[15px] font-semibold tabular-nums ${
+                      t.type === "income" ? "text-emerald-600" : "text-[var(--foreground)]"
+                    }`}
+                  >
+                    {t.type === "income" ? "+" : "-"}
+                    {formatAmount(t.amount, currency)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
 
 const MemberBreakdown = memo(function MemberBreakdown({
   items, unassignedTotal, grandTotal, currency,

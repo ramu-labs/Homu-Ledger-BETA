@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.16.1",
+    date: "May 12, 2026",
+    changes: [
+      { type: "new", en: "Tap any category (or the Uncategorized row) in Reports to open a sheet listing every transaction in that category for the currently-selected period", id: "Ketuk kategori mana pun (atau baris Uncategorized) di Reports untuk membuka sheet berisi semua transaksi di kategori tersebut untuk periode yang dipilih" },
+    ],
+  },
+  {
     version: "1.16.0",
     date: "May 12, 2026",
     changes: [
