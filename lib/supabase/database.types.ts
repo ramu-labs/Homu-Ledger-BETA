@@ -379,6 +379,7 @@ export type Database = {
           name: string
           note: string | null
           photo_url: string | null
+          recurring_item_id: string | null
           transfer_pair_id: string | null
           type: Database["public"]["Enums"]["transaction_type"]
           wallet_id: string | null
@@ -394,6 +395,7 @@ export type Database = {
           name: string
           note?: string | null
           photo_url?: string | null
+          recurring_item_id?: string | null
           transfer_pair_id?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
           wallet_id?: string | null
@@ -409,6 +411,7 @@ export type Database = {
           name?: string
           note?: string | null
           photo_url?: string | null
+          recurring_item_id?: string | null
           transfer_pair_id?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
           wallet_id?: string | null
@@ -567,6 +570,10 @@ export type Database = {
       switch_household: {
         Args: { p_household_id: string }
         Returns: undefined
+      }
+      materialize_due_recurring_items: {
+        Args: Record<string, never>
+        Returns: number
       }
     }
     Enums: {

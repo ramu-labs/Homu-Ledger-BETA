@@ -25,7 +25,7 @@ async function fetchReportTransactions(
       .from("transactions")
       // photo_url isn't read by Reports; dropping it shaves ~5–8% off
       // the payload for households with lots of receipts.
-      .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, date, created_by, created_at")
+      .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, recurring_item_id, date, created_by, created_at")
       .eq("household_id", householdId)
       .is("transfer_pair_id", null)
       .order("date", { ascending: false })

@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from("transactions")
-    .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color, type), wallets(id, name, symbol, color, initial_balance, is_default)")
+    .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, recurring_item_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color, type), wallets(id, name, symbol, color, initial_balance, is_default)")
     .order("date", { ascending: false })
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })

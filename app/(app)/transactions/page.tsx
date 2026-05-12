@@ -53,7 +53,7 @@ async function fetchLedgerTransactions(
 ): Promise<TransactionRowWithRelations[]> {
   const { data, error } = await supabase
     .from("transactions")
-    .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color, type), wallets(id, name, symbol, color, initial_balance, is_default)")
+    .select("id, type, amount, name, category_id, wallet_id, transfer_pair_id, recurring_item_id, date, created_by, created_at, photo_url, categories(id, name, symbol, color, type), wallets(id, name, symbol, color, initial_balance, is_default)")
     .eq("household_id", householdId)
     .order("date", { ascending: false })
     .order("created_at", { ascending: false })
@@ -96,6 +96,14 @@ export default async function TransactionsPage() {
     .single();
 
   if (!household) redirect("/onboarding");
+
+  // Auto-materialize any recurring items whose due date has passed.
+  // SECURITY DEFINER RPC inserts transactions and advances next_due_date.
+  // Best-effort: if the migration hasn't been applied to this DB yet, the
+  // RPC won't exist — we swallow the error so the page still renders.
+  await supabase.rpc("materialize_due_recurring_items").then(({ error }) => {
+    if (error) console.warn("[recurring] materialize failed:", error.message);
+  });
 
   const [{ data: categoriesRaw }, { data: walletsRaw }, { data: membersRaw }, txRaw, { data: membershipsRaw }, { data: recurringRaw }, { data: invitationsRaw }, totals] = await Promise.all([
     supabase

@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.15.0",
+    date: "May 12, 2026",
+    changes: [
+      { type: "new", en: "Recurring items now auto-post into your transaction history when their due date arrives — e.g. a Meta Verified item set to 10th of each month appears in the history on the 10th automatically, with a Recurring tag so you can tell it apart from manually-entered rows. Back-fills missed periods if you haven't opened the app in a while", id: "Item berulang kini otomatis ditambahkan ke riwayat transaksi saat tanggal jatuh tempo — mis. Meta Verified yang dijadwalkan tanggal 10 setiap bulan akan muncul di tanggal 10 secara otomatis, dengan tag Recurring agar mudah dibedakan dari entri manual. Periode yang terlewat akan di-back-fill jika kamu lama tidak membuka aplikasi" },
+    ],
+  },
+  {
     version: "1.14.3",
     date: "May 12, 2026",
     changes: [

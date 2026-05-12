@@ -2,6 +2,19 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.15.0 - May 12, 2026
+
+### Recurring items auto-post to history
+
+The Transactions page now materializes recurring items into the actual transaction log when their `next_due_date` arrives. Until now `recurring_items` was a reference list with no auto-post; the user had to re-enter the row manually every period. v1.15.0 closes that gap.
+
+**How it works**
+- Migration `0019_recurring_item_id_on_transactions.sql` adds a `recurring_item_id uuid` FK on `transactions` (nullable, `on delete set null`) plus the SECURITY DEFINER RPC `materialize_due_recurring_items()`.
+- The Transactions page server component calls the RPC on every load. For each recurring item where `next_due_date <= current_date`, the RPC inserts a transaction copying `type/amount/name/category_id/wallet_id/created_by` (date = the due date, `recurring_item_id` = the source row) and advances `next_due_date` by the frequency interval (weekly → +7d, monthly → +1 month, yearly → +1 year). The advance loops, so back-fill works automatically if you haven't opened the app in weeks. Stops once `next_due_date` passes `repeat_until` (if set), at which point the recurring item is considered done and its `next_due_date` is nulled.
+- The transaction list shows a small **Recurring** pill next to the name on rows with `recurring_item_id` set. Manually-entered rows are unchanged.
+
+⚠ **Migration 0019 must be applied to the Supabase project before this is live.** If the migration hasn't run, the RPC call returns an error which is swallowed (best-effort) — the rest of the page renders normally, but no auto-posting happens.
+
 ## v1.14.3 - May 12, 2026
 
 ### Transactions page
