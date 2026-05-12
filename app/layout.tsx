@@ -50,11 +50,20 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <head>
-        {/* Theme bootstrap — read user preference from localStorage and apply
-            data-theme BEFORE first paint so there's no flash of wrong theme. */}
+        {/* Theme + design-system override bootstrap. Both run BEFORE first
+            paint so there's no flash. Theme sets data-theme on <html> from
+            localStorage. Design overrides (set via /design-system) write
+            individual --token CSS variables onto <html>, scoped to the
+            active theme's mode (light/dark). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('homu-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}`,
+            __html: `try{
+var t=localStorage.getItem('homu-theme');
+if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}
+var resolved=(t==='light'||t==='dark')?t:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+var raw=localStorage.getItem('homu-design-overrides');
+if(raw){var o=JSON.parse(raw);for(var k in o){var parts=k.split(':');if(parts.length===2&&parts[1]===resolved){document.documentElement.style.setProperty(parts[0],o[k]);}}}
+}catch(e){}`,
           }}
         />
       </head>

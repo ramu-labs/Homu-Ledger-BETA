@@ -29,6 +29,14 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.19.0",
+    date: "May 13, 2026",
+    changes: [
+      { type: "new", en: "DesignSystem catalog (developer-only) at Settings → Developer → DesignSystem. Live editor for every theme token (colors, status tints, radii, type sizes, spacing, shadows, z-index) with a Copy CSS button that produces a paste-ready globals.css block", id: "Katalog DesignSystem (khusus developer) di Pengaturan → Developer → DesignSystem. Editor langsung untuk setiap token tema (warna, status, radius, ukuran teks, spacing, shadow, z-index) dengan tombol Copy CSS yang menghasilkan blok globals.css siap-tempel" },
+      { type: "improvement", en: "Reusable UI primitives in components/ui/ (Button, Chip, StatusPill, SurfaceCard, Sheet, Input/Textarea, EmptyState, Avatar, FilterTabs, StickyHeader). Use these in new code instead of hand-rolling — they pick up every token change automatically", id: "Komponen UI siap-pakai di components/ui/ (Button, Chip, StatusPill, SurfaceCard, Sheet, Input/Textarea, EmptyState, Avatar, FilterTabs, StickyHeader). Pakai ini di kode baru biar otomatis ikut perubahan token" },
+    ],
+  },
+  {
     version: "1.18.1",
     date: "May 13, 2026",
     changes: [
