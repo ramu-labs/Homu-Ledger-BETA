@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.14.1",
+    date: "May 12, 2026",
+    changes: [
+      { type: "fix", en: "Sticky headers on Settings pages now actually stick — an iOS Safari quirk with overflow-x: hidden on html/body was preventing position: sticky from engaging", id: "Header menempel di halaman Pengaturan kini benar-benar menempel — bug iOS Safari dengan overflow-x: hidden pada html/body sebelumnya membuat position: sticky tidak aktif" },
+    ],
+  },
+  {
     version: "1.14.0",
     date: "May 10, 2026",
     changes: [

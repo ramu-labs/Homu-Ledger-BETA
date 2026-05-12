@@ -2,6 +2,12 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.14.1 - May 12, 2026
+
+### Fix
+
+- **Sticky headers on Settings pages actually stick now.** v1.14.0 added `sticky top-0` to every Settings page header, but on iOS Safari the rule `html, body { overflow-x: hidden }` in `globals.css` traps `position: sticky` (WebKit treats it as creating an implicit overflow-y containing block that breaks the sticky scrolling ancestor). Switching to `overflow-x: clip` keeps horizontal-overflow protection without trapping sticky descendants. Affects: `/settings`, `/settings/name`, `/settings/edit-profile`, `/settings/symbol`, `/settings/currency`, `/settings/language`, `/settings/style`, `/settings/members`, `/settings/categories`, `/settings/wallets`, `/settings/promo-codes`, `/settings/updates`.
+
 ## v1.14.0 - May 10, 2026
 
 ### Categories
