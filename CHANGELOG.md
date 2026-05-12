@@ -2,6 +2,22 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.17.1 - May 12, 2026
+
+### Dark-mode contrast fixes
+
+- **New CSS variable `--on-foreground`** for text/icons placed on `bg-[var(--foreground)]`:
+  - Light: `#ffffff` (was already what `text-white` produced)
+  - Dark: `#1a1814` (the dark background) — so the cream-coloured button gets dark text
+- Swapped `text-white` → `text-[var(--on-foreground)]` on every line that pairs `bg-[var(--foreground)]` with white text — 24 files, including: bottom-nav `+`, FeedbackForm submit + category chips, FeedbackAdmin status chips + Save reply, all add-recurring/transaction/category sheets, settings name/symbol save buttons, onboarding CTAs, transactions filter chips, reports period chips, ledger-switcher CTAs, invite-member, promo-codes chips, etc.
+
+### UI polish
+
+- **Bottom-nav floating bar outline** changed from `ring-black/[0.04]` to `ring-[var(--foreground)]/15` so it's visible in dark mode (where black-on-dark disappeared). Slightly more visible in light mode too, which is the right call — it was blending a bit with the page background.
+- **Locked-header top padding** reduced from `pt-4` to `pt-2` across every sticky header (Transactions, Reports, Settings + sub-pages, Edit profile, Wallets, Categories, Promo codes, Theme, Help, FeedbackAdmin). The shield handles the safe-area gap; the header's own `pt-4` on top of that left too much room.
+- **Reports category drilldown sheet**: added a dedicated X close button next to the total, and the sheet now locks `document.body.overflow` while mounted so the background doesn't scroll behind it.
+- **Help & Feedback page**: `useEffect` on mount forces `window.scrollTo({ top: 0 })` so opening the page doesn't land mid-form.
+
 ## v1.17.0 - May 12, 2026
 
 ### Help & Feedback ticketing

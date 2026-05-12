@@ -29,6 +29,17 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.17.1",
+    date: "May 12, 2026",
+    changes: [
+      { type: "fix", en: "Buttons with the dark-text background (the + on the bottom bar, Send feedback, Save, Add recurring, category-chip selections, etc.) now use a theme-aware text color so the label and icon stay readable in dark mode instead of vanishing into the cream button", id: "Tombol berlatar teks-gelap (tombol + di bar bawah, Send feedback, Save, Add recurring, pilihan chip kategori, dll) kini memakai warna teks adaptif tema sehingga label dan ikonnya tetap terbaca di dark mode, tidak ikut menyatu dengan tombol berwarna krem" },
+      { type: "improvement", en: "Floating bottom bar now has a more visible outline so it stands apart from the page background — especially noticeable in dark mode", id: "Bar mengambang di bawah kini punya garis tepi yang lebih terlihat sehingga lebih terpisah dari latar — terutama di dark mode" },
+      { type: "improvement", en: "Every page's locked header sits tighter against the iPhone status bar — removed the extra padding that left too much empty space at the top", id: "Header terkunci di setiap halaman kini lebih rapat ke status bar iPhone — padding berlebih di atas dihapus" },
+      { type: "improvement", en: "Reports category drilldown sheet now has an X close button and locks the background from scrolling while the sheet is open", id: "Sheet drilldown kategori di Reports kini punya tombol tutup X dan mengunci scroll latar saat sheet terbuka" },
+      { type: "fix", en: "Help & Feedback page now scrolls to the top when opened (instead of starting mid-form)", id: "Halaman Help & Feedback kini scroll ke atas saat dibuka (bukan mulai di tengah form)" },
+    ],
+  },
+  {
     version: "1.17.0",
     date: "May 12, 2026",
     changes: [

@@ -80,7 +80,7 @@ export default function RecurringItemList({ items, currency = "IDR", iconStyle =
         </p>
         <button
           onClick={onAdd}
-          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[var(--foreground)] px-4 py-2 text-[13px] font-semibold text-white"
+          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[var(--foreground)] px-4 py-2 text-[13px] font-semibold text-[var(--on-foreground)]"
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
           {t("recurring.addFirst")}

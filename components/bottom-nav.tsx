@@ -51,7 +51,12 @@ export default function BottomNav() {
           plus a tiny secondary shadow for crisp lift. Reads as depth against
           the warm cream page bg even though the bar's surface colour is
           close to the page. */}
-      <div className="flex items-center gap-4 rounded-full bg-[var(--surface)] p-2 shadow-[0_6px_18px_rgba(42,37,32,0.12),0_1px_4px_rgba(42,37,32,0.08)] ring-1 ring-black/[0.04]">
+      {/* Outline uses --foreground/15 instead of black/[0.04] so the ring is
+          actually visible in dark mode (where black-on-dark disappears). In
+          light mode this resolves to near-black at 15% alpha — a touch more
+          contrast than before, which is fine since the floating bar was
+          blending a little too much with the page background anyway. */}
+      <div className="flex items-center gap-4 rounded-full bg-[var(--surface)] p-2 shadow-[0_6px_18px_rgba(42,37,32,0.12),0_1px_4px_rgba(42,37,32,0.08)] ring-1 ring-[var(--foreground)]/15">
         <NavTab
           href="/transactions"
           label={t("nav.transactions")}
@@ -62,7 +67,7 @@ export default function BottomNav() {
         <TapButton
           onTap={openAddTransaction}
           aria-label="Add transaction"
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--foreground)] text-white shadow-[0_6px_18px_rgba(0,0,0,0.22)] transition-[transform,box-shadow] duration-150 ease-out active:scale-90 active:shadow-[0_2px_8px_rgba(0,0,0,0.18)] [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--on-foreground)] shadow-[0_6px_18px_rgba(0,0,0,0.22)] transition-[transform,box-shadow] duration-150 ease-out active:scale-90 active:shadow-[0_2px_8px_rgba(0,0,0,0.18)] [touch-action:manipulation] [-webkit-tap-highlight-color:transparent]"
         >
           <Plus className="h-7 w-7" strokeWidth={2.5} />
         </TapButton>

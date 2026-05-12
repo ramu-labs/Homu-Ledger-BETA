@@ -55,7 +55,7 @@ export default function InviteMemberForm() {
         <button
           type="submit"
           disabled={pending || !value.trim()}
-          className="flex h-12 items-center justify-center gap-1.5 rounded-xl bg-[var(--foreground)] px-4 text-[13px] font-semibold text-white transition-opacity disabled:opacity-50 active:scale-[0.99]"
+          className="flex h-12 items-center justify-center gap-1.5 rounded-xl bg-[var(--foreground)] px-4 text-[13px] font-semibold text-[var(--on-foreground)] transition-opacity disabled:opacity-50 active:scale-[0.99]"
         >
           {pending ? (
             <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.5} />

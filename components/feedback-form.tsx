@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ImagePlus, Video, X, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -44,6 +44,13 @@ export default function FeedbackForm({ userId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The browser sometimes restores a non-zero scroll position when navigating
+  // back into a long form, leaving the user mid-page. Force the viewport to
+  // the top on mount so the subject field and helper text are visible.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
 
   const hasVideo = attachments.some((a) => a.kind === "video");
 
@@ -187,7 +194,7 @@ export default function FeedbackForm({ userId }: Props) {
               className={cn(
                 "rounded-full px-3.5 py-1.5 text-[13px] font-medium ring-1 transition-all active:scale-95",
                 category === c.code
-                  ? "bg-[var(--foreground)] text-white ring-[var(--foreground)]"
+                  ? "bg-[var(--foreground)] text-[var(--on-foreground)] ring-[var(--foreground)]"
                   : "bg-[var(--surface)] text-[var(--foreground)] ring-black/[0.08]"
               )}
             >
@@ -296,7 +303,7 @@ export default function FeedbackForm({ userId }: Props) {
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-2xl bg-[var(--foreground)] py-3.5 text-[15px] font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-2xl bg-[var(--foreground)] py-3.5 text-[15px] font-semibold text-[var(--on-foreground)] disabled:opacity-50"
       >
         {submitting ? "Sending…" : "Send feedback"}
       </button>

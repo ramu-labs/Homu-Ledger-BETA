@@ -48,7 +48,7 @@ export default function CategoriesShell({ categories: initial, iconStyle = "3d" 
   return (
     <>
       <div className="pb-10">
-        <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-2 backdrop-blur">
+        <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-2 pb-2 backdrop-blur">
           <button
             onClick={() => router.back()}
             aria-label="Back"
@@ -60,7 +60,7 @@ export default function CategoriesShell({ categories: initial, iconStyle = "3d" 
           <button
             onClick={() => setAddOpen(true)}
             aria-label="Add category"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--foreground)] text-white shadow-sm active:scale-95 transition-transform"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--on-foreground)] shadow-sm active:scale-95 transition-transform"
           >
             <Plus className="h-[18px] w-[18px]" strokeWidth={2.25} />
           </button>

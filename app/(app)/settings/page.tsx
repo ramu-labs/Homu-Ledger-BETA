@@ -63,7 +63,7 @@ export default async function SettingsPage() {
     // 7rem bottom padding leaves a big empty gap below the version label.
     // Cancel ~6rem of it via negative margin; keep ~1rem + safe-area for breathing room.
     <div className="pb-4" style={{ marginBottom: "calc(-7rem + 1rem)" }}>
-      <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-2 backdrop-blur">
+      <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-2 pb-2 backdrop-blur">
         <TapLink
           href="/transactions"
           aria-label="Back"
@@ -221,7 +221,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.17.0</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.17.1</p>
     </div>
   );
 }

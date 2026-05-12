@@ -43,7 +43,7 @@ function OnboardingInner() {
     return (
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center bg-[var(--background)] px-6 py-12">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--foreground)] text-2xl text-white shadow-lg">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--foreground)] text-2xl text-[var(--on-foreground)] shadow-lg">
             🏠
           </div>
           <h1 className="text-[24px] font-semibold tracking-tight text-[var(--foreground)]">
@@ -111,7 +111,7 @@ function OnboardingInner() {
           <button
             type="submit"
             disabled={loading}
-            className="flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-white shadow-sm transition-opacity disabled:opacity-60"
+            className="flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-[var(--on-foreground)] shadow-sm transition-opacity disabled:opacity-60"
           >
             {loading ? "Creating…" : "Create ledger"}
           </button>
@@ -156,7 +156,7 @@ function OnboardingInner() {
         <button
           type="submit"
           disabled={loading || code.length < 6}
-          className="flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-white shadow-sm transition-opacity disabled:opacity-60"
+          className="flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-[var(--on-foreground)] shadow-sm transition-opacity disabled:opacity-60"
         >
           {loading ? "Joining…" : "Join ledger"}
         </button>

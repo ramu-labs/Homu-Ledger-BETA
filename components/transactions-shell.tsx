@@ -343,7 +343,7 @@ export default function TransactionsShell({
     <>
       <PullToRefresh>
         <div>
-          <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-3 backdrop-blur">
+          <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-2 pb-3 backdrop-blur">
             <TapLink
               href="/settings"
               aria-label="Profile and settings"
@@ -624,7 +624,7 @@ function FilterSheet({
               className={cn(
                 "rounded-full px-3.5 py-1.5 text-[13px] font-medium ring-1 transition-all duration-150 active:scale-90 [touch-action:manipulation]",
                 pendingDateFilter === key
-                  ? "bg-[var(--foreground)] text-white ring-[var(--foreground)]"
+                  ? "bg-[var(--foreground)] text-[var(--on-foreground)] ring-[var(--foreground)]"
                   : "bg-[var(--surface)] text-[var(--foreground)] ring-black/[0.08]"
               )}
             >
@@ -730,7 +730,7 @@ function FilterSheet({
       <div className="shrink-0 px-5 pt-3 pb-8 border-t border-[var(--separator)]">
         <button
           onClick={onApply}
-          className="w-full h-12 rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-white"
+          className="w-full h-12 rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-[var(--on-foreground)]"
         >
           Apply Filter
         </button>
@@ -782,7 +782,7 @@ function IconButton({
       className={cn(
         "relative flex h-9 w-9 items-center justify-center rounded-full ring-1 shadow-[0_1px_2px_rgba(0,0,0,0.03)] active:scale-95 transition-all",
         active
-          ? "bg-[var(--foreground)] text-white ring-[var(--foreground)]/20"
+          ? "bg-[var(--foreground)] text-[var(--on-foreground)] ring-[var(--foreground)]/20"
           : "bg-[var(--surface)] text-[var(--foreground)] ring-black/[0.05]"
       )}
     >

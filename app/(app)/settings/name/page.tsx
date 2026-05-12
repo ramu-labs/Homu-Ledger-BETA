@@ -63,7 +63,7 @@ function LedgerNamePageInner() {
 
   return (
     <div className="pb-10">
-      <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-4 backdrop-blur">
+      <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-2 pb-4 backdrop-blur">
         <button
           onClick={() => router.back()}
           aria-label="Back"
@@ -113,7 +113,7 @@ function LedgerNamePageInner() {
         <button
           onClick={handleSave}
           disabled={!canSave}
-          className="h-12 w-full rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-white disabled:opacity-40 transition-opacity active:scale-[0.99]"
+          className="h-12 w-full rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-[var(--on-foreground)] disabled:opacity-40 transition-opacity active:scale-[0.99]"
         >
           {saving ? "Saving…" : "Save"}
         </button>

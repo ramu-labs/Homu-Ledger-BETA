@@ -434,7 +434,7 @@ export default function AddRecurringSheet({
             <button
               type="submit"
               disabled={loading}
-              className="flex h-13 w-full items-center justify-center rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-white transition-opacity disabled:opacity-60"
+              className="flex h-13 w-full items-center justify-center rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-[var(--on-foreground)] transition-opacity disabled:opacity-60"
             >
               {loading ? t("common.saving") : editing ? t("common.saveChanges") : t("recurring.addNew")}
             </button>

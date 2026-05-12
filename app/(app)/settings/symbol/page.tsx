@@ -40,7 +40,7 @@ export default function SymbolPickerPage({ searchParams }: Props) {
 
   return (
     <div className="pb-10">
-      <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-2 backdrop-blur">
+      <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-2 pb-2 backdrop-blur">
         <button
           onClick={() => router.back()}
           aria-label="Back"
@@ -89,7 +89,7 @@ export default function SymbolPickerPage({ searchParams }: Props) {
           <button
             onClick={handleApplyCustom}
             disabled={!custom.trim() || loading}
-            className="h-12 px-5 rounded-2xl bg-[var(--foreground)] text-[14px] font-semibold text-white disabled:opacity-40 transition-opacity"
+            className="h-12 px-5 rounded-2xl bg-[var(--foreground)] text-[14px] font-semibold text-[var(--on-foreground)] disabled:opacity-40 transition-opacity"
           >
             Use
           </button>

@@ -5,6 +5,11 @@
   --background: #f6f1e9;
   --surface: #fefcf8;
   --foreground: #2a2520;
+  /* Contrast color for text/icons placed ON --foreground (e.g. primary CTAs
+     like `bg-[var(--foreground)]`). Light mode: foreground is near-black, so
+     on-foreground = white. Dark mode: foreground is near-white, so on-
+     foreground = the dark background. */
+  --on-foreground: #ffffff;
   --separator: rgba(66, 52, 40, 0.08);
   --label-secondary: rgba(66, 52, 40, 0.55);
   --label-tertiary: rgba(66, 52, 40, 0.38);
@@ -25,6 +30,7 @@
   --background: #1a1814;
   --surface: #25221e;
   --foreground: #f5f0e8;
+  --on-foreground: #1a1814;
   --separator: rgba(245, 240, 232, 0.10);
   --label-secondary: rgba(245, 240, 232, 0.60);
   --label-tertiary: rgba(245, 240, 232, 0.40);
@@ -37,6 +43,7 @@
     --background: #1a1814;
     --surface: #25221e;
     --foreground: #f5f0e8;
+    --on-foreground: #1a1814;
     --separator: rgba(245, 240, 232, 0.10);
     --label-secondary: rgba(245, 240, 232, 0.60);
     --label-tertiary: rgba(245, 240, 232, 0.40);

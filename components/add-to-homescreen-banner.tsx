@@ -114,7 +114,7 @@ export default function AddToHomescreenBanner() {
 function Step({ number, text }: { number: number; text: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--foreground)] text-white text-[11px] font-bold">
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--on-foreground)] text-[11px] font-bold">
         {number}
       </div>
       <p className="text-[13px] text-[var(--label-secondary)]">{text}</p>

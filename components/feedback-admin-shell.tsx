@@ -34,7 +34,7 @@ export default function FeedbackAdminShell({ tickets, profilesById }: Props) {
 
   return (
     <div className="pb-10">
-      <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-3 backdrop-blur">
+      <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-2 pb-3 backdrop-blur">
         <Link
           href="/settings"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground)] ring-1 ring-black/[0.05] shadow-[0_1px_2px_rgba(0,0,0,0.03)] active:scale-95 transition-transform"
@@ -223,7 +223,7 @@ function TicketCard({
                 className={cn(
                   "rounded-full px-3 py-1.5 text-[12px] font-medium ring-1 transition-all",
                   s.code === ticket.status
-                    ? "bg-[var(--foreground)] text-white ring-[var(--foreground)]"
+                    ? "bg-[var(--foreground)] text-[var(--on-foreground)] ring-[var(--foreground)]"
                     : "bg-[var(--surface)] text-[var(--foreground)] ring-black/[0.08] active:scale-95"
                 )}
               >
@@ -260,7 +260,7 @@ function TicketCard({
               <button
                 onClick={postReply}
                 disabled={busy || !replyText.trim() || replyText.trim() === (ticket.reply ?? "").trim()}
-                className="ml-auto rounded-full bg-[var(--foreground)] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                className="ml-auto rounded-full bg-[var(--foreground)] px-3 py-1.5 text-[12px] font-semibold text-[var(--on-foreground)] disabled:opacity-50"
               >
                 Save reply
               </button>

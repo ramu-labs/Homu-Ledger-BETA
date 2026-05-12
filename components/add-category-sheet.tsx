@@ -221,7 +221,7 @@ export default function AddCategorySheet({ open, type = "expense", onClose, onAd
 
           <div className="shrink-0 border-t border-[var(--separator)] bg-[var(--surface)] px-5 pt-3 pb-8">
             <button type="submit" disabled={loading}
-              className="flex h-13 w-full items-center justify-center rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-white transition-opacity disabled:opacity-60"
+              className="flex h-13 w-full items-center justify-center rounded-2xl bg-[var(--foreground)] text-[15px] font-semibold text-[var(--on-foreground)] transition-opacity disabled:opacity-60"
             >
               {loading ? "Adding…" : "Add Category"}
             </button>

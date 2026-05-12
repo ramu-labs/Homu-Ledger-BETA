@@ -121,7 +121,7 @@ export default function PromoCodesShell({ initialCodes }: Props) {
 
   return (
     <div className="pb-10">
-      <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-2 backdrop-blur">
+      <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-2 pb-2 backdrop-blur">
         <button
           onClick={() => router.back()}
           aria-label={t("common.back")}
@@ -181,7 +181,7 @@ export default function PromoCodesShell({ initialCodes }: Props) {
               className={cn(
                 "rounded-full px-3.5 py-1.5 text-[13px] font-medium ring-1 transition-all",
                 selectedTier === tier
-                  ? "bg-[var(--foreground)] text-white ring-[var(--foreground)]"
+                  ? "bg-[var(--foreground)] text-[var(--on-foreground)] ring-[var(--foreground)]"
                   : "bg-[var(--background)] text-[var(--foreground)] ring-black/[0.08]"
               )}
             >

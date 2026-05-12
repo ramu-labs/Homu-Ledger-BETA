@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, memo } from "react";
-import { ChevronDown, Wallet as WalletIcon, Check } from "lucide-react";
+import { ChevronDown, Wallet as WalletIcon, Check, X } from "lucide-react";
 import PullToRefresh from "@/components/pull-to-refresh";
 import {
   BarChart, Bar, XAxis, Tooltip, ResponsiveContainer,
@@ -247,7 +247,7 @@ export default function ReportsShell({ transactions, categories, wallets, member
           RIGHT : period dropdown
           The middle column gets `flex-1` and `text-center` so the date
           stays visually centred regardless of the side button widths. */}
-      <header className="sticky top-[env(safe-area-inset-top)] z-10 bg-[var(--background)]/85 px-5 pt-4 pb-3 backdrop-blur-xl">
+      <header className="sticky top-[env(safe-area-inset-top)] z-10 bg-[var(--background)]/85 px-5 pt-2 pb-3 backdrop-blur-xl">
         <div className="flex items-center gap-2">
           {/* LEFT — wallet filter (multi-select) */}
           <div className="relative shrink-0" ref={walletDropdownRef}>
@@ -343,7 +343,7 @@ export default function ReportsShell({ transactions, categories, wallets, member
                         className={cn(
                           "flex h-5 w-5 items-center justify-center rounded-md ring-1 transition-colors",
                           isSel
-                            ? "bg-[var(--foreground)] text-white ring-[var(--foreground)]"
+                            ? "bg-[var(--foreground)] text-[var(--on-foreground)] ring-[var(--foreground)]"
                             : "bg-transparent text-transparent ring-black/[0.15]",
                         )}
                       >
@@ -404,7 +404,7 @@ export default function ReportsShell({ transactions, categories, wallets, member
                     </div>
                     <button
                       onClick={() => setShowDropdown(false)}
-                      className="w-full rounded-xl bg-[var(--foreground)] py-2 text-[13px] font-semibold text-white"
+                      className="w-full rounded-xl bg-[var(--foreground)] py-2 text-[13px] font-semibold text-[var(--on-foreground)]"
                     >
                       Apply
                     </button>
@@ -542,7 +542,7 @@ export default function ReportsShell({ transactions, categories, wallets, member
                     className="pointer-events-none absolute -top-2 z-10 -translate-x-1/2 -translate-y-full"
                     style={{ left: `${clamped}%` }}
                   >
-                    <div className="rounded-xl bg-[var(--foreground)] px-3 py-2 text-white shadow-lg">
+                    <div className="rounded-xl bg-[var(--foreground)] px-3 py-2 text-[var(--on-foreground)] shadow-lg">
                       <div className="flex items-center gap-2">
                         <span
                           className="block h-2.5 w-2.5 shrink-0 rounded-full"
@@ -690,6 +690,14 @@ function CategoryDrilldownSheet({
   iconStyle: IconStyle;
   onClose: () => void;
 }) {
+  // Lock background scroll while the sheet is mounted. We toggle overflow on
+  // <body> instead of <html> because Safari's address-bar resize on scroll
+  // can interfere with a position:fixed sheet otherwise.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
   return (
     <>
       <div
@@ -721,6 +729,13 @@ function CategoryDrilldownSheet({
             <p className="shrink-0 text-[17px] font-semibold tabular-nums text-[var(--foreground)]">
               {formatAmount(total, currency)}
             </p>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-[var(--foreground)] active:scale-95 transition-transform"
+            >
+              <X className="h-[18px] w-[18px]" strokeWidth={2.25} />
+            </button>
           </div>
         </div>
 
