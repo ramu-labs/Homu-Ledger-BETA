@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, ArrowRightLeft } from "lucide-react";
-import { formatAmount, formatAmountSigned, formatShortDate } from "@/lib/format";
+import { formatAmount, formatAmountSigned, formatDayGroup } from "@/lib/format";
 import { CategoryIcon } from "@/components/category-icon";
 import { useT } from "@/lib/i18n/provider";
 import type { DbTransaction, DbMember } from "@/lib/types";
@@ -35,6 +35,19 @@ export default function TransactionList({ transactions, members, currency = "IDR
     prevTopIdRef.current = flashId;
   });
 
+  // Group transactions by date for day-header sections. Input is already
+  // sorted by date desc / created_at desc, so consecutive same-date rows
+  // stay together — walking linearly is enough.
+  const groups = useMemo(() => {
+    const out: { date: string; rows: { tx: DbTransaction; globalIndex: number }[] }[] = [];
+    transactions.forEach((tx, i) => {
+      const last = out[out.length - 1];
+      if (last && last.date === tx.date) last.rows.push({ tx, globalIndex: i });
+      else out.push({ date: tx.date, rows: [{ tx, globalIndex: i }] });
+    });
+    return out;
+  }, [transactions]);
+
   if (transactions.length === 0) {
     return (
       <div className="mx-5 mt-2 rounded-2xl bg-[var(--surface)] px-6 py-14 text-center ring-1 ring-black/[0.04]">
@@ -50,8 +63,14 @@ export default function TransactionList({ transactions, members, currency = "IDR
   }
 
   return (
-    <ul className="mx-5 mt-2 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] divide-y divide-[var(--separator)]">
-      {transactions.map((t, index) => {
+    <div className="mx-5 mt-2 space-y-4">
+      {groups.map((group) => (
+        <section key={group.date}>
+          <h3 className="px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
+            {formatDayGroup(group.date, todayKey)}
+          </h3>
+          <ul className="overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] divide-y divide-[var(--separator)]">
+            {group.rows.map(({ tx: t, globalIndex: index }) => {
         const isTransfer = !!t.transfer_pair_id;
         const cat = t.categories ?? FALLBACK_CAT;
         const creator = t.created_by ? (members[t.created_by] ?? null) : null;
@@ -164,12 +183,10 @@ export default function TransactionList({ transactions, members, currency = "IDR
                     {fromWallet?.name ?? "?"}
                     <ArrowRightLeft className="h-2.5 w-2.5 shrink-0" strokeWidth={2.5} />
                     {toWallet?.name ?? "?"}
-                    <span className="text-[var(--label-tertiary)]">·</span>
-                    {formatShortDate(t.date, todayKey)}
                   </span>
                 ) : (
                   <>
-                    {cat.name} · {formatShortDate(t.date, todayKey)}
+                    {cat.name}
                     {t.photo_url && <Camera className="h-3 w-3 shrink-0" strokeWidth={2} />}
                   </>
                 )}
@@ -191,8 +208,11 @@ export default function TransactionList({ transactions, members, currency = "IDR
             </p>
           </li>
         );
-      })}
-    </ul>
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
   );
 }
 

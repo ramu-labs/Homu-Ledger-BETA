@@ -2,6 +2,13 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.14.2 - May 12, 2026
+
+### Transactions page
+
+- **Day-group headers.** The transaction list now groups rows by date with a section header (`Today`, `Mon, 11 May`, `Tue, 10 May`, …). Per-row date suffixes are gone — each row shows just category and (for transfers) From → To. Less visual repetition, easier to scan a day's activity. Year is included on dates outside the current year (e.g. `Mon, 11 May 2025`).
+- **Income / Expense summary pills restructured.** The arrow icon is now inline with the `Income` / `Expenses` label on a single row at the top, and the amount sits below on its own line at 17px (was 15px). The amount column no longer competes with the icon for horizontal space, so longer numbers (millions and up) don't truncate as eagerly.
+
 ## v1.14.1 - May 12, 2026
 
 ### Fix

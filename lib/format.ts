@@ -53,6 +53,24 @@ export function formatDayWithWeekday(date: string): string {
 }
 
 /**
+ * Group-header label for a YYYY-MM-DD date in the transaction list.
+ * Today → "Today". Same calendar year → "Mon, 11 May". Older → "Mon, 11 May 2025".
+ * Pass `todayKey` for the SSR-safe "Today" decision (see formatShortDate).
+ */
+export function formatDayGroup(date: string, todayKey?: string | null): string {
+  if (todayKey && todayKey === date) return "Today";
+  const [y, m, d] = date.split("-").map(Number);
+  if (!y || !m || !d) return date;
+  const local = new Date(y, m - 1, d);
+  const weekday = DAYS_SHORT[local.getDay()];
+  const month = MONTHS_SHORT[m - 1];
+  const currentYear = new Date().getFullYear();
+  return y === currentYear
+    ? `${weekday}, ${d} ${month}`
+    : `${weekday}, ${d} ${month} ${y}`;
+}
+
+/**
  * Format a YYYY-MM-DD date as a short label.
  * Pass `todayKey` (also "YYYY-MM-DD") so the "Today" decision is deterministic
  * across SSR and client (otherwise `new Date()` mismatches between UTC server

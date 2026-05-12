@@ -29,6 +29,14 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.14.2",
+    date: "May 12, 2026",
+    changes: [
+      { type: "improvement", en: "Transaction list now groups by day with a header — Today, Mon 11 May, etc. — instead of repeating the date on every row", id: "Daftar transaksi kini dikelompokkan per hari dengan header — Today, Sen 11 Mei, dsb. — daripada mengulang tanggal di setiap baris" },
+      { type: "improvement", en: "Income and Expense summary pills on the Transactions page have the icon moved up next to the label so the amount below has more room to breathe", id: "Ringkasan Pemasukan dan Pengeluaran di halaman Transaksi: ikon dipindah ke atas sejajar dengan label sehingga angka di bawahnya punya lebih banyak ruang" },
+    ],
+  },
+  {
     version: "1.14.1",
     date: "May 12, 2026",
     changes: [
