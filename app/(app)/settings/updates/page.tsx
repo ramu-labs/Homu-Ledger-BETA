@@ -12,7 +12,7 @@ export default function UpdatesPage() {
 
   return (
     <div className="pb-10">
-      <header className="sticky top-0 z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-4 backdrop-blur">
+      <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-4 backdrop-blur">
         <button
           onClick={() => router.back()}
           aria-label="Back"

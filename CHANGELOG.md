@@ -2,6 +2,21 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.15.1 - May 12, 2026
+
+### Status-bar shield + sticky headers
+
+- **iOS safe-area status-bar zone is now opaque.** Added a fixed, backdrop-blur shield in the app layout that covers `env(safe-area-inset-top)`. All sticky page headers (Settings + sub-pages, Reports, Transactions, Edit profile, Wallets, Categories, Promo codes) now use `top: env(safe-area-inset-top)` so they pin flush below the shield instead of sliding behind the dynamic island. Fixes (a) the transparent strip on Reports during scroll and (b) the Settings header content drawing under the iPhone status bar when scrolled.
+
+### Transactions
+
+- **Sticky header on Transactions.** The avatar / household-name / search / filter header now pins to the top when scrolling, matching every other page in the app.
+
+### Settings
+
+- **No more empty gap at the bottom.** Settings hides the bottom nav, but the layout still reserved 7rem of bottom padding for it. The settings page now cancels that padding via a negative margin so the version label sits comfortably above the home indicator instead of floating in a sea of whitespace.
+- **Removed Privacy Policy entry** from the Support group.
+
 ## v1.15.0 - May 12, 2026
 
 ### Recurring items auto-post to history
