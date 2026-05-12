@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers, RefreshCw, Wallet, Ticket, Sparkles, Shield } from "lucide-react";
+import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers, RefreshCw, Wallet, Ticket, Sparkles } from "lucide-react";
 import { TapLink } from "@/components/tap";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions/auth";
@@ -59,8 +59,11 @@ export default async function SettingsPage() {
 
 
   return (
-    <div className="pb-10">
-      <header className="sticky top-0 z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-2 backdrop-blur">
+    // Bottom-nav is hidden on Settings (see bottom-nav.tsx), so the layout's
+    // 7rem bottom padding leaves a big empty gap below the version label.
+    // Cancel ~6rem of it via negative margin; keep ~1rem + safe-area for breathing room.
+    <div className="pb-4" style={{ marginBottom: "calc(-7rem + 1rem)" }}>
+      <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-2 backdrop-blur">
         <TapLink
           href="/transactions"
           aria-label="Back"
@@ -191,7 +194,6 @@ export default async function SettingsPage() {
       <Group title={t("settings.support")}>
         <Row icon={<HelpCircle className="h-[18px] w-[18px]" strokeWidth={2} />} label={t("settings.helpFeedback")} />
         <RowLink href="/settings/updates" icon={<RefreshCw className="h-[18px] w-[18px]" strokeWidth={2} />} label={t("settings.updates")} />
-        <RowLink href="/privacy" icon={<Shield className="h-[18px] w-[18px]" strokeWidth={2} />} label="Privacy Policy" />
       </Group>
 
       {/* Developer-only — Promo Codes */}
@@ -213,7 +215,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.15.0</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.15.1</p>
     </div>
   );
 }

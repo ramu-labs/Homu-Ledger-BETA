@@ -343,7 +343,7 @@ export default function TransactionsShell({
     <>
       <PullToRefresh>
         <div>
-          <header className="flex items-center justify-between px-5 pt-4">
+          <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-4 pb-3 backdrop-blur">
             <TapLink
               href="/settings"
               aria-label="Profile and settings"

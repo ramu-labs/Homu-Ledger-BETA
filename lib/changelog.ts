@@ -29,6 +29,16 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.15.1",
+    date: "May 12, 2026",
+    changes: [
+      { type: "fix", en: "Status-bar zone is now always opaque — Reports header no longer shows scrolled content through the dynamic-island area, and Settings header no longer overlaps the iPhone status bar when scrolled", id: "Area status bar kini selalu solid — header Reports tidak lagi menampilkan konten yang di-scroll lewat area dynamic island, dan header Settings tidak lagi tertabrak status bar iPhone saat di-scroll" },
+      { type: "improvement", en: "Transactions page header now stays pinned at the top when scrolling, matching the rest of the app", id: "Header halaman Transaksi kini tetap menempel di atas saat di-scroll, konsisten dengan halaman lain" },
+      { type: "improvement", en: "Settings page no longer has a big empty gap below the version label — the layout's bottom-nav padding is canceled here since Settings hides the bottom nav anyway", id: "Halaman Pengaturan tidak lagi punya ruang kosong besar di bawah label versi — padding untuk bottom-nav dibatalkan karena Pengaturan memang menyembunyikan bottom-nav" },
+      { type: "improvement", en: "Removed the Privacy Policy entry from Settings", id: "Menghapus entri Privacy Policy dari Pengaturan" },
+    ],
+  },
+  {
     version: "1.15.0",
     date: "May 12, 2026",
     changes: [
