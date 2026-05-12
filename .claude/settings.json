@@ -25,7 +25,10 @@
       "allowedDomains": [
         "homu.ramu.app",
         "mcp.vercel.com",
-        "api.vercel.com"
+        "api.vercel.com",
+        "api.supabase.com",
+        "*.supabase.co",
+        "registry.npmjs.org"
       ]
     }
   },

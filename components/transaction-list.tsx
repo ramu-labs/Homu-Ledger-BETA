@@ -152,8 +152,13 @@ export default function TransactionList({ transactions, members, currency = "IDR
             )}
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[15px] font-medium text-[var(--foreground)]">
-                {isTransfer ? tr("tx.transfer") : t.name}
+              <p className="flex items-center gap-1.5 truncate text-[15px] font-medium text-[var(--foreground)]">
+                <span className="truncate">{isTransfer ? tr("tx.transfer") : t.name}</span>
+                {t.recurring_item_id && (
+                  <span className="shrink-0 rounded-full bg-violet-100/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700">
+                    Recurring
+                  </span>
+                )}
               </p>
               <p className="flex items-center gap-1 text-[12px] text-[var(--label-secondary)] truncate">
                 {isTransfer ? (

@@ -95,6 +95,7 @@ export type DbTransaction = {
   category_id: string | null;
   wallet_id: string | null;
   transfer_pair_id: string | null;
+  recurring_item_id: string | null;
   date: string;
   created_by: string | null;
   created_at: string;
