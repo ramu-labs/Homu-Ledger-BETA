@@ -2,6 +2,20 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.18.1 - May 13, 2026
+
+### Hotfix — intermittent logout when navigating Settings
+
+v1.18.0's `app/(app)/layout.tsx` added a second `supabase.auth.getUser()` call (on top of the one `getServerT()` already makes) to gate the dev feedback notifier on `profiles.is_developer`. Two `getUser()` calls inside a single Server Component request can race the Supabase SSR cookie-refresh flow: call #1 rotates the refresh token, the cookie write is silently swallowed (Server Components can't persist cookies in Next.js 15+), call #2 then sends the now-invalidated refresh token and Supabase returns `user: null`. On the next navigation, middleware sees no session and redirects to `/login`. Closing and reopening the PWA restores a fresh session, which is why the symptom appeared sporadic.
+
+Fix: consolidated the user/profile lookup into a single call by extending `getServerT()` to also return `isDeveloper` (the profile SELECT was already happening, so adding `is_developer` to the column list costs nothing). The layout reads it from there and no longer creates its own client or calls `getUser()` again.
+
+### Files
+- `lib/i18n/server.ts` — return `{ t, lang, isDeveloper }` from `getServerT()`.
+- `app/(app)/layout.tsx` — drop the duplicate `createClient` + `auth.getUser` + profile fetch; read `isDeveloper` from `getServerT()`.
+
+---
+
 ## v1.18.0 - May 13, 2026
 
 ### Help & Feedback — track your tickets

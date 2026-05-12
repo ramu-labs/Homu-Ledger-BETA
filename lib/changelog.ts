@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.18.1",
+    date: "May 13, 2026",
+    changes: [
+      { type: "fix", en: "Fixed an intermittent bug that could log you out when navigating between Settings sub-pages (e.g. tapping Theme, then tapping another row) — the v1.18.0 dev-notifier wiring was making a second auth check per page render, which sometimes raced the session-cookie refresh and invalidated your login", id: "Memperbaiki bug intermiten yang bisa mengeluarkanmu dari aplikasi saat berpindah antar halaman Pengaturan (mis. ketuk Theme lalu ketuk baris lain) — wiring dev-notifier di v1.18.0 melakukan pengecekan autentikasi kedua per render, yang kadang bertabrakan dengan refresh cookie sesi dan membatalkan login-mu" },
+    ],
+  },
+  {
     version: "1.18.0",
     date: "May 13, 2026",
     changes: [
