@@ -2,6 +2,52 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.19.0 - May 13, 2026
+
+### DesignSystem catalog (dev-only)
+
+New developer-only page at `/design-system` (linked from Settings → Developer → DesignSystem). Replaces the "60% of a design system, mostly hand-rolled" state with a single live catalog you can scrub.
+
+**What's in it:**
+
+- **Token editor.** Every CSS custom property from `globals.css` shows up as a row in `lib/design-tokens.ts`. Each row renders a visual preview (swatch / shadow box / radius square / typography specimen / spacing bar) + the appropriate input (color picker + hex input for hex colors, textarea for shadows, number input for z-index/motion scalars, text input for everything else).
+- **Per-mode editing.** Auto / Light / Dark tab at the top forces the visible mode while you edit; whichever you're viewing is the mode your edits affect. Shared (non-theme) tokens (radii, type, spacing, z-index, motion) are tagged "shared" and edited once.
+- **Live preview via localStorage.** Changes write to `homu-design-overrides` and inline-set CSS variables on `<html>`. The bootstrap script in `app/layout.tsx` re-applies overrides before first paint of *every page in the app*, so the rest of the app re-themes the moment you tweak a value.
+- **Copy CSS button** (top-right of the header). Serializes the current overrides into a `:root { … }` + `[data-theme="dark"] { … }` block and copies it to your clipboard. Paste into `app/globals.css` and commit when you like a config.
+- **Reset all** clears every override in one shot.
+- **Primitives gallery** at the bottom — interactive demos of Button (primary/secondary/danger × default/sm), Chip (selected/unselected × default/sm), StatusPill (success/warning/info/danger), SurfaceCard (card/float elevation), Input/Textarea, EmptyState, Avatar (sm/md/lg), FilterTabs, and Sheet (tap to open). Demos update live as you change tokens.
+
+### New tokens
+
+Added to `globals.css` (with light + dark counterparts):
+
+- **Rings:** `--ring-subtle`, `--ring-default`, `--ring-strong` (replace ad-hoc `ring-black/[0.04]` etc.)
+- **Status tints:** `--tint-{success,warning,info,danger}-{bg,text}` (replace `bg-emerald-100/80 text-emerald-800` and friends)
+- **Finance:** `--color-income`, `--color-expense`
+- **Shadows:** `--shadow-card`, `--shadow-float`, `--shadow-sheet`
+- **Radii:** `--radius-{sm,md,lg,xl,2xl,pill}`
+- **Typography:** `--text-{xs,sm,md,base,lg,xl,2xl}`
+- **Spacing:** `--space-page-x`, `--space-row-x/y`, `--space-section-y`, `--gap-{tight,default,loose}`
+- **Z-index:** `--z-{header,shield,fab,sheet-overlay,sheet-content,toast}`
+- **Motion:** `--press-scale`, `--transition-{fast,base}`
+
+### New components
+
+In `components/ui/`:
+
+- `<Button variant="primary|secondary|danger" size="default|sm" full />`
+- `<Chip selected size />`
+- `<StatusPill tone="success|warning|info|danger" />`
+- `<SurfaceCard elevation="card|float" as />`
+- `<Sheet open onClose title>` — overlay + slide-up + scroll-lock + X close, used in the gallery
+- `<Input />` / `<Textarea />`
+- `<EmptyState icon title subtitle action />`
+- `<Avatar initials color size />`
+- `<FilterTabs options value onChange />`
+- `<StickyHeader title backHref right />`
+
+Existing pages still use their hand-rolled versions — no migration in this release (Pass 2 in the design-system plan). Future code should reach for these primitives first.
+
 ## v1.18.1 - May 13, 2026
 
 ### Hotfix — intermittent logout when navigating Settings
@@ -13,8 +59,6 @@ Fix: consolidated the user/profile lookup into a single call by extending `getSe
 ### Files
 - `lib/i18n/server.ts` — return `{ t, lang, isDeveloper }` from `getServerT()`.
 - `app/(app)/layout.tsx` — drop the duplicate `createClient` + `auth.getUser` + profile fetch; read `isDeveloper` from `getServerT()`.
-
----
 
 ## v1.18.0 - May 13, 2026
 
@@ -42,8 +86,6 @@ Fix: consolidated the user/profile lookup into a single call by extending `getSe
 
 - `RowLink` in `app/(app)/settings/page.tsx` gained an optional `rightSlot` prop so client components can be slotted into the right side of a row link (used by the open-ticket badge).
 - `app/(app)/layout.tsx` now fetches `profiles.is_developer` per request to gate the notifier — one extra small query for every (app) navigation. Worth it to avoid loading the realtime channel for non-devs.
-
----
 
 ## v1.17.1 - May 12, 2026
 

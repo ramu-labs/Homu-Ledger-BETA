@@ -30,8 +30,9 @@ export default function BottomNav() {
 
   // Hide on Settings (and its subroutes) — those screens have their own
   // navigation context (back button + section list) and don't need the
-  // global bottom bar in the way.
-  if (pathname.startsWith("/settings")) return null;
+  // global bottom bar in the way. Also hide on the developer-only
+  // /design-system route, which renders edge-to-edge.
+  if (pathname.startsWith("/settings") || pathname.startsWith("/design-system")) return null;
 
   function openAddTransaction() {
     if (onTransactions) {

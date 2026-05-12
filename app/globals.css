@@ -1,53 +1,174 @@
 @import "tailwindcss";
 
-:root {
-  /* Warm Apple-inspired palette (light) */
-  --background: #f6f1e9;
-  --surface: #fefcf8;
-  --foreground: #2a2520;
-  /* Contrast color for text/icons placed ON --foreground (e.g. primary CTAs
-     like `bg-[var(--foreground)]`). Light mode: foreground is near-black, so
-     on-foreground = white. Dark mode: foreground is near-white, so on-
-     foreground = the dark background. */
-  --on-foreground: #ffffff;
-  --separator: rgba(66, 52, 40, 0.08);
-  --label-secondary: rgba(66, 52, 40, 0.55);
-  --label-tertiary: rgba(66, 52, 40, 0.38);
-  --accent: #b5663a;
-}
+/* ─────────────────────────────────────────────────────────────────────────
+   DESIGN TOKENS
+   ─────────────────────────────────────────────────────────────────────────
+   Single source of truth for every visual primitive the app uses. Edit
+   values here and the whole app re-themes. To preview values live without
+   touching this file, open the in-app DesignSystem catalog (Settings →
+   Developer → DesignSystem) which lets you scrub each token, see the app
+   update, and copy a patched block back into this file when you're happy.
 
-/* Dark theme — applied when:
-   - user explicitly chose dark (data-theme="dark"), OR
-   - user chose auto / hasn't set anything AND system is dark
-     (no data-theme attribute + prefers-color-scheme: dark) */
-[data-theme="dark"],
-:root:not([data-theme]) {
-  /* Inherit light by default; the media query below activates dark for the
-     "auto" branch (no data-theme attribute). [data-theme="dark"] overrides. */
+   Naming convention:
+     --<category>-<role>[-<variant>]
+   Examples:
+     --background       (theme surface, page background)
+     --tint-success-bg  (status pill background, success tone)
+     --shadow-card      (resting elevation under a card)
+     --text-base        (default body size)
+   ─────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Theme · light ────────────────────────────────────────────────── */
+  --background:        #f6f1e9;
+  --surface:           #fefcf8;
+  --foreground:        #2a2520;
+  /* Contrast color for text/icons placed ON --foreground. Light: foreground
+     is near-black, so on-foreground = white. Dark: foreground is near-white,
+     so on-foreground = the dark background. */
+  --on-foreground:     #ffffff;
+  --separator:         rgba(66, 52, 40, 0.08);
+  --label-secondary:   rgba(66, 52, 40, 0.55);
+  --label-tertiary:    rgba(66, 52, 40, 0.38);
+  --accent:            #b5663a;
+
+  /* ── Rings · light ────────────────────────────────────────────────── */
+  /* Subtle / default / strong outline rings. Each is theme-aware so dark
+     mode gets visible outlines without per-component overrides. */
+  --ring-subtle:       rgba(0, 0, 0, 0.04);
+  --ring-default:      rgba(0, 0, 0, 0.06);
+  --ring-strong:       rgba(0, 0, 0, 0.15);
+
+  /* ── Status tints · light ─────────────────────────────────────────── */
+  --tint-success-bg:   rgba(167, 243, 208, 0.85);
+  --tint-success-text: #065f46;
+  --tint-warning-bg:   rgba(253, 230, 138, 0.85);
+  --tint-warning-text: #92400e;
+  --tint-info-bg:      rgba(191, 219, 254, 0.85);
+  --tint-info-text:    #1e40af;
+  --tint-danger-bg:    rgba(254, 205, 211, 0.85);
+  --tint-danger-text:  #9f1239;
+
+  /* ── Semantic finance colors · light ──────────────────────────────── */
+  --color-income:      #059669;
+  --color-expense:     #dc2626;
+
+  /* ── Shadows / elevation · light ──────────────────────────────────── */
+  --shadow-card:       0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-float:      0 6px 18px rgba(42, 37, 32, 0.12),
+                       0 1px 4px rgba(42, 37, 32, 0.08);
+  --shadow-sheet:      0 -8px 24px rgba(0, 0, 0, 0.12);
+
+  /* ── Radii ────────────────────────────────────────────────────────── */
+  --radius-sm:         0.5rem;
+  --radius-md:         0.75rem;
+  --radius-lg:         1rem;
+  --radius-xl:         1.5rem;
+  --radius-2xl:        1.75rem;
+  --radius-pill:       9999px;
+
+  /* ── Typography (font sizes) ──────────────────────────────────────── */
+  --text-xs:           11px;
+  --text-sm:           12px;
+  --text-md:           13px;
+  --text-base:         15px;
+  --text-lg:           17px;
+  --text-xl:           20px;
+  --text-2xl:          28px;
+
+  /* ── Spacing scale ────────────────────────────────────────────────── */
+  --space-page-x:      1.25rem;
+  --space-row-x:       1rem;
+  --space-row-y:       0.875rem;
+  --space-section-y:   1.25rem;
+  --gap-tight:         0.5rem;
+  --gap-default:       0.625rem;
+  --gap-loose:         0.75rem;
+
+  /* ── Z-index layers ───────────────────────────────────────────────── */
+  --z-header:          20;
+  --z-shield:          30;
+  --z-fab:             50;
+  --z-sheet-overlay:   55;
+  --z-sheet-content:   60;
+  --z-toast:           70;
+
+  /* ── Motion ───────────────────────────────────────────────────────── */
+  --press-scale:       0.97;
+  --transition-fast:   150ms ease-out;
+  --transition-base:   220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 [data-theme="dark"] {
-  --background: #1a1814;
-  --surface: #25221e;
-  --foreground: #f5f0e8;
-  --on-foreground: #1a1814;
-  --separator: rgba(245, 240, 232, 0.10);
-  --label-secondary: rgba(245, 240, 232, 0.60);
-  --label-tertiary: rgba(245, 240, 232, 0.40);
-  --accent: #c4794d;
+  /* ── Theme · dark ─────────────────────────────────────────────────── */
+  --background:        #1a1814;
+  --surface:           #25221e;
+  --foreground:        #f5f0e8;
+  --on-foreground:     #1a1814;
+  --separator:         rgba(245, 240, 232, 0.10);
+  --label-secondary:   rgba(245, 240, 232, 0.60);
+  --label-tertiary:    rgba(245, 240, 232, 0.40);
+  --accent:            #c4794d;
+
+  /* Rings · dark */
+  --ring-subtle:       rgba(255, 255, 255, 0.06);
+  --ring-default:      rgba(255, 255, 255, 0.10);
+  --ring-strong:       rgba(255, 255, 255, 0.18);
+
+  /* Status tints · dark — lower alpha so they don't pop too hard on
+     dark surface; brighter text so labels stay readable. */
+  --tint-success-bg:   rgba(16, 185, 129, 0.18);
+  --tint-success-text: #6ee7b7;
+  --tint-warning-bg:   rgba(245, 158, 11, 0.18);
+  --tint-warning-text: #fcd34d;
+  --tint-info-bg:      rgba(59, 130, 246, 0.20);
+  --tint-info-text:    #93c5fd;
+  --tint-danger-bg:    rgba(244, 63, 94, 0.20);
+  --tint-danger-text:  #fda4af;
+
+  /* Finance · dark */
+  --color-income:      #34d399;
+  --color-expense:     #f87171;
+
+  /* Shadows · dark — slightly stronger blur to read against dark surface */
+  --shadow-card:       0 1px 2px rgba(0, 0, 0, 0.40);
+  --shadow-float:      0 6px 24px rgba(0, 0, 0, 0.55),
+                       0 1px 4px rgba(0, 0, 0, 0.40);
+  --shadow-sheet:      0 -8px 28px rgba(0, 0, 0, 0.55);
 }
 
 @media (prefers-color-scheme: dark) {
-  /* Auto mode: no data-theme attribute set */
+  /* Auto mode: no data-theme attribute set → mirror [data-theme="dark"] */
   :root:not([data-theme]) {
-    --background: #1a1814;
-    --surface: #25221e;
-    --foreground: #f5f0e8;
-    --on-foreground: #1a1814;
-    --separator: rgba(245, 240, 232, 0.10);
-    --label-secondary: rgba(245, 240, 232, 0.60);
-    --label-tertiary: rgba(245, 240, 232, 0.40);
-    --accent: #c4794d;
+    --background:        #1a1814;
+    --surface:           #25221e;
+    --foreground:        #f5f0e8;
+    --on-foreground:     #1a1814;
+    --separator:         rgba(245, 240, 232, 0.10);
+    --label-secondary:   rgba(245, 240, 232, 0.60);
+    --label-tertiary:    rgba(245, 240, 232, 0.40);
+    --accent:            #c4794d;
+
+    --ring-subtle:       rgba(255, 255, 255, 0.06);
+    --ring-default:      rgba(255, 255, 255, 0.10);
+    --ring-strong:       rgba(255, 255, 255, 0.18);
+
+    --tint-success-bg:   rgba(16, 185, 129, 0.18);
+    --tint-success-text: #6ee7b7;
+    --tint-warning-bg:   rgba(245, 158, 11, 0.18);
+    --tint-warning-text: #fcd34d;
+    --tint-info-bg:      rgba(59, 130, 246, 0.20);
+    --tint-info-text:    #93c5fd;
+    --tint-danger-bg:    rgba(244, 63, 94, 0.20);
+    --tint-danger-text:  #fda4af;
+
+    --color-income:      #34d399;
+    --color-expense:     #f87171;
+
+    --shadow-card:       0 1px 2px rgba(0, 0, 0, 0.40);
+    --shadow-float:      0 6px 24px rgba(0, 0, 0, 0.55),
+                         0 1px 4px rgba(0, 0, 0, 0.40);
+    --shadow-sheet:      0 -8px 28px rgba(0, 0, 0, 0.55);
   }
 }
 

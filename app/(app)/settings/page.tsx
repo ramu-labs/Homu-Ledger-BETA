@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers, RefreshCw, Wallet, Ticket, Sparkles, SunMoon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers, RefreshCw, Wallet, Ticket, Sparkles, SunMoon, Palette } from "lucide-react";
 import { TapLink } from "@/components/tap";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions/auth";
@@ -224,6 +224,7 @@ export default async function SettingsPage() {
             label="Feedback Tickets"
             rightSlot={<DevFeedbackBadge initialCount={openTicketCount} />}
           />
+          <RowLink href="/design-system" icon={<Palette className="h-[18px] w-[18px]" strokeWidth={2} />} label="DesignSystem" />
         </Group>
       )}
 
@@ -239,7 +240,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.18.1</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.19.0</p>
     </div>
   );
 }
