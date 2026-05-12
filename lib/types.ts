@@ -1,5 +1,23 @@
 export type TransactionType = "income" | "expense";
 
+export type FeedbackCategory = "bug" | "feature" | "question" | "other";
+export type FeedbackStatus = "open" | "in_progress" | "closed";
+
+export type DbFeedback = {
+  id: string;
+  created_at: string;
+  created_by: string | null;
+  household_id: string | null;
+  subject: string;
+  body: string;
+  category: FeedbackCategory;
+  status: FeedbackStatus;
+  attachments: string[];
+  reply: string | null;
+  replied_at: string | null;
+  replied_by: string | null;
+};
+
 export type DbHousehold = {
   id: string;
   name: string;

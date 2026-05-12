@@ -25,6 +25,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      feedback: {
+        Row: {
+          id: string
+          created_at: string
+          created_by: string | null
+          household_id: string | null
+          subject: string
+          body: string
+          category: "bug" | "feature" | "question" | "other"
+          status: "open" | "in_progress" | "closed"
+          attachments: string[]
+          reply: string | null
+          replied_at: string | null
+          replied_by: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          created_by?: string | null
+          household_id?: string | null
+          subject: string
+          body: string
+          category?: "bug" | "feature" | "question" | "other"
+          status?: "open" | "in_progress" | "closed"
+          attachments?: string[]
+          reply?: string | null
+          replied_at?: string | null
+          replied_by?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          created_by?: string | null
+          household_id?: string | null
+          subject?: string
+          body?: string
+          category?: "bug" | "feature" | "question" | "other"
+          status?: "open" | "in_progress" | "closed"
+          attachments?: string[]
+          reply?: string | null
+          replied_at?: string | null
+          replied_by?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           color: string
