@@ -29,6 +29,14 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.14.3",
+    date: "May 12, 2026",
+    changes: [
+      { type: "improvement", en: "Transaction rows now show the wallet name inline after the category (Food & Drink · Marcel's) instead of a small badge stuck on the category icon — easier to read at a glance", id: "Baris transaksi kini menampilkan nama dompet sejajar setelah kategori (Food & Drink · Marcel's) daripada lencana kecil di ikon kategori — lebih mudah dibaca sekilas" },
+      { type: "improvement", en: "Recurring item rows now show when they were added (e.g. Added 10 May 2026) so you can tell new entries from long-running ones at a glance", id: "Daftar item berulang kini menampilkan tanggal pembuatan (mis. Dibuat 10 Mei 2026) sehingga mudah membedakan entri baru dari yang sudah lama" },
+    ],
+  },
+  {
     version: "1.14.2",
     date: "May 12, 2026",
     changes: [
