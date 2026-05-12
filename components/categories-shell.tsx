@@ -48,33 +48,35 @@ export default function CategoriesShell({ categories: initial, iconStyle = "3d" 
   return (
     <>
       <div className="pb-10">
-        <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-2 pb-2 backdrop-blur">
-          <button
-            onClick={() => router.back()}
-            aria-label="Back"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground)] ring-1 ring-black/[0.05] shadow-[0_1px_2px_rgba(0,0,0,0.03)] active:scale-95 transition-transform"
-          >
-            <ChevronLeft className="h-[20px] w-[20px]" strokeWidth={2.25} />
-          </button>
-          <h1 className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">Categories</h1>
-          <button
-            onClick={() => setAddOpen(true)}
-            aria-label="Add category"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--on-foreground)] shadow-sm active:scale-95 transition-transform"
-          >
-            <Plus className="h-[18px] w-[18px]" strokeWidth={2.25} />
-          </button>
-        </header>
-
-        {/* Tabs */}
-        <div className="px-5 mt-4">
-          <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
-            <TabBtn active={activeTab === "expense"} onClick={() => setActiveTab("expense")}>
-              Expense
-            </TabBtn>
-            <TabBtn active={activeTab === "income"} onClick={() => setActiveTab("income")}>
-              Income
-            </TabBtn>
+        {/* Sticky band: title row + Expense/Income tab pill, both pinned
+            together so the tabs stay reachable while scrolling the list. */}
+        <div className="sticky top-[env(safe-area-inset-top)] z-20 bg-[var(--background)]/95 backdrop-blur">
+          <header className="flex items-center justify-between px-5 pt-2 pb-2">
+            <button
+              onClick={() => router.back()}
+              aria-label="Back"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground)] ring-1 ring-black/[0.05] shadow-[0_1px_2px_rgba(0,0,0,0.03)] active:scale-95 transition-transform"
+            >
+              <ChevronLeft className="h-[20px] w-[20px]" strokeWidth={2.25} />
+            </button>
+            <h1 className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">Categories</h1>
+            <button
+              onClick={() => setAddOpen(true)}
+              aria-label="Add category"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--foreground)] text-[var(--on-foreground)] shadow-sm active:scale-95 transition-transform"
+            >
+              <Plus className="h-[18px] w-[18px]" strokeWidth={2.25} />
+            </button>
+          </header>
+          <div className="px-5 pb-3">
+            <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
+              <TabBtn active={activeTab === "expense"} onClick={() => setActiveTab("expense")}>
+                Expense
+              </TabBtn>
+              <TabBtn active={activeTab === "income"} onClick={() => setActiveTab("income")}>
+                Income
+              </TabBtn>
+            </div>
           </div>
         </div>
 

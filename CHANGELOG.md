@@ -2,6 +2,45 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.20.0 - May 13, 2026
+
+### Bento Total Balance on the Transactions page
+
+Previously: a hero-style centered 40px Total Balance number, then a 2-col bento grid of Income / Expense cards below. The Total Balance felt like a different visual language from the cards underneath.
+
+Now: Total Balance is a **full-width bento card** with the same chrome (`SurfaceCard`, `--shadow-card`, `--ring-subtle`) as the Income/Expense pair, with a Wallet icon chip + uppercase label, sized at 28px. All three cards read as one stacked set.
+
+Side benefits:
+- Income/Expense icon tints now use `--tint-success-bg/text` and `--tint-warning-bg/text` from the design system instead of the hardcoded `bg-emerald-100/70 / bg-amber-100/70` tone — they auto-adapt to dark mode.
+- Negative balance color now uses `--color-expense` instead of `text-rose-600` for consistency with the rest of the finance UI.
+
+### Sticky Expense/Income tabs on Categories
+
+`components/categories-shell.tsx` wraps the header + tab pill in one sticky band so the Expense/Income switcher stays pinned to the top while scrolling the category list. Previously the tab pill was below the sticky header and scrolled away with the list.
+
+### Icon-style page contrast + confirmation sheet
+
+`app/(app)/settings/style/page.tsx`:
+
+- **Contrast fix.** The selected card uses `bg-[var(--foreground)]` (cream in dark mode), but every text and icon inside was hardcoded to white — so dark mode showed white-on-cream and was unreadable. Swapped `text-white` / `color="white"` / `bg-white/10` to `text-[var(--on-foreground)]` / `var(--on-foreground)` / `bg-[var(--on-foreground)]/10` so contrast works in both modes (this completes the v1.17.1 `--on-foreground` sweep).
+- **Confirmation sheet.** Tapping a style no longer immediately saves. Opens a `<Sheet>` (design-system primitive) with a live preview, description, and Cancel / Apply buttons. Always confirms — including when picking the currently-saved style — per spec.
+
+### Ledger symbol: Default / Custom subtabs
+
+`app/(app)/settings/symbol/page.tsx`:
+
+Previously: 40-emoji grid + a small "or type your own" input shoved at the bottom of the page.
+
+Now: a `<FilterTabs>` switcher with two tabs.
+- **Default** — the existing 40-emoji grid, unchanged.
+- **Custom** — a 32×28px live-preview card showing whatever the user is typing, a centered 28px emoji input, a one-line hint, and a primary `<Button>` to apply. Reads as a real feature, not an afterthought.
+
+### Internal
+
+- New code in this release uses the v1.19.0 design-system primitives (`SurfaceCard`, `Sheet`, `Button`, `FilterTabs`) where they fit, instead of hand-rolling. Existing pages are still on their original markup.
+
+---
+
 ## v1.19.0 - May 13, 2026
 
 ### DesignSystem catalog (dev-only)

@@ -29,6 +29,17 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.20.0",
+    date: "May 13, 2026",
+    changes: [
+      { type: "improvement", en: "Transactions page: Total Balance is now a full-width bento card that matches the Income/Expense cards below — all three read as one stacked bento set", id: "Halaman Transaksi: Total Saldo kini berupa bento card sebar penuh yang serasi dengan kartu Pemasukan/Pengeluaran di bawahnya — ketiganya tampil sebagai satu set bento yang konsisten" },
+      { type: "improvement", en: "Settings → Categories: the Expense / Income tab pill now sticks to the top alongside the page title when scrolling the category list", id: "Pengaturan → Kategori: pill tab Pengeluaran / Pemasukan kini menempel di atas bersama judul halaman saat daftar kategori di-scroll" },
+      { type: "fix", en: "Settings → Icon Style: the selected card was invisible in dark mode (white icons + white text on cream background). Now uses the theme-aware --on-foreground token so contrast works in both modes", id: "Pengaturan → Gaya Ikon: kartu terpilih tidak terbaca di dark mode (ikon putih + teks putih di latar krem). Kini memakai token --on-foreground yang sadar tema, jadi kontras tepat di kedua mode" },
+      { type: "new", en: "Settings → Icon Style: tapping a style now opens a confirmation sheet with a live preview before applying — no more accidental switch on a stray tap", id: "Pengaturan → Gaya Ikon: mengetuk gaya kini membuka sheet konfirmasi dengan preview langsung sebelum diterapkan — tidak ada lagi pergantian tidak sengaja karena ketukan keliru" },
+      { type: "improvement", en: "Settings → Ledger Symbol: split into Default and Custom tabs. Default keeps the 40-emoji grid; Custom has a big live preview + a centered emoji input so picking your own emoji feels like a real feature, not an afterthought", id: "Pengaturan → Simbol Buku: dipisah jadi tab Default dan Custom. Default tetap memuat grid 40 emoji; Custom punya preview besar langsung + input emoji di tengah, sehingga memilih emoji sendiri terasa seperti fitur utuh, bukan tambahan" },
+    ],
+  },
+  {
     version: "1.19.0",
     date: "May 13, 2026",
     changes: [
