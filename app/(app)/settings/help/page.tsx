@@ -1,8 +1,9 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import FeedbackForm from "@/components/feedback-form";
+import HelpShell from "@/components/help-shell";
 
 export default async function HelpPage() {
   const supabase = await createClient();
@@ -22,11 +23,12 @@ export default async function HelpPage() {
         <div className="h-9 w-9" />
       </header>
 
-      <p className="px-6 pb-4 text-[13px] text-[var(--label-secondary)]">
-        Found a bug, want a feature, or just confused? Send it our way — we read every one.
-      </p>
-
-      <FeedbackForm userId={user.id} />
+      {/* HelpShell reads `useSearchParams()` to remember the active tab —
+          wrap in Suspense so Next can stream the rest of the page even if
+          search params aren't yet resolved on first paint. */}
+      <Suspense fallback={null}>
+        <HelpShell userId={user.id} />
+      </Suspense>
     </div>
   );
 }

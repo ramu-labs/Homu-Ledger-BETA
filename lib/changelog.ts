@@ -29,6 +29,15 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.18.0",
+    date: "May 13, 2026",
+    changes: [
+      { type: "new", en: "Help & Feedback now has a My tickets tab — see every ticket you submitted, its current status (Open / In progress / Closed), and any reply from the dev. Replies and status changes appear live without refreshing", id: "Help & Feedback kini punya tab My tickets — lihat setiap tiket yang kamu kirim, statusnya saat ini (Open / In progress / Closed), dan balasan dari developer. Balasan dan perubahan status muncul langsung tanpa perlu refresh" },
+      { type: "new", en: "Developers: a red badge on the Feedback Tickets row in Settings shows how many tickets are still Open. A toast also pops up at the top of the screen when a new ticket comes in — tap it to jump straight to the ticket in the admin queue", id: "Developer: lencana merah di baris Feedback Tickets pada Pengaturan menampilkan jumlah tiket yang masih Open. Toast juga muncul di atas layar saat tiket baru masuk — ketuk untuk langsung ke tiket di antrian admin" },
+      { type: "improvement", en: "Backend security and performance follow-ups on the feedback feature: tightened RLS policy evaluation, locked down internal helper functions from public RPC access, and added covering indexes on foreign keys", id: "Penyesuaian keamanan dan performa backend untuk fitur feedback: kebijakan RLS dievaluasi lebih efisien, fungsi helper internal dikunci dari akses RPC publik, dan indeks penutup ditambahkan pada foreign key" },
+    ],
+  },
+  {
     version: "1.17.1",
     date: "May 12, 2026",
     changes: [

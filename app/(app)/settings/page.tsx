@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions/auth";
 import { CopyButton } from "@/components/copy-button";
 import { getServerT } from "@/lib/i18n/server";
+import DevFeedbackBadge from "@/components/dev-feedback-badge";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -56,6 +57,18 @@ export default async function SettingsPage() {
         .eq("id", profile.household_id)
         .single()
     : { data: null };
+
+  // Open-tickets count for the dev badge. We only fetch this for developers
+  // (RLS lets a dev SELECT all feedback; non-devs can only see their own,
+  // so the count would be wrong if queried unconditionally).
+  let openTicketCount = 0;
+  if (profile?.is_developer) {
+    const { count } = await supabase
+      .from("feedback")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "open");
+    openTicketCount = count ?? 0;
+  }
 
 
   return (
@@ -205,7 +218,12 @@ export default async function SettingsPage() {
       {profile?.is_developer && (
         <Group title="Developer">
           <RowLink href="/settings/promo-codes" icon={<Ticket className="h-[18px] w-[18px]" strokeWidth={2} />} label={t("settings.promoCodes")} />
-          <RowLink href="/settings/feedback-admin" icon={<HelpCircle className="h-[18px] w-[18px]" strokeWidth={2} />} label="Feedback Tickets" />
+          <RowLink
+            href="/settings/feedback-admin"
+            icon={<HelpCircle className="h-[18px] w-[18px]" strokeWidth={2} />}
+            label="Feedback Tickets"
+            rightSlot={<DevFeedbackBadge initialCount={openTicketCount} />}
+          />
         </Group>
       )}
 
@@ -221,7 +239,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.17.1</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.18.0</p>
     </div>
   );
 }
@@ -253,7 +271,19 @@ function Row({ icon, label }: { icon: React.ReactNode; label: string }) {
   );
 }
 
-function RowLink({ href, icon, label, value }: { href: string; icon: React.ReactNode; label: string; value?: string }) {
+function RowLink({
+  href,
+  icon,
+  label,
+  value,
+  rightSlot,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  value?: string;
+  rightSlot?: React.ReactNode;
+}) {
   return (
     <li>
       <TapLink href={href} className="flex w-full items-center gap-3 px-4 py-3.5 min-h-[52px] active:bg-black/[0.02] transition-colors [touch-action:manipulation]">
@@ -262,6 +292,7 @@ function RowLink({ href, icon, label, value }: { href: string; icon: React.React
         </span>
         <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">{label}</p>
         {value && <p className="mr-1 text-[14px] font-medium text-[var(--label-secondary)]">{value}</p>}
+        {rightSlot}
         <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
       </TapLink>
     </li>

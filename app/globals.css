@@ -145,6 +145,18 @@ input[type="date"]::-webkit-clear-button {
   animation: overlay-fade-in 280ms ease-out both;
 }
 
+/* Toast slide-down: the dev feedback notifier drops new-ticket toasts in
+   from above the safe-area inset. Same easing as the search reveal so the
+   motion feels consistent. */
+@keyframes toast-slide-down {
+  from { transform: translateY(-16px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.animate-toast-slide-down {
+  animation: toast-slide-down 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
 /* Search bar reveal: slide-down + fade-in when the search field is opened
    from the header. Pure transform + opacity, no overflow:hidden — that
    was clipping the input's bottom ring outline. */

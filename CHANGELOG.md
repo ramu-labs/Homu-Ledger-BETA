@@ -2,6 +2,35 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.18.0 - May 13, 2026
+
+### Help & Feedback — track your tickets
+
+- **New `My tickets` tab** on Settings → Help & Feedback. Lists every ticket the signed-in user has submitted, newest first, with a status pill (Open / In progress / Closed), the category, and a "Reply" chip when the dev has replied.
+- Tap a ticket to open a **read-only bottom sheet** showing the full body, attachments (signed URLs, 1-hour TTL), and the dev's reply in a highlighted card.
+- **Realtime**: subscribed to `postgres_changes` UPDATE events filtered to `created_by=eq.<user_id>` so dev replies and status changes appear without refreshing. DELETE events are also handled — a ticket the dev wipes disappears from the list silently.
+- Tab state mirrored to URL `?tab=mine` (replace, not push) so deep links land on the right pane.
+
+### Developer feedback alerts
+
+- **Red open-ticket badge** next to the *Feedback Tickets* row in Settings. Counts rows where `status='open'`. Server-renders the initial count; client-side Realtime subscription on `feedback` re-fetches on any change so the badge stays current. Hidden when zero.
+- **Top-of-screen toast** (`DevFeedbackNotifier`, mounted in `app/(app)/layout.tsx` only when `profiles.is_developer = true`) pops up on every new feedback INSERT. Tap → routes to `/settings/feedback-admin?ticket=<id>`. Auto-dismisses after 8s, max 3 stacked, de-duped by ticket id.
+- New `@keyframes toast-slide-down` in `globals.css` (`.animate-toast-slide-down`).
+
+### Database — migration `0021_feedback_followups.sql`
+
+- RLS init-plan fix: rewrote `feedback` SELECT and INSERT policies to use `(select auth.uid())` instead of bare `auth.uid()` so the function is evaluated once per query, not per row.
+- `revoke execute … from public, anon` on the `is_developer_caller()` and `can_access_feedback_attachment(text)` helper functions — they're only meant to be called from inside RLS policies, never via the REST RPC endpoint.
+- Covering indexes on `feedback.household_id` and `feedback.replied_by` (the two unindexed foreign keys flagged by the Supabase advisor).
+- Added `public.feedback` to the `supabase_realtime` publication (idempotent via a DO block) so the two subscriptions above receive events.
+
+### Internal
+
+- `RowLink` in `app/(app)/settings/page.tsx` gained an optional `rightSlot` prop so client components can be slotted into the right side of a row link (used by the open-ticket badge).
+- `app/(app)/layout.tsx` now fetches `profiles.is_developer` per request to gate the notifier — one extra small query for every (app) navigation. Worth it to avoid loading the realtime channel for non-devs.
+
+---
+
 ## v1.17.1 - May 12, 2026
 
 ### Dark-mode contrast fixes
