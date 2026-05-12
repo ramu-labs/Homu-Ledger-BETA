@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.17.0",
+    date: "May 12, 2026",
+    changes: [
+      { type: "new", en: "Help & Feedback works! Settings → Help & Feedback opens a form with subject, message, category (Bug/Feature/Question/Other), and attachments — multiple screenshots and one video up to 50 MB. Submitted tickets land in the developer's queue in-app", id: "Help & Feedback kini berfungsi! Pengaturan → Help & Feedback membuka form dengan subjek, pesan, kategori (Bug/Fitur/Pertanyaan/Lainnya), dan lampiran — beberapa screenshot dan satu video maksimal 50 MB. Tiket yang dikirim masuk ke antrian developer di aplikasi" },
+    ],
+  },
+  {
     version: "1.16.1",
     date: "May 12, 2026",
     changes: [

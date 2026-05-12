@@ -2,6 +2,29 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.17.0 - May 12, 2026
+
+### Help & Feedback ticketing
+
+Users can now send feedback directly from `Settings → Help & Feedback`. The form has:
+
+- **Subject** (required, up to 120 chars)
+- **Category**: Bug · Feature · Question · Other
+- **Message body** (required, multi-line)
+- **Attachments**: multiple screenshots and at most one video (≤ 50 MB; the form rejects bigger files client-side — server-side compression is a follow-up)
+
+Submitted tickets land in a developer-only queue at `Settings → Developer → Feedback Tickets` (visible only when `profiles.is_developer = true`). The queue:
+- Shows the submitter avatar, subject, category, status pill, and date
+- Tap to expand: full body, signed-URL attachment previews (3-up grid), status buttons (Open / In Progress / Closed), a delete button, and a reply textarea that becomes visible to the submitter (RLS lets each user read their own tickets back, so they can see the dev reply later if we surface it).
+
+**Migration 0020** introduces:
+- `public.feedback` table with `subject`, `body`, `category`, `status`, `attachments text[]`, `reply`, `replied_at`, `replied_by`
+- Storage bucket `feedback-attachments` (private). Path convention `<user_id>/<random>.<ext>`
+- RLS: users insert/read their own; developers read/update/delete all. Storage policies mirror that.
+- Helper function `is_developer_caller()` and `can_access_feedback_attachment(path)`.
+
+⚠ **Apply migration 0020 to Supabase before this is live.**
+
 ## v1.16.1 - May 12, 2026
 
 ### Reports
