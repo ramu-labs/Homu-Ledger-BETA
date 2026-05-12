@@ -63,6 +63,13 @@ export default function RecurringItemList({ items, currency = "IDR", iconStyle =
     return `${t("recurring.until")} ${formatShortDate(item.repeat_until)}`;
   }
 
+  function createdLabel(item: DbRecurringItem): string {
+    const date = new Date(item.created_at);
+    const ymd = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const prefix = lang === "id" ? "Dibuat" : "Added";
+    return `${prefix} ${formatShortDate(ymd)}`;
+  }
+
   if (items.length === 0) {
     return (
       <div className="mx-5 mt-2 rounded-2xl bg-[var(--surface)] px-6 py-12 text-center ring-1 ring-black/[0.04]">
@@ -128,6 +135,9 @@ export default function RecurringItemList({ items, currency = "IDR", iconStyle =
                       {freqSubLabel(item)}
                     </p>
                   )}
+                  <p className="text-[11px] text-[var(--label-tertiary)]">
+                    {createdLabel(item)}
+                  </p>
                 </div>
               </div>
 

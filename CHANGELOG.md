@@ -2,6 +2,16 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.14.3 - May 12, 2026
+
+### Transactions page
+
+- **Wallet inline as text.** Replaces the small wallet badge that sat on the bottom-left of each row's category icon. Each row now reads `Category · Wallet name` (e.g. `Food & Drink · Marcel's`). Member badge on the bottom-right stays — it's small enough that two badges + a circle icon was getting busy. Frees the icon to be a clean category-only glyph.
+
+### Recurring items
+
+- **Created date on each row.** Recurring items now show `Added DD MMM YYYY` (or `Dibuat …` in Indonesian) beneath the schedule info — handy for telling new entries from long-running ones.
+
 ## v1.14.2 - May 12, 2026
 
 ### Transactions page
