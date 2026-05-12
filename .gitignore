@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# claude
+.claude/settings.local.json
+
 # supabase CLI working dir
 supabase/.temp
 

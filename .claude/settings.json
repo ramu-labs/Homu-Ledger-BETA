@@ -10,5 +10,24 @@
         ]
       }
     ]
-  }
+  },
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:homu.ramu.app)",
+      "WebFetch(domain:mcp.vercel.com)",
+      "WebFetch(domain:api.vercel.com)",
+      "Bash(curl:https://homu.ramu.app/*)",
+      "Bash(curl:https://api.vercel.com/*)"
+    ]
+  },
+  "sandbox": {
+    "network": {
+      "allowedDomains": [
+        "homu.ramu.app",
+        "mcp.vercel.com",
+        "api.vercel.com"
+      ]
+    }
+  },
+  "enableAllProjectMcpServers": true
 }

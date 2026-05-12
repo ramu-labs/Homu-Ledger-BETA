@@ -91,18 +91,18 @@ function SummaryPill({
 }) {
   const iconBg = tone === "income" ? "bg-emerald-100/70 text-emerald-700" : "bg-amber-100/70 text-amber-800";
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-[var(--surface)] px-3.5 py-3 ring-1 ring-black/[0.04] shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-      <span className={`flex h-7 w-7 items-center justify-center rounded-full ${iconBg}`}>
-        {icon}
-      </span>
-      <div className="min-w-0">
+    <div className="rounded-2xl bg-[var(--surface)] px-3.5 py-3 ring-1 ring-black/[0.04] shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+      <div className="flex items-center gap-2">
+        <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${iconBg}`}>
+          {icon}
+        </span>
         <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--label-tertiary)]">
           {label}
         </p>
-        <p className="truncate text-[15px] font-semibold tracking-tight text-[var(--foreground)] tabular-nums">
-          {value}
-        </p>
       </div>
+      <p className="mt-1.5 truncate text-[17px] font-semibold tracking-tight text-[var(--foreground)] tabular-nums">
+        {value}
+      </p>
     </div>
   );
 }
