@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.16.0",
+    date: "May 12, 2026",
+    changes: [
+      { type: "new", en: "Dark mode! Settings → Account → Theme. Pick Automatic (follow phone), Always Light, or Always Dark. Set instantly with no flash on app launch.", id: "Mode gelap! Pengaturan → Akun → Theme. Pilih Otomatis (ikut HP), Selalu Terang, atau Selalu Gelap. Berubah instan tanpa flash saat aplikasi dibuka." },
+    ],
+  },
+  {
     version: "1.15.1",
     date: "May 12, 2026",
     changes: [

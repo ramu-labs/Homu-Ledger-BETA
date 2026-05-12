@@ -2,6 +2,18 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.16.0 - May 12, 2026
+
+### Dark mode
+
+- **Theme switcher** at `Settings → Account → Theme` with three options:
+  - **Automatic** — follows the phone's system appearance (default).
+  - **Always Light** — forces the warm cream theme regardless of system.
+  - **Always Dark** — forces the dark theme regardless of system.
+- CSS variables (`--background`, `--surface`, `--foreground`, `--separator`, `--label-secondary`, `--label-tertiary`, `--accent`) all have dark counterparts. The dark palette keeps the warm tone (slight brown tint rather than pure neutral).
+- Theme is persisted to `localStorage` and applied via an inline bootstrap `<script>` in `<head>` before first paint, so there's no flash of wrong theme on app launch.
+- iOS PWA status-bar color follows the theme via media-query `theme-color` meta.
+
 ## v1.15.1 - May 12, 2026
 
 ### Status-bar shield + sticky headers

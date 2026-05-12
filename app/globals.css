@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  /* Warm Apple-inspired palette */
+  /* Warm Apple-inspired palette (light) */
   --background: #f6f1e9;
   --surface: #fefcf8;
   --foreground: #2a2520;
@@ -9,6 +9,39 @@
   --label-secondary: rgba(66, 52, 40, 0.55);
   --label-tertiary: rgba(66, 52, 40, 0.38);
   --accent: #b5663a;
+}
+
+/* Dark theme — applied when:
+   - user explicitly chose dark (data-theme="dark"), OR
+   - user chose auto / hasn't set anything AND system is dark
+     (no data-theme attribute + prefers-color-scheme: dark) */
+[data-theme="dark"],
+:root:not([data-theme]) {
+  /* Inherit light by default; the media query below activates dark for the
+     "auto" branch (no data-theme attribute). [data-theme="dark"] overrides. */
+}
+
+[data-theme="dark"] {
+  --background: #1a1814;
+  --surface: #25221e;
+  --foreground: #f5f0e8;
+  --separator: rgba(245, 240, 232, 0.10);
+  --label-secondary: rgba(245, 240, 232, 0.60);
+  --label-tertiary: rgba(245, 240, 232, 0.40);
+  --accent: #c4794d;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* Auto mode: no data-theme attribute set */
+  :root:not([data-theme]) {
+    --background: #1a1814;
+    --surface: #25221e;
+    --foreground: #f5f0e8;
+    --separator: rgba(245, 240, 232, 0.10);
+    --label-secondary: rgba(245, 240, 232, 0.60);
+    --label-tertiary: rgba(245, 240, 232, 0.40);
+    --accent: #c4794d;
+  }
 }
 
 html, body {

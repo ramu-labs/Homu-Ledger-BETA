@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers, RefreshCw, Wallet, Ticket, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers, RefreshCw, Wallet, Ticket, Sparkles, SunMoon } from "lucide-react";
 import { TapLink } from "@/components/tap";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions/auth";
@@ -183,6 +183,11 @@ export default async function SettingsPage() {
           value={iconStyleLabel}
         />
         <RowLink
+          href="/settings/theme"
+          icon={<SunMoon className="h-[18px] w-[18px]" strokeWidth={2} />}
+          label="Theme"
+        />
+        <RowLink
           href={`/settings/language?current=${language}`}
           icon={<Languages className="h-[18px] w-[18px]" strokeWidth={2} />}
           label={t("settings.language")}
@@ -215,7 +220,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.15.1</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.16.0</p>
     </div>
   );
 }

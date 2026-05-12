@@ -28,7 +28,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f6f1e9",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f1e9" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1814" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -46,6 +49,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
+      <head>
+        {/* Theme bootstrap — read user preference from localStorage and apply
+            data-theme BEFORE first paint so there's no flash of wrong theme. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('homu-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-full">
         <SplashScreen />
         {children}
