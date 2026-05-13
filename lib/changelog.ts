@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.21.2",
+    date: "May 13, 2026",
+    changes: [
+      { type: "fix", en: "Real fix for the 'background scrolls while a sheet is open' bug: the pull-to-refresh listener was firing on touches inside open sheets and pushing the page underneath down as you dragged. It now bails entirely whenever any sheet/modal has locked body scroll", id: "Perbaikan sesungguhnya untuk bug 'latar bisa di-scroll saat sheet terbuka': listener pull-to-refresh ternyata tetap aktif saat sheet dibuka, dan menggeser halaman di bawahnya saat kamu menyeret. Kini dimatikan total selama ada sheet/modal yang mengunci scroll body" },
+    ],
+  },
+  {
     version: "1.21.1",
     date: "May 13, 2026",
     changes: [

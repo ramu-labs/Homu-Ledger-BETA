@@ -21,14 +21,34 @@ export default function PullToRefresh({ children }: { children: React.ReactNode 
   const lastRefreshTime = useRef(0);
 
   useEffect(() => {
+    // True when any sheet/modal has locked body scroll. The Add Transaction
+    // and Add Recurring sheets, plus all the bottom-sheet modals, set
+    // body.style.overflow = "hidden" when open. We use that as the universal
+    // "don't process pull gestures" signal — otherwise the user dragging
+    // inside an open sheet still triggers pull-to-refresh (document-level
+    // listeners fire regardless of which element was touched), and the
+    // growing indicator div visibly pushes the page content underneath the
+    // sheet downward — perceived by the user as "the background is scrolling".
+    function isAnyModalOpen() {
+      return document.body.style.overflow === "hidden";
+    }
     function onTouchStart(e: TouchEvent) {
+      if (isAnyModalOpen()) return;
       if (window.scrollY === 0) {
         startY.current = e.touches[0].clientY;
         pulling.current = true;
       }
     }
     function onTouchMove(e: TouchEvent) {
-      if (!pulling.current) return;
+      if (!pulling.current || isAnyModalOpen()) {
+        if (pulling.current && isAnyModalOpen()) {
+          // A sheet opened while a pull was already in progress (rare) —
+          // cancel the pull cleanly so the indicator snaps back to 0.
+          setPullY(0);
+          pulling.current = false;
+        }
+        return;
+      }
       const delta = Math.max(0, e.touches[0].clientY - startY.current);
       // Rubber-band: slow down past 40px
       const rubberband = delta < 40 ? delta : 40 + (delta - 40) * 0.3;

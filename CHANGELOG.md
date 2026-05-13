@@ -2,6 +2,25 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.21.2 - May 13, 2026
+
+### Real fix for "background scrolls while a sheet is open"
+
+v1.21.0 added `overflow: hidden` on html + body and a `touchmove` preventDefault guard. v1.21.1 added `touch-action: none` on top of that. Neither was the actual problem — they all worked correctly.
+
+The real culprit was `components/pull-to-refresh.tsx`. It registers `touchstart` / `touchmove` / `touchend` listeners on `document`, and any touch on the page (including touches *inside* an open sheet) fires them. When the user dragged down inside the sheet, the PTR handler saw `window.scrollY === 0`, set `pulling.current = true`, then on every move set `pullY` to a growing number. `pullY` drives the height of the pull indicator div that sits above `{children}` in the layout — so the entire transactions list (and everything below) gets visibly pushed down by that many pixels. The sheet itself doesn't move (it's `position: fixed`), so the user sees:
+
+- Sheet stays still
+- Background slides down behind it
+
+— which reads exactly as "I can still scroll the background".
+
+Fix: PTR's `touchstart` now bails when `document.body.style.overflow === "hidden"`, which is the universal signal every sheet/modal in this codebase sets when it opens (AddTransactionSheet, AddRecurringSheet, AddCategorySheet, EditCategorySheet, CategoryDrilldownSheet, LedgerSwitcherSheet, MyTicketDetailSheet, etc.). `touchmove` also checks and snaps `pullY` back to 0 if a sheet opens mid-pull (rare but handled).
+
+Same wrapper component is also used by ReportsShell, so the fix covers both pages.
+
+---
+
 ## v1.21.1 - May 13, 2026
 
 Three follow-up tweaks to v1.21.0's Add Transaction / Add Recurring sheet changes.
