@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Trash2, Camera, ImagePlus, ChevronRight, ArrowRightLeft, Check, Calendar, Repeat } from "lucide-react";
+import { X, Trash2, Camera, ImagePlus, ChevronRight, ArrowRightLeft, Check, Calendar, Repeat, Wallet } from "lucide-react";
 import { addTransaction, updateTransaction, deleteTransaction, moveTransaction, addTransfer } from "@/app/actions/transactions";
 import { signTransactionPhoto } from "@/app/actions/photos";
 import { addRecurringItem } from "@/app/actions/recurring";
@@ -89,13 +89,21 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
   // bottom-0 children to anchor to body's collapsed bounds — the cream-strip
   // bug we kept hitting). The touchmove guard below handles iOS Safari
   // momentum-scroll which can otherwise bypass overflow:hidden.
+  //
+  // Defense-in-depth: also flip `touch-action` to "none" on html so any pan
+  // gesture is rejected by the browser before the touchmove handler runs.
+  // The sheet has its own `touch-action: pan-y` plus the data-scroll's
+  // overflow-y handles vertical scrolling inside, so this doesn't break
+  // the sheet's own scrolling.
   useEffect(() => {
     if (!open) return;
 
     const prevHtmlOverflow = document.documentElement.style.overflow;
     const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlTouchAction = document.documentElement.style.touchAction;
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
+    document.documentElement.style.touchAction = "none";
 
     function onTouchMove(e: TouchEvent) {
       const sheet = sheetRef.current;
@@ -109,6 +117,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     return () => {
       document.documentElement.style.overflow = prevHtmlOverflow;
       document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.touchAction = prevHtmlTouchAction;
       document.removeEventListener("touchmove", onTouchMove);
     };
   }, [open]);
@@ -454,8 +463,10 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
             </div>
           </div>
 
-          {/* Scrollable fields */}
-          <div data-scroll className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-5 space-y-3 pb-4">
+          {/* Scrollable fields.
+              pt-1 keeps the Amount input's top ring from being clipped by the
+              overflow:hidden boundary at the top of the scroll container. */}
+          <div data-scroll className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-5 pt-1 space-y-3 pb-4">
             {/* Amount */}
             <input
               ref={amountRef}
@@ -478,6 +489,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
                   aria-label={tr("tx.transferFrom")}
                   className="flex h-12 w-full items-center gap-3 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08] transition-colors active:bg-black/[0.04]"
                 >
+                  <Wallet className="h-[18px] w-[18px] shrink-0 text-[var(--label-secondary)]" strokeWidth={2} />
                   {selectedWallet ? (
                     <>
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${selectedWallet.color}20` }}>
@@ -496,6 +508,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
                   aria-label={tr("tx.transferTo")}
                   className="flex h-12 w-full items-center gap-3 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08] transition-colors active:bg-black/[0.04]"
                 >
+                  <Wallet className="h-[18px] w-[18px] shrink-0 text-[var(--label-secondary)]" strokeWidth={2} />
                   {selectedToWallet ? (
                     <>
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${selectedToWallet.color}20` }}>
@@ -516,6 +529,10 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
                 aria-label={tr("tx.wallet")}
                 className="flex h-12 w-full items-center gap-3 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08] transition-colors active:bg-black/[0.04]"
               >
+                {/* Field-type marker — neutral Wallet glyph so the row reads as
+                    a wallet selector regardless of which wallet is selected
+                    (now that the "Wallet" text label above it is gone). */}
+                <Wallet className="h-[18px] w-[18px] shrink-0 text-[var(--label-secondary)]" strokeWidth={2} />
                 {selectedWallet ? (
                   <>
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${selectedWallet.color}20` }}>

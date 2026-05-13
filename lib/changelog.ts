@@ -29,6 +29,15 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.21.1",
+    date: "May 13, 2026",
+    changes: [
+      { type: "improvement", en: "Add Transaction: the Wallet row now has a wallet icon on the left so it's obviously a wallet selector (the row used to look like info-only after v1.21.0 removed the 'Wallet' label)", id: "Tambah Transaksi: baris Dompet kini punya ikon dompet di kiri agar jelas bahwa baris itu adalah pemilih dompet (sebelumnya terlihat seperti info biasa setelah v1.21.0 menghapus label 'Dompet')" },
+      { type: "fix", en: "Add Transaction / Add Recurring: the Amount input's top edge was getting clipped by the scroll container — added a 4px top padding so the rounded ring is fully visible again", id: "Tambah Transaksi / Tambah Pengulangan: tepi atas kotak Jumlah terpotong oleh kontainer scroll — menambahkan 4px padding atas agar ring bundar di tepinya tampil utuh" },
+      { type: "fix", en: "Add Transaction / Add Recurring: stronger background-scroll lock — set touch-action: none on the document root while the sheet is open, so iOS rejects pan gestures before they have a chance to scroll the page underneath", id: "Tambah Transaksi / Tambah Pengulangan: kunci scroll latar diperkuat — set touch-action: none pada akar dokumen selama sheet terbuka, sehingga iOS menolak gestur pan sebelum sempat menggulung halaman di belakangnya" },
+    ],
+  },
+  {
     version: "1.21.0",
     date: "May 13, 2026",
     changes: [
