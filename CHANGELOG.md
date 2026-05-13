@@ -2,6 +2,28 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.21.0 - May 13, 2026
+
+### Add Transaction / Add Recurring sheet polish
+
+Three coordinated changes to the data-entry sheets.
+
+**1. Locked type tabs at top of the sheet.** Previously the Expense / Income / Transfer pill lived inside the scrollable form area, so it scrolled away with the fields. Moved out of the `data-scroll` flex item and into a non-scrolling `shrink-0` band immediately under the sheet header, so it stays reachable while the user scrolls through Amount → Wallet → Description → Category → Date → Photo.
+
+Same treatment for the Expense / Income pill at the top of AddRecurringSheet.
+
+**2. Auto-focus the Amount input on open** (new entries only). When the user taps the `+` FAB, the sheet slides in and the Amount input takes focus, so iOS pops the numeric keyboard immediately — one tap shorter to enter a transaction.
+
+Implementation: the sheet is always mounted (slides in/out via `translate-y`), so `amountRef.current` exists by the time `open` flips true. A `useEffect` schedules `amountRef.current?.focus()` via `requestAnimationFrame` to keep the focus call within the same tick as the open transition. Skipped when editing (the form is pre-filled and the user is reviewing, not typing fresh data).
+
+**3. Removed redundant field labels above every input.** The "Amount (IDR)", "Wallet", "Description", "Category", "Date", "Photo" labels were duplicating information already conveyed by the placeholders, the input's content, or the visible icon — so they went. The Amount input now carries `Amount (IDR)` as a 15px placeholder (smaller than the 24px input value) so the currency hint is still visible until the user types. `aria-label` set on every input/button so screen readers still announce the same name.
+
+Knock-on win: the form packs noticeably tighter (16px → 12px gaps between fields, no 24px label-row consumed per input). The Description field ends up high enough on screen that when iOS pops the keyboard to type it, the page doesn't have to scroll up much to keep the field visible — fixes the "screen pushed up a lot" feel.
+
+For Transfer mode, the From / To labels are kept inside the wallet picker text (e.g. "From: Marcel's") to keep the two rows distinguishable.
+
+---
+
 ## v1.20.0 - May 13, 2026
 
 ### Bento Total Balance on the Transactions page

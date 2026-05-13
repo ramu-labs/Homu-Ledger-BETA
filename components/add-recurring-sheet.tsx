@@ -57,6 +57,18 @@ export default function AddRecurringSheet({
 
   const selectedCategory = categories.find((c) => c.id === categoryId) ?? null;
   const sheetRef = useRef<HTMLDivElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus Amount on open (new entries only — editing pre-fills the form
+  // and the user usually just wants to tweak one field). See AddTransactionSheet
+  // for the longer note on why rAF is the right scheduling hook here.
+  useEffect(() => {
+    if (!open || editing) return;
+    const id = requestAnimationFrame(() => {
+      amountRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, editing]);
 
   // Body-scroll lock. We use plain overflow:hidden on html + body (instead
   // of position:fixed body, which on iOS PWA standalone causes fixed
@@ -218,9 +230,9 @@ export default function AddRecurringSheet({
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
-          <div data-scroll className="flex-1 overflow-y-auto overscroll-contain px-5 space-y-4 pb-4">
-
-            {/* Type toggle */}
+          {/* Locked type toggle — sits outside the scroll area so it stays
+              pinned to the top of the form while the fields below scroll. */}
+          <div className="shrink-0 px-5 pb-3">
             <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
               {(["expense", "income"] as const).map((opt) => (
                 <button
@@ -246,74 +258,65 @@ export default function AddRecurringSheet({
                 </button>
               ))}
             </div>
+          </div>
 
+          <div data-scroll className="flex-1 overflow-y-auto overscroll-contain px-5 space-y-3 pb-4">
             {/* Amount */}
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                {t("tx.amount")} ({currency})
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={amountDisplay}
-                onChange={handleAmountChange}
-                placeholder="0"
-                required
-                className="h-14 w-full rounded-2xl bg-[var(--background)] px-4 text-center text-[24px] font-semibold text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
-              />
-            </div>
+            <input
+              ref={amountRef}
+              type="text"
+              inputMode="numeric"
+              value={amountDisplay}
+              onChange={handleAmountChange}
+              placeholder={`${t("tx.amount")} (${currency})`}
+              aria-label={`${t("tx.amount")} (${currency})`}
+              required
+              className="h-14 w-full rounded-2xl bg-[var(--background)] px-4 text-center text-[24px] font-semibold text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[15px] placeholder:font-medium placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
+            />
 
             {/* Description */}
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                {t("tx.description")}
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t("recurring.namePlaceholder")}
-                required
-                className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
-              />
-            </div>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t("recurring.namePlaceholder")}
+              aria-label={t("tx.description")}
+              required
+              className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
+            />
 
             {/* Category */}
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                {t("tx.category")}
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowCategoryPicker(true)}
-                className="flex h-12 w-full items-center gap-3 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08] transition-colors active:bg-black/[0.04]"
-              >
-                {selectedCategory ? (
-                  <>
-                    <span
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                      style={{ backgroundColor: `${selectedCategory.color}22` }}
-                    >
-                      <CategoryIcon
-                        symbol={selectedCategory.symbol}
-                        iconStyle={iconStyle}
-                        size={16}
-                        emojiSize="16px"
-                        color={iconStyle === "2d" ? selectedCategory.color : undefined}
-                      />
-                    </span>
-                    <span className="flex-1 text-left text-[15px] font-medium text-[var(--foreground)]">
-                      {selectedCategory.name}
-                    </span>
-                  </>
-                ) : (
-                  <span className="flex-1 text-left text-[15px] text-[var(--label-tertiary)]">
-                    {t("tx.selectCategory")}
+            <button
+              type="button"
+              onClick={() => setShowCategoryPicker(true)}
+              aria-label={t("tx.category")}
+              className="flex h-12 w-full items-center gap-3 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08] transition-colors active:bg-black/[0.04]"
+            >
+              {selectedCategory ? (
+                <>
+                  <span
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: `${selectedCategory.color}22` }}
+                  >
+                    <CategoryIcon
+                      symbol={selectedCategory.symbol}
+                      iconStyle={iconStyle}
+                      size={16}
+                      emojiSize="16px"
+                      color={iconStyle === "2d" ? selectedCategory.color : undefined}
+                    />
                   </span>
-                )}
-                <ChevronRight className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
-              </button>
-            </div>
+                  <span className="flex-1 text-left text-[15px] font-medium text-[var(--foreground)]">
+                    {selectedCategory.name}
+                  </span>
+                </>
+              ) : (
+                <span className="flex-1 text-left text-[15px] text-[var(--label-tertiary)]">
+                  {t("tx.selectCategory")}
+                </span>
+              )}
+              <ChevronRight className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
+            </button>
 
             {/* Frequency */}
             <div>

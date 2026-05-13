@@ -67,6 +67,22 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus the Amount input when opening for a NEW transaction so the
+  // numeric keyboard pops immediately. We skip editing (the user is reviewing,
+  // not entering fresh data) and skip transfers (Amount isn't the first
+  // logical field there). The sheet is always mounted (slides in/out via
+  // translate-y) so amountRef.current exists by the time `open` flips true.
+  // requestAnimationFrame keeps the focus call close enough to the user's
+  // tap to maximise the chance iOS PWA standalone pops the keyboard.
+  useEffect(() => {
+    if (!open || editing) return;
+    const id = requestAnimationFrame(() => {
+      amountRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, editing]);
 
   // Body-scroll lock. We use plain overflow:hidden on html + body (instead
   // of position:fixed body, which on iOS PWA standalone causes fixed
@@ -393,11 +409,15 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
           </button>
         </div>
 
-        {/* Form — flex col filling remaining space */}
+        {/* Form — flex col filling remaining space.
+            Type pill is locked at the top of the form (outside the scroll
+            area) so it stays reachable while the user scrolls the fields.
+            Field labels were intentionally removed so the form packs tighter
+            and the Description field stays high on screen when iOS pops the
+            keyboard — placeholders carry the same meaning. */}
         <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
-          {/* Scrollable fields */}
-          <div data-scroll className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-5 space-y-4 pb-4">
-            {/* Type toggle — 3-way when adding, 2-way when editing (transfers are immutable) */}
+          {/* Locked type toggle — 3-way when adding, 2-way when editing (transfers are immutable) */}
+          <div className="shrink-0 px-5 pb-3">
             <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
               {(editing
                 ? (["expense", "income"] as const)
@@ -432,79 +452,30 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
                 </button>
               ))}
             </div>
+          </div>
 
+          {/* Scrollable fields */}
+          <div data-scroll className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-5 space-y-3 pb-4">
             {/* Amount */}
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                {tr("tx.amount")} ({currency})
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={amountDisplay}
-                onChange={handleAmountChange}
-                placeholder="0"
-                required
-                className="h-14 w-full rounded-2xl bg-[var(--background)] px-4 text-center text-[24px] font-semibold text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
-              />
-            </div>
+            <input
+              ref={amountRef}
+              type="text"
+              inputMode="numeric"
+              value={amountDisplay}
+              onChange={handleAmountChange}
+              placeholder={`${tr("tx.amount")} (${currency})`}
+              aria-label={`${tr("tx.amount")} (${currency})`}
+              required
+              className="h-14 w-full rounded-2xl bg-[var(--background)] px-4 text-center text-[24px] font-semibold text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[15px] placeholder:font-medium placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
+            />
 
             {/* Wallet picker(s) — single in expense/income mode, From + To in transfer mode */}
             {isTransfer ? (
               <>
-                <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                    {tr("tx.transferFrom")}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => openWalletPicker("from")}
-                    className="flex h-12 w-full items-center gap-3 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08] transition-colors active:bg-black/[0.04]"
-                  >
-                    {selectedWallet ? (
-                      <>
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${selectedWallet.color}20` }}>
-                          <CategoryIcon symbol={selectedWallet.symbol} iconStyle={iconStyle} size={16} emojiSize="16px" color={iconStyle === "2d" ? selectedWallet.color : undefined} />
-                        </span>
-                        <span className="flex-1 text-left text-[15px] font-medium text-[var(--foreground)]">{selectedWallet.name}</span>
-                      </>
-                    ) : (
-                      <span className="flex-1 text-left text-[15px] text-[var(--label-tertiary)]">{tr("wallet.selectWallet")}</span>
-                    )}
-                    <ChevronRight className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
-                  </button>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                    {tr("tx.transferTo")}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => openWalletPicker("to")}
-                    className="flex h-12 w-full items-center gap-3 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08] transition-colors active:bg-black/[0.04]"
-                  >
-                    {selectedToWallet ? (
-                      <>
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${selectedToWallet.color}20` }}>
-                          <CategoryIcon symbol={selectedToWallet.symbol} iconStyle={iconStyle} size={16} emojiSize="16px" color={iconStyle === "2d" ? selectedToWallet.color : undefined} />
-                        </span>
-                        <span className="flex-1 text-left text-[15px] font-medium text-[var(--foreground)]">{selectedToWallet.name}</span>
-                      </>
-                    ) : (
-                      <span className="flex-1 text-left text-[15px] text-[var(--label-tertiary)]">{tr("wallet.selectWallet")}</span>
-                    )}
-                    <ChevronRight className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div>
-                <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                  {tr("tx.wallet")}
-                </label>
                 <button
                   type="button"
-                  onClick={() => openWalletPicker("wallet")}
+                  onClick={() => openWalletPicker("from")}
+                  aria-label={tr("tx.transferFrom")}
                   className="flex h-12 w-full items-center gap-3 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08] transition-colors active:bg-black/[0.04]"
                 >
                   {selectedWallet ? (
@@ -512,44 +483,74 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${selectedWallet.color}20` }}>
                         <CategoryIcon symbol={selectedWallet.symbol} iconStyle={iconStyle} size={16} emojiSize="16px" color={iconStyle === "2d" ? selectedWallet.color : undefined} />
                       </span>
-                      <span className="flex-1 text-left text-[15px] font-medium text-[var(--foreground)]">
-                        {selectedWallet.name}
-                      </span>
+                      <span className="flex-1 text-left text-[15px] font-medium text-[var(--foreground)]">{tr("tx.transferFrom")}: {selectedWallet.name}</span>
                     </>
                   ) : (
-                    <span className="flex-1 text-left text-[15px] text-[var(--label-tertiary)]">
-                      {tr("wallet.selectWallet")}
-                    </span>
+                    <span className="flex-1 text-left text-[15px] text-[var(--label-tertiary)]">{tr("tx.transferFrom")}</span>
                   )}
                   <ChevronRight className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
                 </button>
-              </div>
+                <button
+                  type="button"
+                  onClick={() => openWalletPicker("to")}
+                  aria-label={tr("tx.transferTo")}
+                  className="flex h-12 w-full items-center gap-3 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08] transition-colors active:bg-black/[0.04]"
+                >
+                  {selectedToWallet ? (
+                    <>
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${selectedToWallet.color}20` }}>
+                        <CategoryIcon symbol={selectedToWallet.symbol} iconStyle={iconStyle} size={16} emojiSize="16px" color={iconStyle === "2d" ? selectedToWallet.color : undefined} />
+                      </span>
+                      <span className="flex-1 text-left text-[15px] font-medium text-[var(--foreground)]">{tr("tx.transferTo")}: {selectedToWallet.name}</span>
+                    </>
+                  ) : (
+                    <span className="flex-1 text-left text-[15px] text-[var(--label-tertiary)]">{tr("tx.transferTo")}</span>
+                  )}
+                  <ChevronRight className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openWalletPicker("wallet")}
+                aria-label={tr("tx.wallet")}
+                className="flex h-12 w-full items-center gap-3 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08] transition-colors active:bg-black/[0.04]"
+              >
+                {selectedWallet ? (
+                  <>
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `${selectedWallet.color}20` }}>
+                      <CategoryIcon symbol={selectedWallet.symbol} iconStyle={iconStyle} size={16} emojiSize="16px" color={iconStyle === "2d" ? selectedWallet.color : undefined} />
+                    </span>
+                    <span className="flex-1 text-left text-[15px] font-medium text-[var(--foreground)]">
+                      {selectedWallet.name}
+                    </span>
+                  </>
+                ) : (
+                  <span className="flex-1 text-left text-[15px] text-[var(--label-tertiary)]">
+                    {tr("wallet.selectWallet")}
+                  </span>
+                )}
+                <ChevronRight className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
+              </button>
             )}
 
             {/* Description */}
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                {tr("tx.description")}
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={tr("tx.descriptionPlaceholder")}
-                required
-                className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
-              />
-            </div>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={tr("tx.descriptionPlaceholder")}
+              aria-label={tr("tx.description")}
+              required
+              className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
+            />
 
             {/* Category — hidden for transfers */}
             {!isTransfer && (
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                {tr("tx.category")}
-              </label>
               <button
                 type="button"
                 onClick={() => setShowCategoryPicker(true)}
+                aria-label={tr("tx.category")}
                 className="flex h-12 w-full items-center gap-3 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08] transition-colors active:bg-black/[0.04]"
               >
                 {selectedCategory ? (
@@ -568,37 +569,29 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
                 )}
                 <ChevronRight className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
               </button>
-            </div>
             )}
 
             {/* Date */}
-            <div>
-              <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-                {tr("tx.date")}
-              </label>
-              <div className="relative h-12 w-full">
-                <div className="absolute inset-0 flex items-center gap-2 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08]">
-                  <span className="flex-1 text-[15px] font-medium text-[var(--foreground)]">
-                    {formatShortDate(date)}
-                  </span>
-                  <Calendar className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
-                </div>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0 [color-scheme:light]"
-                />
+            <div className="relative h-12 w-full">
+              <div className="absolute inset-0 flex items-center gap-2 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08]">
+                <span className="flex-1 text-[15px] font-medium text-[var(--foreground)]">
+                  {formatShortDate(date)}
+                </span>
+                <Calendar className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
               </div>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                aria-label={tr("tx.date")}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0 [color-scheme:light]"
+              />
             </div>
 
             {/* Photo — hidden for transfers */}
             {!isTransfer && (
             <div>
-              <label className="mb-2 block text-[13px] font-medium text-[var(--label-secondary)]">
-                {tr("tx.photo")}
-              </label>
               {photoPreview ? (
                 <div className="relative">
                   {/* Tap the photo to open the fullscreen viewer with a

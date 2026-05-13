@@ -29,6 +29,15 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.21.0",
+    date: "May 13, 2026",
+    changes: [
+      { type: "improvement", en: "Add Transaction / Add Recurring sheets: tapping + now auto-focuses the Amount field so the numeric keyboard pops immediately — no extra tap needed", id: "Sheet Tambah Transaksi / Tambah Pengulangan: mengetuk + langsung memfokuskan kolom Jumlah sehingga keyboard angka muncul seketika — tidak perlu ketuk lagi" },
+      { type: "improvement", en: "The Expense / Income / Transfer tab pill at the top of the Add Transaction sheet (and Expense / Income in Add Recurring) now stays locked at the top while you scroll through the fields below", id: "Pill tab Pengeluaran / Pemasukan / Transfer di atas sheet Tambah Transaksi (juga Pengeluaran / Pemasukan di Tambah Pengulangan) kini terkunci di atas saat kamu menggulung kolom di bawahnya" },
+      { type: "improvement", en: "Add Transaction / Add Recurring: removed the redundant 'Amount', 'Wallet', 'Description', 'Category', 'Date', 'Photo' labels above each input — the placeholders already say the same thing. The form is now noticeably more compact, which keeps the Description field above the keyboard fold so iOS doesn't shove the screen up when you start typing it", id: "Tambah Transaksi / Tambah Pengulangan: menghapus label berulang 'Jumlah', 'Dompet', 'Deskripsi', 'Kategori', 'Tanggal', 'Foto' di atas tiap input — placeholder sudah menjelaskan hal yang sama. Form kini terasa jauh lebih ringkas, jadi kolom Deskripsi tetap di atas keyboard sehingga layar tidak terdorong saat mengetik" },
+    ],
+  },
+  {
     version: "1.20.0",
     date: "May 13, 2026",
     changes: [
