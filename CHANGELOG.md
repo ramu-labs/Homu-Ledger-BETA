@@ -2,6 +2,26 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.21.1 - May 13, 2026
+
+Three follow-up tweaks to v1.21.0's Add Transaction / Add Recurring sheet changes.
+
+### Wallet logo on the wallet row
+
+After v1.21.0 stripped the "Wallet" label above the wallet picker row, the row read as info ("Marcel's") rather than as a tappable selector. Added a 18px Lucide `Wallet` glyph at the left edge of the row, themed `--label-secondary` so it sits subtly. The user's per-wallet color/icon badge still appears after it, and the chevron-right is still at the right — together they unambiguously communicate "tap to switch wallets". Same treatment applied to the From / To pickers in Transfer mode.
+
+### Amount input top-cutoff fix
+
+The Amount input is the first element inside the scrollable form area, and its 1px `ring-1` shadow was being clipped by the scroll container's `overflow-hidden` boundary at the top — visible as a thin gap at the input's top edge in dark mode. Added `pt-1` to the scroll container so the ring has 4px of breathing room.
+
+### Stronger background-scroll lock
+
+v1.21.0 still let the page underneath be scrolled in some cases (likely iOS PWA standalone with rapid pan gestures). Added `document.documentElement.style.touchAction = "none"` to the existing `overflow: hidden` + `touchmove` guard. iOS now rejects pan gestures at the root before they can bubble to body — the sheet itself still scrolls via its own `pan-y` + `overflow-y-auto` inside the `data-scroll` container, so this doesn't break anything in-sheet. Restored on close.
+
+Same lock strengthening applied to both AddTransactionSheet and AddRecurringSheet.
+
+---
+
 ## v1.21.0 - May 13, 2026
 
 ### Add Transaction / Add Recurring sheet polish

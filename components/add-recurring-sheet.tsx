@@ -70,18 +70,18 @@ export default function AddRecurringSheet({
     return () => cancelAnimationFrame(id);
   }, [open, editing]);
 
-  // Body-scroll lock. We use plain overflow:hidden on html + body (instead
-  // of position:fixed body, which on iOS PWA standalone causes fixed
-  // bottom-0 children to anchor to body's collapsed bounds — the cream-strip
-  // bug we kept hitting). The touchmove guard handles iOS Safari momentum-
-  // scroll which can otherwise bypass overflow:hidden.
+  // Body-scroll lock. See add-transaction-sheet.tsx for the longer comment;
+  // mirroring the same pattern here for the recurring sheet so any iOS-level
+  // body-scroll bleed is locked down in both entry points.
   useEffect(() => {
     if (!open) return;
 
     const prevHtmlOverflow = document.documentElement.style.overflow;
     const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlTouchAction = document.documentElement.style.touchAction;
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
+    document.documentElement.style.touchAction = "none";
 
     function onTouchMove(e: TouchEvent) {
       const sheet = sheetRef.current;
@@ -95,6 +95,7 @@ export default function AddRecurringSheet({
     return () => {
       document.documentElement.style.overflow = prevHtmlOverflow;
       document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.touchAction = prevHtmlTouchAction;
       document.removeEventListener("touchmove", onTouchMove);
     };
   }, [open]);
@@ -260,7 +261,7 @@ export default function AddRecurringSheet({
             </div>
           </div>
 
-          <div data-scroll className="flex-1 overflow-y-auto overscroll-contain px-5 space-y-3 pb-4">
+          <div data-scroll className="flex-1 overflow-y-auto overscroll-contain px-5 pt-1 space-y-3 pb-4">
             {/* Amount */}
             <input
               ref={amountRef}
