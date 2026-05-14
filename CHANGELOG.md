@@ -2,6 +2,75 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.28.0 - May 15, 2026
+
+Two things — a UX split for the in-app changelog, and a fix for the cut-off Add Transaction button.
+
+### 1. Updates page — User vs Developer tabs
+
+User feedback was that the Updates page (Settings → Updates) was reading too technical: migration numbers, RPC names, RLS notes, file paths. Non-developers don't care. Split the changelog by audience.
+
+**Schema change** in `lib/changelog.ts`:
+
+```ts
+export type Audience = "user" | "dev" | "all";
+
+export type ChangeEntry = {
+  type: "new" | "fix" | "improvement";
+  audience?: Audience;   // ← new, defaults to "all"
+  en: string;
+  id: string;
+};
+```
+
+- `audience: "user"` — plain-language note focused on what the user can DO differently.
+- `audience: "dev"`  — technical note (migrations, RPCs, file paths). Hidden from non-devs.
+- `audience: "all"` (default for legacy entries) — shows on both tabs. Backwards-compatible so older versions don't have to be retroactively re-tagged.
+
+**Page restructure:**
+
+`app/(app)/settings/updates/page.tsx` is now a Server Component that reads `is_developer` from the session and passes `showDevTab` to a new client shell. The shell `components/updates-shell.tsx` renders the tab switcher (only when `showDevTab=true` — non-devs see no tabs, just the User view).
+
+Each tab filters `CHANGELOG` by `audience`. Version blocks whose visible changes after filter are empty get dropped, so the User tab doesn't show empty cards for releases that were purely infrastructural.
+
+**Content pass:**
+
+Re-tagged the last 5 releases (v1.24.0 → v1.28.0) with explicit `audience` values. User-tab entries follow the rule: explain new features with what-the-user-can-do framing; for bug fixes use one short sentence focused on the user benefit ("Fixed Add Transaction button being cut off"). Dev-tab entries keep the existing technical voice.
+
+Older entries (v1.23.x and below) untouched — they default to `audience: "all"` and show on both tabs. Mostly fine as-is, no value spending time rewriting history.
+
+### 2. Add Transaction button cutoff — fixed
+
+Reported on Android Chrome PWA (visible in the user's screenshot — the orange "Add Transaction" button was half-clipped at the bottom edge of the screen).
+
+Root cause: the sheet uses `height: 100lvh` (LARGE viewport). On Android Chrome PWA standalone, `lvh` extends past the gesture-nav strip, pushing the sheet's footer below the visible chrome zone. `env(safe-area-inset-bottom)` reports 0 on this device class so the existing padding floor of 12px wasn't enough to clear it.
+
+Fix in `components/add-transaction-sheet.tsx` and `components/add-recurring-sheet.tsx`:
+
+```diff
+- height: "100lvh"
++ height: "100dvh"
+
+- paddingBottom: "max(12px, env(safe-area-inset-bottom))"
++ paddingBottom: "max(20px, env(safe-area-inset-bottom))"
+```
+
+`100dvh` (dynamic viewport) tracks the live visible height, so the sheet never extends past visible chrome. The padding bump from 12 → 20px gives extra clearance under gesture-nav strips on devices where `safe-area-inset-bottom` is 0.
+
+The historical reason we chose `100lvh` was the v1.20-era iOS PWA "cream-strip" bug, which only affected bottom-anchored `position: fixed` sheets. This sheet is top-anchored with explicit height, so switching to `dvh` doesn't reintroduce that issue.
+
+### Files touched
+
+- `app/(app)/settings/updates/page.tsx` (rewritten as Server Component)
+- `components/updates-shell.tsx` (new — client shell with tab switcher)
+- `lib/changelog.ts` (Audience type + re-tagged v1.24.0–v1.27.0 + v1.28.0 entries)
+- `components/add-transaction-sheet.tsx` (`100dvh` + footer padding bump)
+- `components/add-recurring-sheet.tsx` (same)
+- `lib/i18n/dictionaries.ts` (tab labels + empty state)
+- Version bumps + cache name
+
+---
+
 ## v1.27.0 - May 15, 2026
 
 Four things from the v1.26.0 review.

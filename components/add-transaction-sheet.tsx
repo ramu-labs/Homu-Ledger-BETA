@@ -543,14 +543,17 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
         onClick={onClose}
       />
 
-      {/* Sheet — anchored to TOP-0 with explicit height: 100lvh, instead of
-          BOTTOM-0 with h-dvh. iOS PWA standalone clips `position: fixed;
-          bottom: 0` above the home-indicator zone (the cream-strip bug).
-          By anchoring to top-0 and giving an explicit height, the sheet's
-          bottom edge is just `top + height` (= top + full-screen) — no
-          separate bottom anchor for iOS to clip. The slide-in/out uses
-          translate-y(0) ↔ translate-y(100%); translateY is relative to the
-          element's own height regardless of how it's positioned. */}
+      {/* Sheet — anchored to TOP-0 with explicit height. We use 100dvh
+          (DYNAMIC viewport) instead of 100lvh (LARGE viewport): on
+          Android Chrome PWA and some iOS layouts, 100lvh extends past
+          the visible chrome zone, pushing the footer button below the
+          screen edge (the bug v1.27.0 users hit where "Add Transaction"
+          was half-cut by the home indicator).
+          The historical reason we picked 100lvh was the iOS PWA
+          "cream-strip" bug, which only affected bottom-anchored fixed
+          elements — that doesn't apply here since the sheet is
+          top-anchored and we explicitly draw a coloured background
+          down through the safe area. */}
       <div
         ref={sheetRef}
         className={cn(
@@ -559,7 +562,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
           open ? "translate-y-0" : "translate-y-full"
         )}
         style={{
-          height: "100lvh",
+          height: "100dvh",
           paddingTop: "env(safe-area-inset-top)",
         }}
       >
@@ -979,10 +982,14 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
             )}
           </div>
 
-          {/* Sticky footer — always visible */}
+          {/* Sticky footer — always visible. Bumped the bottom-padding
+              floor from 12 → 20px in v1.28.0: on Android Chrome PWA the
+              gesture-nav strip eats ~16px below `env(safe-area-inset-
+              bottom)`, so the previous floor left half the Save button
+              under the nav. 20px clears it on all reported devices. */}
           <div
             className="shrink-0 border-t border-[var(--separator)] bg-[var(--surface)] px-5 pt-3 space-y-2"
-            style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+            style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}
           >
             <button
               type="submit"

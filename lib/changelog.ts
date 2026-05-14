@@ -15,8 +15,24 @@
 // Versioning: major feature → +0.1.0 · minor fix/tweak → +0.0.1
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Which audience this entry should show up for in /settings/updates.
+ *
+ * - "user"  → only on the User tab. Use for plain-English release notes
+ *             ("the AI got better at Indonesian", "fixed a scroll bug").
+ * - "dev"   → only on the Developer tab. Use for migration / RPC /
+ *             schema-level notes that would confuse a non-dev.
+ * - "all"   → shows on both tabs. Default for legacy entries that were
+ *             written before the split (v1.28.0); also fine for changes
+ *             that read naturally to both audiences.
+ *
+ * Omitting the field is treated as "all" for backwards compatibility.
+ */
+export type Audience = "user" | "dev" | "all";
+
 export type ChangeEntry = {
   type: "new" | "fix" | "improvement";
+  audience?: Audience;
   en: string;
   id: string;
 };
@@ -29,40 +45,106 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.28.0",
+    date: "May 15, 2026",
+    changes: [
+      // ── User-facing ──
+      { type: "new", audience: "user",
+        en: "Updates page now has two tabs: simple plain-language notes on the User tab, and the full technical breakdown on the Developer tab (devs only).",
+        id: "Halaman Updates sekarang punya dua tab: catatan singkat dalam bahasa sederhana di tab User, dan rincian teknis lengkap di tab Developer (hanya developer)." },
+      { type: "fix", audience: "user",
+        en: "Fixed Add Transaction button being cut off at the bottom of the screen on some phones.",
+        id: "Memperbaiki tombol Add Transaction yang terpotong di bagian bawah layar pada beberapa ponsel." },
+      // ── Developer-facing ──
+      { type: "improvement", audience: "dev",
+        en: "Added an `audience: 'user' | 'dev' | 'all'` field to ChangeEntry. Updates page is now a server wrapper that reads is_developer and passes it to a client shell with a tab switcher. Existing recent entries re-tagged as 'dev'; user-facing rewrites added in this and prior releases.",
+        id: "Menambahkan field `audience: 'user' | 'dev' | 'all'` ke ChangeEntry. Halaman Updates kini server wrapper yang membaca is_developer dan meneruskan ke client shell dengan tab switcher. Entri rilis terakhir ditandai 'dev'; versi user-friendly ditambahkan di rilis ini dan sebelumnya." },
+      { type: "fix", audience: "dev",
+        en: "Sheet height switched from 100lvh to 100dvh in add-transaction-sheet.tsx + add-recurring-sheet.tsx so the footer no longer drops below the visible chrome on Android Chrome PWA. Footer paddingBottom floor bumped 12 → 20px for extra clearance under gesture-nav strips.",
+        id: "Tinggi sheet diubah dari 100lvh ke 100dvh di add-transaction-sheet.tsx + add-recurring-sheet.tsx supaya footer tidak turun di bawah area chrome di Android Chrome PWA. paddingBottom floor footer dinaikkan 12 → 20px untuk ruang tambahan di atas gesture-nav strip." },
+    ],
+  },
+  {
     version: "1.27.0",
     date: "May 15, 2026",
     changes: [
-      { type: "new", en: "Each ledger can now tell the AI what language transaction descriptions are in (Auto-detect / English / Indonesian). Fixes mis-categorisation of Indonesian phrases like 'Babi Cincang' (pork) being read as 'Baby Needs'. Set it from Settings → Household → AI Language.", id: "Setiap ledger sekarang bisa memberi tahu AI bahasa deskripsi transaksinya (Deteksi otomatis / Inggris / Indonesia). Memperbaiki salah kategori seperti 'Babi Cincang' yang terbaca sebagai 'Baby Needs'. Atur di Pengaturan → Rumah Tangga → Bahasa AI." },
-      { type: "improvement", en: "AI Settings now shows live usage vs free-tier limits as progress bars (RPM/RPD/TPM), and the token total is split into Input + Output so the cost math is legible at a glance.", id: "Pengaturan AI sekarang menampilkan penggunaan langsung vs batas tier gratis sebagai progress bar (RPM/RPD/TPM), dan total token dipisah jadi Input + Output supaya perhitungan biayanya mudah dibaca." },
-      { type: "fix", en: "Ledger creation now hard-caps at 20 per owner, with a clear error message if you try to create a 21st (delete one to make room).", id: "Pembuatan ledger sekarang dibatasi maksimal 20 per pemilik, dengan pesan error jelas jika kamu mencoba membuat yang ke-21 (hapus salah satu untuk membuat tempat)." },
+      // ── User-facing ──
+      { type: "new", audience: "user",
+        en: "Tell the AI what language your transactions are in. Pick Auto / English / Indonesian under Settings → Household → AI Language. Fixes things like 'Babi Cincang' being put into baby stuff instead of groceries.",
+        id: "Beri tahu AI bahasa transaksi kamu. Pilih Auto / Inggris / Indonesia di Pengaturan → Rumah Tangga → Bahasa AI. Memperbaiki hal seperti 'Babi Cincang' yang masuk ke kebutuhan bayi alih-alih belanjaan." },
+      { type: "improvement", audience: "user",
+        en: "You can now create up to 20 ledgers. If you ever need more, just delete an old one to make room.",
+        id: "Sekarang kamu bisa membuat hingga 20 ledger. Kalau perlu lebih, hapus yang lama untuk membuat tempat." },
+      // ── Developer-facing ──
+      { type: "new", audience: "dev",
+        en: "Per-household ai_language column (auto/en/id) via migration 0024. Gemini prompt prepends a one-liner when set ('description is in Bahasa Indonesia… do NOT translate babi as baby'). Wired through suggestCategory → categorize in app/actions/ai.ts.",
+        id: "Kolom ai_language per-household (auto/en/id) via migrasi 0024. Prompt Gemini menambahkan satu baris saat di-set ('description is in Bahasa Indonesia… do NOT translate babi as baby'). Disambungkan lewat suggestCategory → categorize di app/actions/ai.ts." },
+      { type: "improvement", audience: "dev",
+        en: "AI Settings shows live usage vs free-tier limits as RPM/RPD/TPM progress bars (amber@75%, rose@90%) via new SECURITY DEFINER RPC api_usage_recent_window. Tokens mini-stat now shows input + output split (Google bills output 4x).",
+        id: "Pengaturan AI menampilkan penggunaan vs batas tier gratis sebagai progress bar RPM/RPD/TPM (amber@75%, rose@90%) lewat RPC SECURITY DEFINER baru api_usage_recent_window. Mini-stat Token kini menunjukkan pemisahan input + output (Google menagih output 4x)." },
+      { type: "fix", audience: "dev",
+        en: "createNewLedger hard-caps at 20 per owner via an indexed COUNT() on owner_id. Initial createHousehold path unguarded (you can't be at cap mid-onboarding).",
+        id: "createNewLedger dibatasi maksimum 20 per pemilik via COUNT() ber-indeks pada owner_id. Jalur createHousehold awal tidak dijaga (tidak mungkin sudah penuh saat onboarding)." },
     ],
   },
   {
     version: "1.26.0",
     date: "May 15, 2026",
     changes: [
-      { type: "improvement", en: "AI Settings split: API key management moved to its own page so a stray tap on Clear won't wipe the key. Clear now needs a second tap to confirm (auto-cancels in 3 seconds)", id: "Pengaturan AI dipecah: pengelolaan API key dipindah ke halaman tersendiri agar tap nyasar di Clear tidak menghapus key. Clear sekarang butuh konfirmasi tap kedua (batal otomatis setelah 3 detik)" },
-      { type: "new", en: "AI Settings now shows daily usage as a chart (stacked: cache hits, AI calls, errors) with a 7d / 28d / 90d range selector, plus the free-tier limits straight from Google (15 RPM, 1,000 RPD, 250K TPM)", id: "Pengaturan AI sekarang menampilkan penggunaan harian dalam bentuk grafik (cache, panggilan AI, error) dengan pilihan rentang 7h / 28h / 90h, plus batas tier gratis langsung dari Google (15 RPM, 1.000 RPD, 250K TPM)" },
-      { type: "fix", en: "Add Transaction sheet: background page no longer scrolls behind the sheet when the keyboard is up — also fixes the right-edge scroll bleed on iOS PWA", id: "Sheet Tambah Transaksi: halaman di belakang tidak lagi ikut scroll saat keyboard naik — juga memperbaiki bleed scroll di tepi kanan layar pada iOS PWA" },
+      // ── User-facing ──
+      { type: "fix", audience: "user",
+        en: "Fixed the background page scrolling behind the Add Transaction sheet when the keyboard was up, especially when scrolling near the right edge.",
+        id: "Memperbaiki halaman di belakang yang ikut bergulir saat keyboard naik di sheet Tambah Transaksi, terutama saat menggulir di tepi kanan." },
+      // ── Developer-facing ──
+      { type: "improvement", audience: "dev",
+        en: "AI Settings split: /settings/ai-admin is read-only (stats + free-tier card + chart with 7/28/90-day range). Key form moved to /settings/ai-admin/key with two-tap Clear confirmation (auto-cancels in 3s).",
+        id: "Pengaturan AI dipecah: /settings/ai-admin sekarang read-only (statistik + kartu tier gratis + grafik dengan rentang 7/28/90 hari). Form key pindah ke /settings/ai-admin/key dengan konfirmasi Clear dua-tap (batal otomatis dalam 3 detik)." },
+      { type: "new", audience: "dev",
+        en: "Recharts stacked bar of daily usage (hits / misses / errors) with a Tokens metric tab. Server-side bucketing fills empty days with zeros so the X-axis stays uniform.",
+        id: "Recharts stacked bar penggunaan harian (hits / misses / errors) dengan tab metrik Token. Bucketing server-side mengisi hari kosong dengan nol agar sumbu X tetap rata." },
+      { type: "fix", audience: "dev",
+        en: "iOS scroll bleed fixed: add-transaction-sheet + add-recurring-sheet now pin body with position:fixed + top:-scrollY on open and restore scrollY on close. Kills the keyboard-up momentum bleed and right-edge swipe leak.",
+        id: "Bleed scroll iOS diperbaiki: add-transaction-sheet + add-recurring-sheet kini mengunci body dengan position:fixed + top:-scrollY saat dibuka dan mengembalikan scrollY saat ditutup. Mengatasi bleed momentum saat keyboard naik dan kebocoran swipe tepi kanan." },
     ],
   },
   {
     version: "1.25.0",
     date: "May 15, 2026",
     changes: [
-      { type: "new", en: "AI auto-categorization: as you type a description, the category is auto-picked for you. Powered by Google Gemini Flash-Lite, with a smart cache layer that learns from every transaction — so most of the time it's instant and free", id: "Kategorisasi otomatis AI: saat kamu mengetik deskripsi, kategorinya akan terpilih otomatis. Didukung Google Gemini Flash-Lite dengan lapisan cache pintar yang belajar dari setiap transaksi — jadi kebanyakan langsung dan gratis" },
-      { type: "improvement", en: "The cache shares learning across the whole household: if Mom teaches it 'Pampers → Baby's Health', Dad benefits next time. ~250 common keywords (English + Bahasa) pre-seeded per default category so the cache is useful from day one", id: "Cache berbagi pembelajaran ke seluruh keluarga: kalau Mama mengajari 'Pampers → Kesehatan Bayi', Papa langsung dapat manfaatnya. ~250 kata kunci umum (Inggris + Bahasa) sudah disiapkan per kategori default agar cache berguna dari hari pertama" },
-      { type: "new", en: "Developer Settings → AI Settings: paste your Gemini API key, test the connection, and watch this-month usage (calls, tokens, cost, cache hit rate)", id: "Pengaturan Developer → Pengaturan AI: tempel API key Gemini, tes koneksi, dan pantau penggunaan bulan ini (panggilan, token, biaya, tingkat cache)" },
+      // ── User-facing ──
+      { type: "new", audience: "user",
+        en: "AI auto-categorize: as you type, the right category fills in for you. The app learns from every save so the next time you type the same thing, it's instant. Most of the time it costs nothing.",
+        id: "Auto-kategori AI: saat kamu mengetik, kategorinya terisi otomatis. Aplikasi belajar dari setiap penyimpanan jadi lain kali kamu mengetik hal yang sama, langsung muncul. Sebagian besar waktu gratis." },
+      { type: "improvement", audience: "user",
+        en: "Everyone in your household shares the AI's memory. If one of you teaches it 'Pampers → Baby's Health', the rest of the family benefits next time. About 250 common words come pre-loaded so it's useful from day one.",
+        id: "Semua anggota rumah berbagi memori AI. Kalau salah satu mengajari 'Pampers → Kesehatan Bayi', anggota lain langsung dapat manfaatnya. Sekitar 250 kata umum sudah dimuat dari awal agar berguna sejak hari pertama." },
+      // ── Developer-facing ──
+      { type: "new", audience: "dev",
+        en: "Cache-first AI categorization: candidateKeys() → indexed lookup on category_hints → on miss, call Gemini Flash-Lite → INSERT hint. Migration 0023 adds category_hints + api_usage_logs + app_settings, plus a household-creation trigger that seeds ~250 bilingual keywords.",
+        id: "Auto-kategori dengan cache-first: candidateKeys() → lookup ber-indeks pada category_hints → pada miss, panggil Gemini Flash-Lite → INSERT hint. Migrasi 0023 menambahkan category_hints + api_usage_logs + app_settings, plus trigger pembuatan household yang menyemai ~250 kata kunci dwibahasa." },
+      { type: "new", audience: "dev",
+        en: "Developer Settings → AI Settings: API key form, Test Connection, and a token / cost / cache hit-rate dashboard. Gemini key stored in app_settings (developer-only RLS); never reaches the client.",
+        id: "Pengaturan Developer → Pengaturan AI: form API key, Test Connection, dan dashboard token / biaya / tingkat cache. Key Gemini tersimpan di app_settings (RLS developer-only); tidak pernah sampai ke klien." },
     ],
   },
   {
     version: "1.24.0",
     date: "May 15, 2026",
     changes: [
-      { type: "improvement", en: "Login page redesigned: Continue with Google is the primary action, with a Sign up button below and a small 'Already have an account? Sign in' link routing to the email/password form", id: "Halaman login didesain ulang: tombol 'Lanjut dengan Google' jadi aksi utama, di bawahnya ada tombol Daftar, plus link kecil 'Sudah punya akun? Masuk' ke form email/password" },
-      { type: "new", en: "Make a transaction recurring straight from the add screen: tap the new Repeat icon next to the date and the form reveals Frequency, Starting date, and Repeat until — no separate detour through the Recurring tab", id: "Buat transaksi berulang langsung dari layar tambah: tap ikon Ulangi baru di sebelah tanggal dan form akan menampilkan Frekuensi, Tanggal mulai, dan Ulangi sampai — tanpa perlu lewat tab Recurring" },
-      { type: "improvement", en: "Promo codes can be labelled at generation ('For Andi', 'Twitter giveaway') and the redeemer's email shows up next to each redeemed code, making it easy to match codes back to who you sent them to", id: "Kode promo bisa diberi nama saat dibuat ('Untuk Andi', 'Giveaway Twitter') dan email yang menebus muncul di samping setiap kode yang sudah dipakai, jadi mudah mencocokkan kode dengan penerimanya" },
-      { type: "improvement", en: "Lightweight logging added to investigate the random logouts a few users reported — when the next bounce happens we'll have the details to fix the root cause", id: "Pencatatan ringan ditambahkan untuk menyelidiki logout acak yang dilaporkan beberapa pengguna — saat kejadian berikutnya terjadi kami akan punya detail untuk memperbaiki akar masalahnya" },
+      // ── User-facing ──
+      { type: "new", audience: "user",
+        en: "Make a transaction recurring without leaving the Add screen. Tap the new Repeat icon next to the date, pick how often it should repeat, and you're done.",
+        id: "Buat transaksi berulang tanpa keluar dari layar Tambah. Ketuk ikon Ulang baru di sebelah tanggal, pilih seberapa sering harus berulang, selesai." },
+      { type: "improvement", audience: "user",
+        en: "Cleaner login page: Continue with Google up top, Sign up below it, and a small 'Already have an account? Sign in' link for returning email/password users.",
+        id: "Halaman login lebih rapi: Lanjut dengan Google di atas, Daftar di bawahnya, dan link kecil 'Sudah punya akun? Masuk' untuk pengguna email/password lama." },
+      // ── Developer-facing ──
+      { type: "improvement", audience: "dev",
+        en: "Promo codes can be labelled at generation ('For Andi', 'Twitter giveaway') and the redeemer's email shows up next to each redeemed code (RLS join on profiles).",
+        id: "Kode promo bisa diberi nama saat dibuat ('Untuk Andi', 'Giveaway Twitter') dan email penebus muncul di samping setiap kode yang sudah ditebus (RLS join pada profiles)." },
+      { type: "improvement", audience: "dev",
+        en: "Lightweight logging for the random-logout report: /login fires sendBeacon to /api/auth-log when the referrer is an authenticated path. Console logs the bounce details (PWA standalone? referrer? hidden duration?).",
+        id: "Pencatatan ringan untuk laporan logout acak: /login mengirim sendBeacon ke /api/auth-log saat referrer adalah path terautentikasi. Console mencatat detail bounce (PWA standalone? referrer? durasi tersembunyi?)." },
     ],
   },
   {

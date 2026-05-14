@@ -264,6 +264,10 @@ export const en = {
   "ai.lang.enHint": "Always interpret descriptions as English.",
   "ai.lang.id": "Indonesian",
   "ai.lang.idHint": "Always interpret descriptions as Bahasa Indonesia.",
+  // Updates page
+  "updates.tabUser": "User",
+  "updates.tabDev": "Developer",
+  "updates.empty": "No updates to show on this tab yet.",
   "promo.tier.3_months": "3 months",
   "promo.tier.6_months": "6 months",
   "promo.tier.1_year": "1 year",
@@ -562,6 +566,10 @@ export const id: Record<TKey, string> = {
   "ai.lang.enHint": "Selalu interpretasikan deskripsi sebagai bahasa Inggris.",
   "ai.lang.id": "Indonesia",
   "ai.lang.idHint": "Selalu interpretasikan deskripsi sebagai Bahasa Indonesia.",
+  // Updates page
+  "updates.tabUser": "User",
+  "updates.tabDev": "Developer",
+  "updates.empty": "Belum ada pembaruan di tab ini.",
   "promo.tier.3_months": "3 bulan",
   "promo.tier.6_months": "6 bulan",
   "promo.tier.1_year": "1 tahun",
