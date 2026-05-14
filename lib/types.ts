@@ -69,9 +69,15 @@ export type DbPromoCode = {
   tier: SubscriptionTier;
   created_at: string;
   created_by: string;
+  // Optional free-text note the developer attaches when generating the
+  // code (e.g. "For Andi", "Twitter giveaway"). Anyone with the string
+  // can still redeem — this is purely a memo for the developer.
+  label: string | null;
   redeemed_by: string | null;
   redeemed_at: string | null;
-  redeemer?: { id: string; name: string } | null;
+  // Joined from profiles so the developer can see WHO redeemed each code
+  // — name + email so they can match it against the label they assigned.
+  redeemer?: { id: string; name: string; email: string } | null;
 };
 
 export type PromoCodeStats = {

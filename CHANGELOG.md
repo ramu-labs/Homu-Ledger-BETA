@@ -2,6 +2,63 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.24.0 - May 15, 2026
+
+UX polish + small auth probe. Five themes:
+
+### 1. Login page redesigned — `/login` becomes a landing
+
+Before: one page with a Google button on top, an email/password form, and a sign-up link below. Three competing paths for new users to parse.
+
+After:
+- `/login` is now a landing with two CTAs — `Continue with Google` (primary) and `Sign up` (secondary, links to `/signup`) — plus a small "Already have an account? Sign in" link.
+- The email/password sign-in form moved to a new `/login/password` route.
+- Middleware needs no changes — `PUBLIC_ROUTES` uses `startsWith("/login")` so `/login/password` is already allowed.
+
+Files: `app/(auth)/login/page.tsx` (rewritten as landing), `app/(auth)/login/password/page.tsx` (new, holds the old form).
+
+### 2. Unified Add Transaction ↔ Recurring
+
+The big workflow change. Before, the only way to create a recurring rule was via the separate Recurring tab.
+
+Now in `components/add-transaction-sheet.tsx`:
+- A `Repeat` icon sits beside the date row on new (non-transfer) entries.
+- Tapping it morphs the form into recurring-create mode: Frequency (Weekly/Monthly/Yearly), Starting date (using the existing date field with a relabel hint), and Repeat until (Forever / On date).
+- Photo upload is hidden in recurring mode — a single template can't carry a single photo for many future occurrences.
+- Save calls `addRecurringItem` instead of `addTransaction`. The existing post-save "Add as recurring" affordance for editing stays as-is.
+- `app/actions/recurring.ts` now also accepts and stores `wallet_id` (the column existed but the action was ignoring it), so recurring rules created from this form remember the user's wallet choice.
+
+### 3. Promo codes — label + redeemer email
+
+Migration `0022_promo_code_label.sql`:
+- `alter table promo_codes add column label text`
+- Drop + recreate `generate_promo_code(p_tier, p_label default null)` since the return type widens to include `label`.
+
+App side:
+- `DbPromoCode.label` added.
+- `generatePromoCode` action accepts an optional `label` string (trimmed + empty-to-null normalised before the RPC).
+- The `/settings/promo-codes` query now joins `email` on the redeemer.
+- `PromoCodesShell` adds a Name input above the Generate button and renders the label inline under each code + the redeemer's email when redeemed.
+
+### 4. Random-logout investigation — logging
+
+We don't have a confirmed repro yet. Added a passive client-side breadcrumb so the next bounce shows up in Vercel logs:
+- New `/api/auth-log` POST route — receives `fromPath`, `isStandalone`, `hiddenMs`, `note`; logs single-line JSON with `[auth-log]` prefix.
+- The new `/login` landing fires `navigator.sendBeacon` to that endpoint when the referrer is an authenticated path (i.e. unexpected bounce, not a manual sign-out).
+- Will be removed once we identify and fix the root cause.
+
+Code review of the auth path (no fixes shipped — none confirmed broken):
+- `lib/auth/session.ts` is correctly React.cache-wrapped (v1.23.0 baseline).
+- `lib/supabase/middleware.ts` calls `getSession()` (auto-refreshes) and pushes cookies back via `setAll`. Matches the Supabase SSR template verbatim.
+- `lib/supabase/server.ts` swallows write attempts from Server Components — that's the documented pattern; middleware is the canonical writer.
+
+### 5. Confirmed-already-done
+
+- **Sticky Income / Expense / Transfer tabs** — already in place. The tabs sit in a `shrink-0` block above the `flex-1 overflow-y-auto` scroll container in `components/add-transaction-sheet.tsx`, so they don't scroll away.
+- **Auto-focus amount + numeric keypad** — already in place (lines 79–85, `useEffect` + `requestAnimationFrame` on `amountRef`). If it feels flaky on iOS PWA the next step is to investigate the gesture-context timing, but no code change today.
+
+---
+
 ## v1.23.1 - May 14, 2026
 
 Total Balance card on the transactions page simplified — removed the small wallet glyph next to the label, switched the card to `text-center` so the uppercase TOTAL BALANCE label and the 28px amount both sit centered. Reads as the headline number now rather than a sibling of the Income/Expense pills below. The Income / Expense cards still use their left-aligned icon + label pattern; only the headline changed.

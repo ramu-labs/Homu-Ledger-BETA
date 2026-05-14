@@ -29,6 +29,16 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.24.0",
+    date: "May 15, 2026",
+    changes: [
+      { type: "improvement", en: "Login page redesigned: Continue with Google is the primary action, with a Sign up button below and a small 'Already have an account? Sign in' link routing to the email/password form", id: "Halaman login didesain ulang: tombol 'Lanjut dengan Google' jadi aksi utama, di bawahnya ada tombol Daftar, plus link kecil 'Sudah punya akun? Masuk' ke form email/password" },
+      { type: "new", en: "Make a transaction recurring straight from the add screen: tap the new Repeat icon next to the date and the form reveals Frequency, Starting date, and Repeat until — no separate detour through the Recurring tab", id: "Buat transaksi berulang langsung dari layar tambah: tap ikon Ulangi baru di sebelah tanggal dan form akan menampilkan Frekuensi, Tanggal mulai, dan Ulangi sampai — tanpa perlu lewat tab Recurring" },
+      { type: "improvement", en: "Promo codes can be labelled at generation ('For Andi', 'Twitter giveaway') and the redeemer's email shows up next to each redeemed code, making it easy to match codes back to who you sent them to", id: "Kode promo bisa diberi nama saat dibuat ('Untuk Andi', 'Giveaway Twitter') dan email yang menebus muncul di samping setiap kode yang sudah dipakai, jadi mudah mencocokkan kode dengan penerimanya" },
+      { type: "improvement", en: "Lightweight logging added to investigate the random logouts a few users reported — when the next bounce happens we'll have the details to fix the root cause", id: "Pencatatan ringan ditambahkan untuk menyelidiki logout acak yang dilaporkan beberapa pengguna — saat kejadian berikutnya terjadi kami akan punya detail untuk memperbaiki akar masalahnya" },
+    ],
+  },
+  {
     version: "1.23.1",
     date: "May 14, 2026",
     changes: [

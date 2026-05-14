@@ -35,6 +35,11 @@ export async function addRecurringItem(
   const amount = formData.get("amount") as string;
   const name = (formData.get("name") as string).trim();
   const category_id = (formData.get("category_id") as string) || null;
+  // wallet_id is optional — the recurring_items table allows null and the
+  // materialiser falls back to the household's default wallet when one
+  // isn't pinned. The new add-transaction-sheet unified-recurring path
+  // passes it through so the recurring rule remembers the user's choice.
+  const wallet_id = (formData.get("wallet_id") as string) || null;
   const frequency = formData.get("frequency") as "weekly" | "monthly" | "yearly";
   const next_due_date = (formData.get("next_due_date") as string) || null;
   const repeat_until = (formData.get("repeat_until") as string) || null;
@@ -52,6 +57,7 @@ export async function addRecurringItem(
       amount: Number(amount),
       name,
       category_id: category_id || null,
+      wallet_id: wallet_id || null,
       frequency,
       next_due_date: next_due_date || null,
       repeat_until: repeat_until || null,

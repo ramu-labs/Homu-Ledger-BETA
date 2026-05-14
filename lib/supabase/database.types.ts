@@ -1,14 +1,5 @@
 // AUTO-GENERATED — do not edit by hand.
-// Regenerate with the Supabase CLI when the schema changes:
-//   npx supabase gen types typescript --project-id qunbbkptumtzgzzwnszy --schema public > lib/supabase/database.types.ts
-//
-// These types are wired into createClient<Database>() in lib/supabase/server.ts
-// and lib/supabase/client.ts so that `.from('table').select('column')` becomes
-// a TypeScript error if the column doesn't exist. (That's how the M&D
-// "members not showing" bug slipped past code review — the page selected
-// `created_at` from `household_members`, which actually has `joined_at`.
-// Untyped Supabase queries silently return zero rows in that case.)
-
+// Regenerated via Supabase MCP after migration 0022_promo_code_label.
 export type Json =
   | string
   | number
@@ -18,58 +9,11 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
-      feedback: {
-        Row: {
-          id: string
-          created_at: string
-          created_by: string | null
-          household_id: string | null
-          subject: string
-          body: string
-          category: "bug" | "feature" | "question" | "other"
-          status: "open" | "in_progress" | "closed"
-          attachments: string[]
-          reply: string | null
-          replied_at: string | null
-          replied_by: string | null
-        }
-        Insert: {
-          id?: string
-          created_at?: string
-          created_by?: string | null
-          household_id?: string | null
-          subject: string
-          body: string
-          category?: "bug" | "feature" | "question" | "other"
-          status?: "open" | "in_progress" | "closed"
-          attachments?: string[]
-          reply?: string | null
-          replied_at?: string | null
-          replied_by?: string | null
-        }
-        Update: {
-          id?: string
-          created_at?: string
-          created_by?: string | null
-          household_id?: string | null
-          subject?: string
-          body?: string
-          category?: "bug" | "feature" | "question" | "other"
-          status?: "open" | "in_progress" | "closed"
-          attachments?: string[]
-          reply?: string | null
-          replied_at?: string | null
-          replied_by?: string | null
-        }
-        Relationships: []
-      }
       categories: {
         Row: {
           color: string
@@ -79,7 +23,7 @@ export type Database = {
           is_default: boolean
           name: string
           symbol: string
-          type: "income" | "expense"
+          type: Database["public"]["Enums"]["transaction_type"]
         }
         Insert: {
           color: string
@@ -89,7 +33,7 @@ export type Database = {
           is_default?: boolean
           name: string
           symbol: string
-          type?: "income" | "expense"
+          type?: Database["public"]["Enums"]["transaction_type"]
         }
         Update: {
           color?: string
@@ -99,7 +43,7 @@ export type Database = {
           is_default?: boolean
           name?: string
           symbol?: string
-          type?: "income" | "expense"
+          type?: Database["public"]["Enums"]["transaction_type"]
         }
         Relationships: [
           {
@@ -107,6 +51,73 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback: {
+        Row: {
+          attachments: string[]
+          body: string
+          category: string
+          created_at: string
+          created_by: string | null
+          household_id: string | null
+          id: string
+          replied_at: string | null
+          replied_by: string | null
+          reply: string | null
+          status: string
+          subject: string
+        }
+        Insert: {
+          attachments?: string[]
+          body: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          household_id?: string | null
+          id?: string
+          replied_at?: string | null
+          replied_by?: string | null
+          reply?: string | null
+          status?: string
+          subject: string
+        }
+        Update: {
+          attachments?: string[]
+          body?: string
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          household_id?: string | null
+          id?: string
+          replied_at?: string | null
+          replied_by?: string | null
+          reply?: string | null
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_replied_by_fkey"
+            columns: ["replied_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -299,6 +310,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          label: string | null
           redeemed_at: string | null
           redeemed_by: string | null
           tier: string
@@ -308,6 +320,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          label?: string | null
           redeemed_at?: string | null
           redeemed_by?: string | null
           tier: string
@@ -317,6 +330,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          label?: string | null
           redeemed_at?: string | null
           redeemed_by?: string | null
           tier?: string
@@ -484,6 +498,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "transactions_recurring_item_id_fkey"
+            columns: ["recurring_item_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_items"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "transactions_wallet_id_fkey"
             columns: ["wallet_id"]
             isOneToOne: false
@@ -542,6 +563,10 @@ export type Database = {
         Args: { p_invitation_id: string }
         Returns: string
       }
+      can_access_feedback_attachment: {
+        Args: { p_path: string }
+        Returns: boolean
+      }
       can_access_transaction_photo: {
         Args: { p_object_name: string }
         Returns: boolean
@@ -564,15 +589,17 @@ export type Database = {
       delete_promo_code: { Args: { p_id: string }; Returns: string }
       generate_invite_code: { Args: never; Returns: string }
       generate_promo_code: {
-        Args: { p_tier: string }
+        Args: { p_label?: string; p_tier: string }
         Returns: {
           code: string
           created_at: string
           id: string
+          label: string
           tier: string
         }[]
       }
       generate_promo_code_string: { Args: never; Returns: string }
+      get_email_by_username: { Args: { p_username: string }; Returns: string }
       get_ledger_totals: {
         Args: never
         Returns: {
@@ -581,18 +608,11 @@ export type Database = {
           income: number
         }[]
       }
-      get_email_by_username: { Args: { p_username: string }; Returns: string }
+      is_developer_caller: { Args: never; Returns: boolean }
       is_promo_code_valid: { Args: { p_code: string }; Returns: boolean }
       join_household_by_invite_code: {
         Args: { p_code: string }
         Returns: string
-      }
-      lookup_household_by_invite_code: {
-        Args: { p_code: string }
-        Returns: {
-          id: string
-          name: string
-        }[]
       }
       lookup_user_for_invite: {
         Args: { p_query: string }
@@ -601,6 +621,7 @@ export type Database = {
           name: string
         }[]
       }
+      materialize_due_recurring_items: { Args: never; Returns: number }
       move_transaction: {
         Args: { p_target_household_id: string; p_transaction_id: string }
         Returns: undefined
@@ -612,14 +633,7 @@ export type Database = {
           tier: string
         }[]
       }
-      switch_household: {
-        Args: { p_household_id: string }
-        Returns: undefined
-      }
-      materialize_due_recurring_items: {
-        Args: Record<string, never>
-        Returns: number
-      }
+      switch_household: { Args: { p_household_id: string }; Returns: undefined }
     }
     Enums: {
       recurring_frequency: "weekly" | "monthly" | "yearly"
@@ -630,3 +644,129 @@ export type Database = {
     }
   }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      recurring_frequency: ["weekly", "monthly", "yearly"],
+      transaction_type: ["income", "expense"],
+    },
+  },
+} as const
