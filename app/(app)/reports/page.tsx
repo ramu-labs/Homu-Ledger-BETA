@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth/session";
 import ReportsShell from "@/components/reports-shell";
 import type { DbTransaction, DbCategory, DbMember, DbWallet } from "@/lib/types";
 
@@ -48,16 +49,7 @@ async function fetchReportTransactions(
 }
 
 export default async function ReportsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, household_id, icon_style")
-    .eq("id", user.id)
-    .single();
-
+  const { supabase, profile } = await requireSession();
   if (!profile?.household_id) redirect("/onboarding");
 
   const { data: household } = await supabase

@@ -2,6 +2,49 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.23.0 - May 14, 2026
+
+Performance + auth-stability sweep. First half of the audit's top-2 priorities (PR B); the RLS init-plan migration (PR A) is deferred to v1.23.1 — Supabase MCP was down at ship time so I couldn't safely verify each policy's live state before rewriting.
+
+### Closed the auth race for good
+
+Before:
+- `(app)/layout.tsx` called `getServerT()` which called `supabase.auth.getUser()`.
+- Each page underneath the layout also called `supabase.auth.getUser()` directly.
+- When the JWT was near expiry, Supabase would refresh during the first call (rotating the refresh token). Cookie writes from a Server Component are silently swallowed by `lib/supabase/server.ts`'s `try/catch`. The second call then sent the now-invalidated refresh token, Supabase returned `user: null`, middleware redirected to /login on the next navigation.
+- v1.18.1 fixed only the layout's duplicate; pages were still vulnerable.
+
+After:
+- New `lib/auth/session.ts` exports `getSession()` and `requireSession()`, both wrapped in React's `cache()` so calls in the same server request share one resolution.
+- `getServerT()` is now a thin wrapper over `getSession()`.
+- Every page in `(app)/*` plus `app/auth/setup` was refactored to call `requireSession()` instead of `createClient` + `auth.getUser` + ad-hoc profile fetch.
+- Result: exactly **one** `auth.getUser()` and **one** `profiles` SELECT per page render, no matter how many components ask for the session.
+
+Files touched: `lib/auth/session.ts` (new), `lib/i18n/server.ts`, `app/(app)/layout.tsx`, `app/(app)/settings/page.tsx`, `app/(app)/settings/categories/page.tsx`, `app/(app)/settings/wallets/page.tsx`, `app/(app)/settings/edit-profile/page.tsx`, `app/(app)/settings/members/page.tsx`, `app/(app)/settings/feedback-admin/page.tsx`, `app/(app)/settings/help/page.tsx`, `app/(app)/settings/promo-codes/page.tsx`, `app/(app)/design-system/page.tsx`, `app/(app)/transactions/page.tsx`, `app/(app)/reports/page.tsx`, `app/auth/setup/page.tsx`.
+
+Server actions and API route handlers are untouched — they're single-entry-point per request, so `auth.getUser()` already runs exactly once there.
+
+### Fixed: recurring items missing on first page load
+
+`app/(app)/transactions/page.tsx:104` had `await supabase.rpc(...).then(({error}) => …)` — the `.then` resolves immediately (returns `undefined`), so the outer `await` returned before the RPC actually completed. The page could render before recurring rows were materialised. Now awaits the `rpc()` directly. Audit P0 #5 fixed.
+
+### Cleaner script tag in root layout
+
+`app/layout.tsx`: replaced the bare `<script dangerouslySetInnerHTML>` with `<Script id="homu-theme-bootstrap" strategy="beforeInteractive">` from `next/script`, and added `suppressHydrationWarning` to `<html>`. Fixes two Next.js 16 console warnings (the "scripts in React components are never executed" warning and the hydration mismatch on `data-theme`).
+
+### What's still on the audit punch list
+
+Not done in v1.23.0, but should follow:
+- **v1.23.1 — RLS init-plan migration** (`0022_rls_initplan_sweep.sql`): wrap `auth.uid()` and `public.current_household_id()` in `(select …)` across the 14 policies the advisor still flags. Deferred because Supabase MCP was unreachable at ship time and I couldn't verify each policy's live USING/WITH CHECK expression safely.
+- **Sheet migration** to `components/ui/sheet.tsx` — ~400 LOC of duplication still in place.
+- Feedback admin cross-household author rendering.
+- Auth checks in feedback + wallet server actions.
+- Splash + manifest dark-mode contrast.
+- Parallelise feedback attachment signing.
+- Populate `next.config.ts` (image domains, optimizePackageImports, security headers).
+
+---
+
 ## v1.22.0 - May 14, 2026
 
 ### Continue with Google

@@ -1,20 +1,12 @@
 import { redirect } from "next/navigation";
 import { ChevronLeft, Crown } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth/session";
 import InviteMemberForm from "@/components/invite-member-form";
 import CancelInviteButton from "@/components/cancel-invite-button";
 
 export default async function MembersPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, household_id")
-    .eq("id", user.id)
-    .single();
+  const { supabase, user, profile } = await requireSession();
 
   const { data: household } = profile?.household_id
     ? await supabase

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth/session";
 import SetupForm from "./setup-form";
 
 /**
@@ -11,16 +11,9 @@ import SetupForm from "./setup-form";
  * trigger / Google metadata already populated (name from full_name claim).
  */
 export default async function SetupPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { user, profile } = await requireSession();
 
   // If the user already finished setup, don't show this page again.
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username, name")
-    .eq("id", user.id)
-    .maybeSingle();
   if (profile?.username) {
     redirect("/transactions");
   }

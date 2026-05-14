@@ -1,37 +1,28 @@
-import { redirect } from "next/navigation";
 import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers, RefreshCw, Wallet, Ticket, Sparkles, SunMoon, Palette } from "lucide-react";
 import { TapLink } from "@/components/tap";
-import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth/session";
 import { signOut } from "@/app/actions/auth";
 import { CopyButton } from "@/components/copy-button";
 import { getServerT } from "@/lib/i18n/server";
 import DevFeedbackBadge from "@/components/dev-feedback-badge";
 
 export default async function SettingsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
+  // requireSession + getServerT share the SAME getSession() call via
+  // React.cache — one auth.getUser() + one profile SELECT for the whole
+  // page render, not two as before v1.23.0.
+  const { supabase, user, profile } = await requireSession();
   const { t } = await getServerT();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, name, initials, avatar_color, household_id, language, icon_style, is_developer, subscription_tier, subscription_expires_at")
-    .eq("id", user.id)
-    .single();
-
-  const language = (profile?.language as "en" | "id" | null) ?? "en";
+  const language = profile?.language ?? "en";
   const languageLabel = language === "id" ? "Bahasa Indonesia" : "English";
 
-  const iconStyle = (profile?.icon_style as "2d" | "3d" | null) ?? "3d";
+  const iconStyle = profile?.icon_style ?? "3d";
   const iconStyleLabel = iconStyle === "2d" ? t("settings.iconStyle.2d") : t("settings.iconStyle.3d");
 
   // Subscription info — show a small badge on the profile card so the user
   // knows their tier at a glance.
-  const subTier = profile?.subscription_tier as
-    | "3_months" | "6_months" | "1_year" | "lifetime" | "developer"
-    | null;
-  const subExpires = profile?.subscription_expires_at as string | null;
+  const subTier = profile?.subscription_tier ?? null;
+  const subExpires = profile?.subscription_expires_at ?? null;
   const subBadge = (() => {
     if (!subTier) return null;
     if (subTier === "developer") return { label: `PRO · ${t("promo.tier.developer")}`, tone: "rose" as const };
@@ -240,7 +231,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.22.0</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.23.0</p>
     </div>
   );
 }

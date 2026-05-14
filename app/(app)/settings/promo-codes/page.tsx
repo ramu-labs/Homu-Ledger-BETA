@@ -1,19 +1,10 @@
-import { redirect, notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { requireSession } from "@/lib/auth/session";
 import PromoCodesShell from "@/components/promo-codes-shell";
 import type { DbPromoCode, SubscriptionTier } from "@/lib/types";
 
 export default async function PromoCodesPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  // Gate: developer-only
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_developer")
-    .eq("id", user.id)
-    .single();
+  const { supabase, profile } = await requireSession();
   if (!profile?.is_developer) notFound();
 
   // RLS already restricts SELECT to developers (or own redemptions),

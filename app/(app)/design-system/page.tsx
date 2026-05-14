@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth/session";
 import DesignSystemShell from "@/components/design-system-shell";
 
 /**
@@ -9,16 +9,7 @@ import DesignSystemShell from "@/components/design-system-shell";
  * useState/useEffect.
  */
 export default async function DesignSystemPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_developer")
-    .eq("id", user.id)
-    .single();
-
+  const { profile } = await requireSession();
   if (!profile?.is_developer) redirect("/settings");
 
   return <DesignSystemShell />;

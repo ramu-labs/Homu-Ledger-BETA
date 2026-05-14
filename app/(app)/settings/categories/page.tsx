@@ -1,19 +1,10 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth/session";
 import CategoriesShell from "@/components/categories-shell";
 import type { DbCategory } from "@/lib/types";
 
 export default async function CategoriesPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("household_id, icon_style")
-    .eq("id", user.id)
-    .single();
-
+  const { supabase, profile } = await requireSession();
   if (!profile?.household_id) redirect("/onboarding");
 
   const { data: categoriesRaw } = await supabase
@@ -25,5 +16,5 @@ export default async function CategoriesPage() {
 
   const categories: DbCategory[] = categoriesRaw ?? [];
 
-  return <CategoriesShell categories={categories} iconStyle={(profile.icon_style as "2d" | "3d") ?? "3d"} />;
+  return <CategoriesShell categories={categories} iconStyle={profile.icon_style ?? "3d"} />;
 }
