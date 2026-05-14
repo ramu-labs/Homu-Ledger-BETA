@@ -14,7 +14,7 @@ import { formatShortDate } from "@/lib/format";
 import { uploadTransactionPhoto } from "@/lib/upload-photo";
 import { compressPhoto } from "@/lib/compress-photo";
 import PhotoViewer from "@/components/photo-viewer";
-import type { DbTransaction, DbCategory, DbWallet, DbHouseholdMembership } from "@/lib/types";
+import type { DbTransaction, DbCategory, DbWallet, DbHouseholdMembership, RecurringFrequency } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 
 type Props = {
@@ -61,6 +61,19 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
   const [showRecurringPicker, setShowRecurringPicker] = useState(false);
   const [creatingRecurring, setCreatingRecurring] = useState(false);
   const [recurringSuccess, setRecurringSuccess] = useState(false);
+  // ── Unified recurring-mode (v1.24.0) ────────────────────────────────
+  // When the Repeat icon next to the date is tapped on a NEW (non-transfer,
+  // non-editing) transaction, the form morphs into a "create recurring"
+  // form: the date label becomes "Starts on", Frequency + Repeat-until
+  // rows appear, and the photo upload is hidden (recurring items don't
+  // have a single photo). On Save we call addRecurringItem instead of
+  // addTransaction. The existing post-save "Add as recurring" affordance
+  // (only shown in editing mode) is unchanged — this is the inline path
+  // for first-time recurring creation.
+  const [recurringMode, setRecurringMode] = useState(false);
+  const [frequency, setFrequency] = useState<RecurringFrequency>("monthly");
+  const [repeatUntilMode, setRepeatUntilMode] = useState<"forever" | "date">("forever");
+  const [repeatUntilDate, setRepeatUntilDate] = useState("");
   const [showPhotoViewer, setShowPhotoViewer] = useState(false);
   const previewObjectUrlRef = useRef<string | null>(null);
 
@@ -188,6 +201,12 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     setShowRecurringPicker(false);
     setCreatingRecurring(false);
     setRecurringSuccess(false);
+    // Reset unified recurring-mode state. Always cleared on (re-)open
+    // so the previous user's choice can't leak into a fresh entry.
+    setRecurringMode(false);
+    setFrequency("monthly");
+    setRepeatUntilMode("forever");
+    setRepeatUntilDate("");
   }, [open, editing, wallets]);
 
   useEffect(() => {
@@ -234,6 +253,36 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     e.preventDefault();
     setError(null);
     setLoading(true);
+
+    // Recurring mode (the in-form toggle, NOT the post-save "add as
+    // recurring" affordance for editing) takes precedence: we're not
+    // creating a one-off transaction, we're creating a recurring rule.
+    // Date becomes the first occurrence (`next_due_date`), photo is
+    // skipped (UI hides it in this mode anyway).
+    if (recurringMode && !isTransfer) {
+      if (!walletId) {
+        setError(tr("wallet.selectWallet"));
+        setLoading(false);
+        return;
+      }
+      const fd = new FormData();
+      fd.set("type", type);
+      fd.set("amount", amount);
+      fd.set("name", name);
+      fd.set("category_id", categoryId ?? "");
+      fd.set("wallet_id", walletId);
+      fd.set("frequency", frequency);
+      fd.set("next_due_date", date);
+      fd.set("repeat_until", repeatUntilMode === "date" ? repeatUntilDate : "");
+      const result = await addRecurringItem(fd);
+      if (result?.error) {
+        setError(result.error);
+        setLoading(false);
+      } else {
+        onClose();
+      }
+      return;
+    }
 
     if (isTransfer) {
       // Transfer mode — no category, no photo, two wallets required
@@ -444,6 +493,13 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
                       const newKind = t === "income" ? "income" : "expense";
                       if (sel && sel.type !== newKind) setCategoryId(null);
                     }
+                    // Recurring + transfer is meaningless (the recurring
+                    // engine doesn't materialise transfers). Drop the
+                    // toggle when the user picks transfer so they don't
+                    // end up with an unsubmittable hybrid state.
+                    if (t === "transfer" && recurringMode) {
+                      setRecurringMode(false);
+                    }
                     setType(t);
                   }}
                   className={cn(
@@ -588,26 +644,151 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
               </button>
             )}
 
-            {/* Date */}
-            <div className="relative h-12 w-full">
-              <div className="absolute inset-0 flex items-center gap-2 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08]">
-                <span className="flex-1 text-[15px] font-medium text-[var(--foreground)]">
-                  {formatShortDate(date)}
-                </span>
-                <Calendar className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
+            {/* Date + Repeat toggle.
+                The Repeat affordance only shows up for NEW non-transfer
+                transactions (editing a one-off can't be converted into a
+                recurring template, and transfers can't recur). The whole
+                row is a horizontal flex so the icon sits literally
+                beside the date, matching the user's spec ("Recurring
+                icon beside the date").
+
+                Implementation note: the date field uses an invisible
+                <input type="date"> overlaid on top of the visible label
+                — that's why the toggle has to be a SIBLING of the date
+                wrapper, not inside it. If it was inside, the overlay
+                input would swallow the toggle's tap. */}
+            <div className="flex gap-2">
+              <div className="relative h-12 flex-1">
+                <div className="absolute inset-0 flex items-center gap-2 rounded-2xl bg-[var(--background)] px-4 ring-1 ring-black/[0.08]">
+                  <span className="flex-1 text-[15px] font-medium text-[var(--foreground)]">
+                    {formatShortDate(date)}
+                  </span>
+                  <Calendar className="h-4 w-4 text-[var(--label-tertiary)]" strokeWidth={2} />
+                </div>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                  aria-label={recurringMode ? tr("recurring.startingDate") : tr("tx.date")}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0 [color-scheme:light]"
+                />
               </div>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-                aria-label={tr("tx.date")}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0 [color-scheme:light]"
-              />
+              {!isTransfer && !editing && (
+                <button
+                  type="button"
+                  onClick={() => setRecurringMode((v) => !v)}
+                  aria-pressed={recurringMode}
+                  aria-label={tr("tx.makeRecurring")}
+                  className={cn(
+                    "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors [touch-action:manipulation]",
+                    recurringMode
+                      ? "bg-[#EE6452] text-white ring-1 ring-[#EE6452]"
+                      : "bg-[var(--background)] text-[var(--label-secondary)] ring-1 ring-black/[0.08] active:bg-black/[0.04]"
+                  )}
+                >
+                  <Repeat className="h-[18px] w-[18px]" strokeWidth={2.25} />
+                </button>
+              )}
             </div>
 
-            {/* Photo — hidden for transfers */}
-            {!isTransfer && (
+            {/* Starts-on hint + Frequency + Repeat-until — only when the
+                Repeat toggle is on. Hidden in transfer or editing modes
+                by the same guard that hides the toggle itself. */}
+            {recurringMode && (
+              <>
+                <p className="-mt-1 px-1 text-[12px] text-[var(--label-secondary)]">
+                  🔁 {tr("recurring.startingDate")}
+                </p>
+
+                {/* Frequency picker. We use the existing 3 enum values
+                    (weekly / monthly / yearly) so the data model stays
+                    untouched. */}
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
+                    {tr("recurring.frequency")}
+                  </label>
+                  <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
+                    {(["weekly", "monthly", "yearly"] as const).map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setFrequency(f)}
+                        className={cn(
+                          "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
+                          frequency === f
+                            ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
+                            : "text-[var(--label-secondary)]"
+                        )}
+                      >
+                        {tr(`recurring.${f}` as any)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Repeat until — forever (no end) or specific end date.
+                    Default forever, since most family-budget items don't
+                    have a natural stop. The end-date picker only renders
+                    when "On date" is selected to keep the form tight. */}
+                <div>
+                  <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
+                    {tr("recurring.repeatUntil")}
+                  </label>
+                  <div className="flex gap-1 rounded-full bg-black/[0.05] p-1">
+                    <button
+                      type="button"
+                      onClick={() => setRepeatUntilMode("forever")}
+                      className={cn(
+                        "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
+                        repeatUntilMode === "forever"
+                          ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
+                          : "text-[var(--label-secondary)]"
+                      )}
+                    >
+                      {tr("recurring.forever")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRepeatUntilMode("date")}
+                      className={cn(
+                        "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
+                        repeatUntilMode === "date"
+                          ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
+                          : "text-[var(--label-secondary)]"
+                      )}
+                    >
+                      {tr("recurring.onDate")}
+                    </button>
+                  </div>
+                  {repeatUntilMode === "date" && (
+                    <div className="relative mt-2 h-12">
+                      <div className="pointer-events-none absolute inset-0 flex items-center px-4">
+                        <span className="text-[15px] font-medium text-[var(--foreground)]">
+                          {repeatUntilDate
+                            ? formatShortDate(repeatUntilDate)
+                            : <span className="text-[var(--label-tertiary)]">{tr("recurring.pickEndDate")}</span>
+                          }
+                        </span>
+                      </div>
+                      <input
+                        type="date"
+                        value={repeatUntilDate}
+                        onChange={(e) => setRepeatUntilDate(e.target.value)}
+                        min={date || undefined}
+                        className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-transparent outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow [color-scheme:light]"
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Photo — hidden for transfers AND when in recurring mode.
+                Recurring items don't carry a single photo (each future
+                materialised transaction would need its own anyway), so
+                showing the picker here would be confusing. */}
+            {!isTransfer && !recurringMode && (
             <div>
               {photoPreview ? (
                 <div className="relative">
@@ -675,7 +856,13 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
               disabled={loading || moving}
               className="flex h-13 w-full items-center justify-center rounded-2xl bg-[#EE6452] text-[15px] font-semibold text-white transition-opacity disabled:opacity-60"
             >
-              {loading ? tr("common.saving") : editing ? tr("common.saveChanges") : tr("tx.add")}
+              {loading
+                ? tr("common.saving")
+                : editing
+                ? tr("common.saveChanges")
+                : recurringMode
+                ? tr("recurring.addNew")
+                : tr("tx.add")}
             </button>
             {editing && !confirmDelete && !showMovePicker && !showRecurringPicker && !recurringSuccess && (
               <div className="flex gap-2">

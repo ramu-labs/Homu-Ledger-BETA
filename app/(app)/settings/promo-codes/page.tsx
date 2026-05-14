@@ -8,16 +8,19 @@ export default async function PromoCodesPage() {
   if (!profile?.is_developer) notFound();
 
   // RLS already restricts SELECT to developers (or own redemptions),
-  // so this returns every code generated.
+  // so this returns every code generated. We pull the redeemer's `email`
+  // as well as `name` so the developer can match a redemption against the
+  // code's `label` ("I sent this to Andi — did andi@…@gmail.com redeem it?").
   const { data: codesRaw } = await supabase
     .from("promo_codes")
-    .select("id, code, tier, created_at, created_by, redeemed_by, redeemed_at, redeemer:profiles!promo_codes_redeemed_by_fkey(id, name)")
+    .select("id, code, tier, label, created_at, created_by, redeemed_by, redeemed_at, redeemer:profiles!promo_codes_redeemed_by_fkey(id, name, email)")
     .order("created_at", { ascending: false });
 
   const codes: DbPromoCode[] = (codesRaw ?? []).map((c: any) => ({
     id: c.id,
     code: c.code,
     tier: c.tier as SubscriptionTier,
+    label: c.label ?? null,
     created_at: c.created_at,
     created_by: c.created_by,
     redeemed_by: c.redeemed_by,

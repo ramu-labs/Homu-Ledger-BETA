@@ -1,10 +1,21 @@
 "use client";
 
+// Landing page that decides how the user wants to start: Google
+// (preferred — primary CTA) or a fresh email/password sign-up. Existing
+// email/password users come back via the tiny "Already have an account?
+// Sign in" link, which routes to /login/password (the previous /login
+// form, now extracted to keep this page focused).
+//
+// Why this redesign (v1.24.0):
+//   - The old /login showed Google + email/password form + sign-up link.
+//     That gave new users three competing paths to read.
+//   - The new layout makes the choice obvious: Google is one tap, Sign up
+//     is the explicit "I'm new here" path, and the password form is one
+//     more tap away for returning email/password users.
+
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
-import { signIn } from "@/app/actions/auth";
 import AddToHomescreenBanner from "@/components/add-to-homescreen-banner";
 import GoogleSignInButton from "@/components/google-sign-in-button";
 import { useT } from "@/lib/i18n/provider";
@@ -20,130 +31,117 @@ export default function LoginPage() {
 function LoginPageInner() {
   const t = useT();
   const params = useSearchParams();
-  // OAuth errors from /auth/callback are surfaced via ?oauth_error=…
+  // OAuth errors from /auth/callback come back to this landing page so
+  // we surface them prominently — the user just tapped Google and got
+  // bounced, they should see why before anything else.
   const oauthError = params.get("oauth_error");
   const [error, setError] = useState<string | null>(oauthError);
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
-  // Refresh the error if the URL param changes (e.g. after a fresh OAuth
-  // failure routes back here).
   useEffect(() => {
     if (oauthError) setError(oauthError);
   }, [oauthError]);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const result = await signIn(new FormData(e.currentTarget));
-    if (result?.error) { setError(result.error); setLoading(false); }
-  }
+  // ── Diagnostic logging for the "random logout" issue (v1.24.0) ───────
+  // When the user lands on /login and the referrer is an authenticated
+  // path (e.g. /transactions), they were bounced by middleware. We post
+  // a fire-and-forget log so we can grep Vercel runtime logs for the
+  // pattern (PWA standalone? long idle? after refresh?). Removed once
+  // we've identified and fixed the root cause.
+  useEffect(() => {
+    try {
+      const refUrl = document.referrer ? new URL(document.referrer) : null;
+      const sameOrigin = refUrl && refUrl.origin === window.location.origin;
+      const fromPath = sameOrigin ? refUrl.pathname : null;
+      // Treat /login, /signup, /privacy as "expected" entries — anything
+      // else suggests an unexpected bounce.
+      const isExpected =
+        !fromPath ||
+        fromPath === "/" ||
+        fromPath.startsWith("/login") ||
+        fromPath.startsWith("/signup") ||
+        fromPath.startsWith("/privacy") ||
+        fromPath.startsWith("/auth/");
+      if (isExpected) return;
+
+      const isStandalone =
+        // iOS Safari uses a non-standard property on navigator.
+        // The matchMedia query is the cross-browser fallback.
+        (typeof navigator !== "undefined" &&
+          // @ts-expect-error — Safari-only API not in lib.dom
+          navigator.standalone === true) ||
+        window.matchMedia("(display-mode: standalone)").matches;
+
+      const body = JSON.stringify({
+        fromPath,
+        isStandalone,
+        hiddenMs: null,
+        note: oauthError ? "after oauth_error" : null,
+      });
+
+      // sendBeacon survives even if the user closes the tab mid-bounce.
+      // Falls back to fetch keepalive on browsers that lack Beacon.
+      if (typeof navigator.sendBeacon === "function") {
+        navigator.sendBeacon(
+          "/api/auth-log",
+          new Blob([body], { type: "application/json" })
+        );
+      } else {
+        void fetch("/api/auth-log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      // Never let logging break the page. Silent swallow.
+    }
+  }, [oauthError]);
 
   return (
     <>
       <AddToHomescreenBanner />
       <div className="w-full">
-      <div className="mb-8 text-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/homu-login.png" alt="Homu" className="mx-auto mb-5 h-44 w-44 object-contain" />
-        <p className="mt-1 text-[14px] text-[var(--label-secondary)]">
-          {t("auth.signInTo")}
-        </p>
-      </div>
-
-      {/* Google sign-in — top of the form so it reads as the primary path
-          (we want most new users to land here rather than typing creds). */}
-      <GoogleSignInButton />
-
-      <div className="my-4 flex items-center gap-3">
-        <div className="h-px flex-1 bg-black/[0.07]" />
-        <span className="text-[11px] uppercase tracking-wide text-[var(--label-tertiary)]">
-          {t("auth.or")}
-        </span>
-        <div className="h-px flex-1 bg-black/[0.07]" />
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <Field label={t("auth.emailOrUsername")} name="identifier" type="text" placeholder={t("auth.emailOrUsernamePh")} />
-
-        <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-            {t("auth.password")}
-          </label>
-          <div className="relative">
-            <input
-              name="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
-              required
-              autoComplete="current-password"
-              className="h-12 w-full rounded-2xl bg-[var(--surface)] px-4 pr-12 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full text-[var(--label-tertiary)] transition-colors hover:text-[var(--label-secondary)]"
-              aria-label={showPassword ? t("common.close") : t("auth.password")}
-            >
-              {showPassword
-                ? <EyeOff className="h-4 w-4" strokeWidth={2} />
-                : <Eye className="h-4 w-4" strokeWidth={2} />
-              }
-            </button>
-          </div>
+        <div className="mb-10 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/homu-login.png" alt="Homu" className="mx-auto mb-5 h-44 w-44 object-contain" />
+          <p className="mt-1 text-[14px] text-[var(--label-secondary)]">
+            {t("auth.signInTo")}
+          </p>
         </div>
 
+        {/* Primary path — Google. The button component renders its own
+            loading state during the OAuth redirect handshake. */}
+        <GoogleSignInButton />
+
+        {/* OAuth error surfacing — only shown on landing, since this is
+            where Google bounces back to. The GoogleSignInButton already
+            shows its own SDK-level errors inline; this catches the
+            redirect-time errors (e.g. user cancelled at Google's screen). */}
         {error && (
-          <p className="rounded-xl bg-rose-50 px-4 py-2.5 text-[13px] text-rose-700 ring-1 ring-rose-200">
+          <p className="mt-3 rounded-xl bg-rose-50 px-4 py-2.5 text-[13px] text-rose-700 ring-1 ring-rose-200">
             {error}
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="mt-2 flex h-12 w-full items-center justify-center rounded-2xl bg-[#EE6452] text-[15px] font-semibold text-white shadow-sm transition-opacity disabled:opacity-60"
+        {/* Secondary path — explicit email/password sign-up. Styled as a
+            ghost button so Google still reads as the primary action. */}
+        <Link
+          href="/signup"
+          className="mt-3 flex h-12 w-full items-center justify-center rounded-2xl bg-[var(--surface)] text-[15px] font-semibold text-[var(--foreground)] ring-1 ring-black/[0.08] transition-opacity active:opacity-90 [touch-action:manipulation]"
         >
-          {loading ? t("auth.signingIn") : t("auth.signIn")}
-        </button>
-      </form>
-
-      <p className="mt-6 text-center text-[13px] text-[var(--label-secondary)]">
-        {t("auth.noAccount")}{" "}
-        <Link href="/signup" className="font-semibold text-[var(--foreground)]">
-          {t("auth.createOne")}
+          {t("auth.createAccount")}
         </Link>
-      </p>
-    </div>
-    </>
-  );
-}
 
-function Field({
-  label,
-  name,
-  type,
-  placeholder,
-}: {
-  label: string;
-  name: string;
-  type: string;
-  placeholder: string;
-}) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">
-        {label}
-      </label>
-      <input
-        name={name}
-        type={type}
-        placeholder={placeholder}
-        required
-        autoComplete={name === "password" ? "current-password" : "username email"}
-        className="h-12 w-full rounded-2xl bg-[var(--surface)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
-      />
-    </div>
+        {/* Returning email/password users — kept small on purpose so it
+            doesn't compete visually with the two main CTAs. */}
+        <p className="mt-8 text-center text-[13px] text-[var(--label-secondary)]">
+          {t("auth.alreadyHaveAccount")}{" "}
+          <Link href="/login/password" className="font-semibold text-[var(--foreground)]">
+            {t("auth.signIn")}
+          </Link>
+        </p>
+      </div>
+    </>
   );
 }

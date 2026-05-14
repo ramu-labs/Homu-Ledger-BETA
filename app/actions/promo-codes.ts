@@ -13,7 +13,11 @@ const VALID_TIERS: SubscriptionTier[] = [
 ];
 
 export async function generatePromoCode(
-  tier: SubscriptionTier
+  tier: SubscriptionTier,
+  // Optional memo so the developer can remember WHO this code was meant
+  // for (e.g. "For Andi"). Stored on promo_codes.label by the RPC. The
+  // code itself is still redeemable by anyone — this is a private note.
+  label?: string | null
 ): Promise<{ code?: DbPromoCode; error?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -21,7 +25,18 @@ export async function generatePromoCode(
 
   if (!VALID_TIERS.includes(tier)) return { error: "Invalid tier" };
 
-  const { data, error } = await supabase.rpc("generate_promo_code", { p_tier: tier });
+  // Trim + normalise empty strings to undefined so the RPC's DEFAULT
+  // NULL kicks in cleanly. The RPC also does this defensively, but
+  // doing it client-side avoids sending whitespace down the wire. We
+  // pass `undefined` (not `null`) because the generated RPC type is
+  // `p_label?: string` — null isn't assignable there.
+  const trimmed = (label ?? "").trim();
+  const safeLabel: string | undefined = trimmed.length > 0 ? trimmed : undefined;
+
+  const { data, error } = await supabase.rpc("generate_promo_code", {
+    p_tier: tier,
+    p_label: safeLabel,
+  });
   if (error) return { error: error.message };
 
   // RPC returns table; first row is our new code.
@@ -36,6 +51,7 @@ export async function generatePromoCode(
       tier: row.tier as SubscriptionTier,
       created_at: row.created_at,
       created_by: user.id,
+      label: row.label ?? null,
       redeemed_by: null,
       redeemed_at: null,
     },

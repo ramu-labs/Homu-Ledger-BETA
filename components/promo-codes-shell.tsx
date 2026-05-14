@@ -27,6 +27,10 @@ export default function PromoCodesShell({ initialCodes }: Props) {
   const t = useT();
   const [codes, setCodes] = useState<DbPromoCode[]>(initialCodes);
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>("3_months");
+  // Optional free-text label attached at generation time so the developer
+  // remembers who they sent the code to. Cleared after each successful
+  // generation so it can't accidentally carry over to the next code.
+  const [pendingLabel, setPendingLabel] = useState("");
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -68,7 +72,7 @@ export default function PromoCodesShell({ initialCodes }: Props) {
   async function handleGenerate() {
     setError(null);
     setGenerating(true);
-    const result = await generatePromoCode(selectedTier);
+    const result = await generatePromoCode(selectedTier, pendingLabel);
     setGenerating(false);
     if (result.error) {
       setError(result.error);
@@ -76,6 +80,9 @@ export default function PromoCodesShell({ initialCodes }: Props) {
     }
     if (result.code) {
       setCodes((prev) => [result.code!, ...prev]);
+      // Reset the label so the next code starts fresh — leaving it filled
+      // would make it too easy to attach the wrong memo to a new code.
+      setPendingLabel("");
     }
   }
 
@@ -189,6 +196,24 @@ export default function PromoCodesShell({ initialCodes }: Props) {
             </button>
           ))}
         </div>
+
+        {/* Optional "Name" memo — purely a note for the developer (e.g.
+            "For Andi"). Not validated, not unique, not enforced — anyone
+            with the generated code can still redeem it. We surface this
+            so it's obvious it's optional and frictionless. */}
+        <label className="mb-1.5 block text-[12px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
+          {t("promo.labelHeading")}
+        </label>
+        <input
+          type="text"
+          value={pendingLabel}
+          onChange={(e) => setPendingLabel(e.target.value)}
+          placeholder={t("promo.labelPlaceholder")}
+          maxLength={80}
+          aria-label={t("promo.labelHeading")}
+          className="mb-3 h-11 w-full rounded-2xl bg-[var(--background)] px-4 text-[14px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
+        />
+
         <button
           onClick={handleGenerate}
           disabled={generating}
@@ -222,6 +247,15 @@ export default function PromoCodesShell({ initialCodes }: Props) {
                       <p className="font-mono text-[15px] font-semibold tracking-[0.04em] text-[var(--foreground)] truncate">
                         {c.code}
                       </p>
+                      {/* Memo (label) sits directly under the code so the
+                          developer can scan the list and find a specific
+                          assignment quickly. Italic to distinguish it
+                          from real data fields. Hidden when not set. */}
+                      {c.label && (
+                        <p className="mt-0.5 truncate text-[12px] italic text-[var(--label-secondary)]">
+                          {c.label}
+                        </p>
+                      )}
                       <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                         <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${tierColor.bg} ${tierColor.text}`}>
                           {t(`promo.tier.${c.tier}` as any)}
@@ -237,6 +271,16 @@ export default function PromoCodesShell({ initialCodes }: Props) {
                           </span>
                         )}
                       </div>
+                      {/* Redeemer's email — shown only when redeemed, on
+                          its own line so it doesn't fight with the badges.
+                          Helps the developer match the redemption against
+                          the memo they assigned ("did this go to the
+                          right person?"). */}
+                      {isRedeemed && c.redeemer?.email && (
+                        <p className="mt-1 truncate text-[11px] text-[var(--label-tertiary)]">
+                          {c.redeemer.email}
+                        </p>
+                      )}
                     </div>
                     {!isRedeemed && (() => {
                       const isPendingDelete = pendingDeleteId === c.id;

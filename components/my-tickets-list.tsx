@@ -44,7 +44,11 @@ export default function MyTicketsList({ userId }: { userId: string }) {
         .from("feedback")
         .select("id, created_at, created_by, household_id, subject, body, category, status, attachments, reply, replied_at, replied_by")
         .order("created_at", { ascending: false });
-      if (!cancelled) setTickets(data ?? []);
+      // `feedback.category` comes back as `string` from generated types
+      // (the column is a free-form text in the DB), but our app type
+      // narrows it to the FeedbackCategory union. Safe cast — the
+      // server-side `addFeedback` action enforces the enum on write.
+      if (!cancelled) setTickets((data ?? []) as DbFeedback[]);
     }
     load();
 
