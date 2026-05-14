@@ -2,6 +2,14 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.23.1 - May 14, 2026
+
+Total Balance card on the transactions page simplified — removed the small wallet glyph next to the label, switched the card to `text-center` so the uppercase TOTAL BALANCE label and the 28px amount both sit centered. Reads as the headline number now rather than a sibling of the Income/Expense pills below. The Income / Expense cards still use their left-aligned icon + label pattern; only the headline changed.
+
+`components/balance-card.tsx` — 12 lines net delete (dropped the icon wrapper, the flex container around the label, and the unused `Wallet` import).
+
+---
+
 ## v1.23.0 - May 14, 2026
 
 Performance + auth-stability sweep. First half of the audit's top-2 priorities (PR B); the RLS init-plan migration (PR A) is deferred to v1.23.1 — Supabase MCP was down at ship time so I couldn't safely verify each policy's live state before rewriting.

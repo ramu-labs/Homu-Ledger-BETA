@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatAmount, formatAmountWithSign } from "@/lib/format";
-import { ArrowDownLeft, ArrowUpRight, Wallet } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { cn } from "@/lib/cn";
 import SurfaceCard from "@/components/ui/surface-card";
@@ -48,16 +48,12 @@ export default function BalanceCard({ balance, income, expenses, currency = "IDR
   return (
     <section className="px-5 pt-4 pb-2 space-y-3">
       {/* Total Balance — full-width bento, same chrome as Income/Expense
-          below so all three read as one bento stack. */}
-      <SurfaceCard className="px-4 py-3.5">
-        <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--ring-subtle)] text-[var(--foreground)]">
-            <Wallet className="h-3.5 w-3.5" strokeWidth={2.5} />
-          </span>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--label-tertiary)]">
-            {t("tx.totalBalance")}
-          </p>
-        </div>
+          below so all three read as one bento stack. Label + amount both
+          centered for hierarchy: it's the headline number. */}
+      <SurfaceCard className="px-4 py-3.5 text-center">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--label-tertiary)]">
+          {t("tx.totalBalance")}
+        </p>
         <p
           className={cn(
             "mt-1.5 truncate text-[28px] font-semibold leading-tight tracking-tight tabular-nums",

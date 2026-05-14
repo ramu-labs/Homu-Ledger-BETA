@@ -29,6 +29,13 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.23.1",
+    date: "May 14, 2026",
+    changes: [
+      { type: "improvement", en: "Total Balance card simplified: dropped the wallet icon and centered the label + amount so it reads as the headline number", id: "Kartu Total Saldo disederhanakan: ikon dompet dihilangkan dan label + nilainya dipusatkan agar terbaca sebagai angka utama" },
+    ],
+  },
+  {
     version: "1.23.0",
     date: "May 14, 2026",
     changes: [
