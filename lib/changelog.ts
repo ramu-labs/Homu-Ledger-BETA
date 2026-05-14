@@ -29,6 +29,15 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.26.0",
+    date: "May 15, 2026",
+    changes: [
+      { type: "improvement", en: "AI Settings split: API key management moved to its own page so a stray tap on Clear won't wipe the key. Clear now needs a second tap to confirm (auto-cancels in 3 seconds)", id: "Pengaturan AI dipecah: pengelolaan API key dipindah ke halaman tersendiri agar tap nyasar di Clear tidak menghapus key. Clear sekarang butuh konfirmasi tap kedua (batal otomatis setelah 3 detik)" },
+      { type: "new", en: "AI Settings now shows daily usage as a chart (stacked: cache hits, AI calls, errors) with a 7d / 28d / 90d range selector, plus the free-tier limits straight from Google (15 RPM, 1,000 RPD, 250K TPM)", id: "Pengaturan AI sekarang menampilkan penggunaan harian dalam bentuk grafik (cache, panggilan AI, error) dengan pilihan rentang 7h / 28h / 90h, plus batas tier gratis langsung dari Google (15 RPM, 1.000 RPD, 250K TPM)" },
+      { type: "fix", en: "Add Transaction sheet: background page no longer scrolls behind the sheet when the keyboard is up — also fixes the right-edge scroll bleed on iOS PWA", id: "Sheet Tambah Transaksi: halaman di belakang tidak lagi ikut scroll saat keyboard naik — juga memperbaiki bleed scroll di tepi kanan layar pada iOS PWA" },
+    ],
+  },
+  {
     version: "1.25.0",
     date: "May 15, 2026",
     changes: [

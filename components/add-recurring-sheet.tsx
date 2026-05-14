@@ -70,18 +70,35 @@ export default function AddRecurringSheet({
     return () => cancelAnimationFrame(id);
   }, [open, editing]);
 
-  // Body-scroll lock. See add-transaction-sheet.tsx for the longer comment;
-  // mirroring the same pattern here for the recurring sheet so any iOS-level
-  // body-scroll bleed is locked down in both entry points.
+  // Body-scroll lock. See add-transaction-sheet.tsx for the v1.26.0
+  // notes on why position:fixed body is needed in addition to
+  // overflow:hidden — iOS PWA was bleeding momentum scroll through to
+  // the background page when the keyboard was up. Mirror that fix
+  // here for the recurring entry point.
   useEffect(() => {
     if (!open) return;
 
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    const prevBodyOverflow = document.body.style.overflow;
-    const prevHtmlTouchAction = document.documentElement.style.touchAction;
-    document.documentElement.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.touchAction = "none";
+    const scrollY = window.scrollY;
+    const html = document.documentElement;
+    const body = document.body;
+
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      htmlTouchAction: html.style.touchAction,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+      bodyOverscroll: body.style.overscrollBehavior,
+    };
+
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.style.touchAction = "none";
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overscrollBehavior = "none";
 
     function onTouchMove(e: TouchEvent) {
       const sheet = sheetRef.current;
@@ -93,9 +110,14 @@ export default function AddRecurringSheet({
     document.addEventListener("touchmove", onTouchMove, { passive: false });
 
     return () => {
-      document.documentElement.style.overflow = prevHtmlOverflow;
-      document.body.style.overflow = prevBodyOverflow;
-      document.documentElement.style.touchAction = prevHtmlTouchAction;
+      html.style.overflow = prev.htmlOverflow;
+      body.style.overflow = prev.bodyOverflow;
+      html.style.touchAction = prev.htmlTouchAction;
+      body.style.position = prev.bodyPosition;
+      body.style.top = prev.bodyTop;
+      body.style.width = prev.bodyWidth;
+      body.style.overscrollBehavior = prev.bodyOverscroll;
+      window.scrollTo(0, scrollY);
       document.removeEventListener("touchmove", onTouchMove);
     };
   }, [open]);

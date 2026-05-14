@@ -114,26 +114,52 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     return () => cancelAnimationFrame(id);
   }, [open, editing]);
 
-  // Body-scroll lock. We use plain overflow:hidden on html + body (instead
-  // of position:fixed body, which on iOS PWA standalone causes fixed
-  // bottom-0 children to anchor to body's collapsed bounds — the cream-strip
-  // bug we kept hitting). The touchmove guard below handles iOS Safari
-  // momentum-scroll which can otherwise bypass overflow:hidden.
+  // Body-scroll lock (v1.26.0 hardening).
   //
-  // Defense-in-depth: also flip `touch-action` to "none" on html so any pan
-  // gesture is rejected by the browser before the touchmove handler runs.
-  // The sheet has its own `touch-action: pan-y` plus the data-scroll's
-  // overflow-y handles vertical scrolling inside, so this doesn't break
-  // the sheet's own scrolling.
+  // Previous approach (v1.21+): overflow:hidden + touchAction:none on
+  // html/body + a touchmove preventDefault handler.
+  //
+  // Problem: on iOS PWA standalone, when the soft keyboard is up and
+  // the user scrolls the sheet to its bottom, momentum scroll bleeds
+  // through to the body underneath — the home/transactions page
+  // scrolls behind the sheet. Also, right-edge swipes occasionally
+  // trigger the same bleed even without keyboard.
+  //
+  // Fix: also pin the body with position:fixed + top:-scrollY so
+  // there's literally no scrollable surface underneath the sheet.
+  // This is the standard "scroll lock" technique used by Radix /
+  // headless-ui / vaul. On close we restore scrollY by writing it
+  // back with scrollTo() before clearing the pinned styles.
+  //
+  // Why this is safe now (but wasn't pre-v1.21): the sheet itself is
+  // anchored top-0 with explicit height:100lvh, so it doesn't depend
+  // on the body's bounds. The historical "cream-strip" bug only hit
+  // bottom-anchored sheets that suddenly anchored to a collapsed body.
   useEffect(() => {
     if (!open) return;
 
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    const prevBodyOverflow = document.body.style.overflow;
-    const prevHtmlTouchAction = document.documentElement.style.touchAction;
-    document.documentElement.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.touchAction = "none";
+    const scrollY = window.scrollY;
+    const html = document.documentElement;
+    const body = document.body;
+
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      htmlTouchAction: html.style.touchAction,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+      bodyOverscroll: body.style.overscrollBehavior,
+    };
+
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.style.touchAction = "none";
+    // Pin the body in place — kills momentum-scroll bleed completely.
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overscrollBehavior = "none";
 
     function onTouchMove(e: TouchEvent) {
       const sheet = sheetRef.current;
@@ -145,9 +171,17 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     document.addEventListener("touchmove", onTouchMove, { passive: false });
 
     return () => {
-      document.documentElement.style.overflow = prevHtmlOverflow;
-      document.body.style.overflow = prevBodyOverflow;
-      document.documentElement.style.touchAction = prevHtmlTouchAction;
+      html.style.overflow = prev.htmlOverflow;
+      body.style.overflow = prev.bodyOverflow;
+      html.style.touchAction = prev.htmlTouchAction;
+      body.style.position = prev.bodyPosition;
+      body.style.top = prev.bodyTop;
+      body.style.width = prev.bodyWidth;
+      body.style.overscrollBehavior = prev.bodyOverscroll;
+      // Restore the page's scroll position — without this the page
+      // would snap to top when the sheet closes (because position:
+      // fixed broke the previous scrollY).
+      window.scrollTo(0, scrollY);
       document.removeEventListener("touchmove", onTouchMove);
     };
   }, [open]);

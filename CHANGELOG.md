@@ -2,6 +2,73 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.26.0 - May 15, 2026
+
+AI dev-panel polish + a real fix for the iOS background scroll bleed.
+
+### 1. AI Settings restructured
+
+The single-page panel in v1.25.0 mixed read-only stats (usage, cost, hit rate) with destructive actions (Save key, Clear key). One stray tap on Clear in the middle of glancing at stats would wipe the key. Split it:
+
+- `/settings/ai-admin` — read-only now. RowLink to the key page with a status pill (Configured / Not set), free-tier limits card, daily usage chart with range selector, headline + mini stats.
+- `/settings/ai-admin/key` — new sub-page. Holds the API key input, Test Connection, and the Clear button. Clear now lives in a "Danger zone" section below the main form with a **two-tap confirmation**: first tap arms the button (turns red, label flips to "Tap again to clear"), auto-cancels after 3 s if you walk away. Same pattern as the promo-code delete.
+
+Files: `app/(app)/settings/ai-admin/page.tsx` (rewritten, server-side aggregation + day bucketing), `app/(app)/settings/ai-admin/key/page.tsx` (new), `components/ai-admin-shell.tsx` (rewritten), `components/ai-key-form.tsx` (new).
+
+### 2. Free-tier limits card
+
+Hard-coded reference panel matching Google's published rate-limit dashboard for `gemini-2.5-flash-lite`:
+
+| | Limit |
+|---|---|
+| RPM (requests/min) | 15 |
+| RPD (requests/day) | 1,000 |
+| TPM (tokens/min) | 250K |
+
+These are the **free-tier** caps. Enabling billing on the Google Cloud project unlocks Tier 1 (4,000 RPM, no daily cap, 4M TPM). If Google updates the numbers, edit `FREE_TIER_LIMITS` in `components/ai-admin-shell.tsx`.
+
+### 3. Daily usage chart
+
+Recharts stacked `BarChart` with two metric tabs (`Calls` / `Tokens`) and a range selector (`7d` / `28d` / `90d`, default `28d`).
+
+- **Calls** view: three stacks per day — green for cache hits, orange for AI calls (misses), red for errors. The cache layer's success is visible at a glance: a tall green bar with a sliver of orange is the steady state we want.
+- **Tokens** view: single blue bar per day, raw token count. Useful when calls are sparse but individually large.
+
+Server-side aggregation in `page.tsx`:
+- Window is computed from `?range=7d|28d|90d` (default 28d).
+- Pulls all matching rows from `api_usage_logs`, buckets them by UTC date in JS (so empty days are zero-padded — Recharts requires a row per day or the X-axis goes uneven).
+- Totals (cost / hit-rate / calls / tokens / hits / misses / errors) summed once and passed as a separate object so the headline doesn't have to re-sum the array client-side.
+
+Range selector updates the URL with `router.replace` so the chosen range survives a soft refresh.
+
+### 4. iOS background scroll bleed — fixed
+
+The Add Transaction sheet (and Add Recurring sheet) had a long-standing bug on iOS PWA standalone: when the keyboard was up and you scrolled the sheet to the bottom, momentum-scroll would bleed through to the page underneath. Right-edge swipes occasionally triggered the same thing.
+
+Old approach (v1.21–v1.25): `overflow:hidden` + `touch-action:none` on html/body, plus a `touchmove` preventDefault handler. Worked for most cases, but iOS's `-webkit-overflow-scrolling` momentum still leaked through `overflow:hidden`.
+
+New approach (v1.26.0): same as before **plus** `position:fixed` on body with `top:-scrollY` so there's literally no scrollable surface underneath the sheet. The previous concern about this — the v1.20-era "cream-strip" bug, where a bottom-anchored fixed sheet would re-anchor to a collapsed body — doesn't apply anymore because the sheets are now top-anchored with explicit `height:100lvh`.
+
+Both sheets save `window.scrollY` on open and call `scrollTo(0, scrollY)` on close so the underlying page doesn't snap to top.
+
+Pattern (in both `add-transaction-sheet.tsx` and `add-recurring-sheet.tsx`):
+
+```ts
+const scrollY = window.scrollY;
+body.style.position = "fixed";
+body.style.top = `-${scrollY}px`;
+body.style.width = "100%";
+body.style.overscrollBehavior = "none";
+// ... on close ...
+window.scrollTo(0, scrollY);
+```
+
+### Files touched
+
+`app/(app)/settings/ai-admin/page.tsx`, `app/(app)/settings/ai-admin/key/page.tsx` (new), `components/ai-admin-shell.tsx`, `components/ai-key-form.tsx` (new), `components/add-transaction-sheet.tsx`, `components/add-recurring-sheet.tsx`, `lib/i18n/dictionaries.ts`, `lib/changelog.ts`, version bumps in `package.json`, `public/sw.js`, `app/(app)/settings/page.tsx`.
+
+---
+
 ## v1.25.0 - May 15, 2026
 
 AI auto-categorization. The big feature from the v1.24.0 handoff plus a smart cache layer that turns most lookups into a single indexed Postgres query.
