@@ -1,48 +1,50 @@
 "use client";
 
-// Updates list with User / Developer tab switcher (v1.28.0).
+// Changelog viewer.
 //
-// Why two tabs:
-//   - "User" gets plain-language release notes, focused on what the
-//     user can DO differently — written so non-engineers understand.
-//     This is the default tab.
-//   - "Developer" gets the full technical breakdown (migrations, RPCs,
-//     RLS policy changes, file paths, etc). Only shown to is_developer
-//     accounts to avoid scaring non-devs with `auth.uid()` chatter.
+// v1.29.0 split:
+//   - `/settings/updates` (Version Updates, in the Support group) calls
+//     this with view="user". Everyone — including devs — gets the
+//     plain-language read.
+//   - `/settings/dev-changelog` (in the Developer group, only visible
+//     to is_developer accounts) calls this with view="dev". Same UI
+//     shell, different filter + title.
 //
-// Filtering is done by the `audience` field on each ChangeEntry.
-// Entries with audience='all' or no field at all show in BOTH tabs
-// (covers legacy entries pre-v1.28.0 that were written before the
-// split — they were technically detailed but already in production
-// changelogs, so re-tagging them retroactively isn't worth the diff).
+// Filtering by ChangeEntry.audience:
+//   - view="user" shows entries with audience='user' OR audience='all'
+//     OR no audience field (legacy entries default to 'all').
+//   - view="dev"  shows entries with audience='dev'  OR audience='all'
+//     OR no audience field.
 //
-// We also hide entire version blocks whose visible changes (after
-// filter) is empty — otherwise the User tab would show empty
-// version cards for releases that were purely dev-only.
+// We also hide entire version blocks whose visible changes are empty —
+// otherwise the User route would show empty cards for releases that
+// were purely dev-only, and vice versa.
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Sparkles, Wrench, ArrowUpCircle } from "lucide-react";
 import { CHANGELOG, type Audience, type ChangeEntry } from "@/lib/changelog";
 import { useT, useLang } from "@/lib/i18n/provider";
-import { cn } from "@/lib/cn";
 
-type Tab = "user" | "dev";
+type View = "user" | "dev";
 
-export default function UpdatesShell({ showDevTab }: { showDevTab: boolean }) {
+type Props = {
+  view: View;
+  // Page title — passed in so the route picking this shell decides the
+  // copy ("Version Updates" vs "Dev Changelog"). Keeps i18n choices
+  // out of the shell.
+  title: string;
+};
+
+export default function UpdatesShell({ view, title }: Props) {
   const router = useRouter();
   const t = useT();
   const lang = useLang();
-  // Default to the User tab. Devs land here too — they can flip the
-  // tab if they want the technical breakdown.
-  const [tab, setTab] = useState<Tab>("user");
 
   const versions = CHANGELOG
     .map((entry) => ({
       ...entry,
-      changes: entry.changes.filter((c) => matchesTab(c.audience, tab)),
+      changes: entry.changes.filter((c) => matchesView(c.audience, view)),
     }))
-    // Drop versions that have zero visible changes for this tab.
     .filter((entry) => entry.changes.length > 0);
 
   return (
@@ -56,24 +58,10 @@ export default function UpdatesShell({ showDevTab }: { showDevTab: boolean }) {
           <ChevronLeft className="h-[20px] w-[20px]" strokeWidth={2.25} />
         </button>
         <h1 className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">
-          {t("settings.updates")}
+          {title}
         </h1>
         <div className="h-9 w-9" />
       </header>
-
-      {/* Tab switcher — only show if the dev tab is available. Non-devs
-          get the User-only view with no extra chrome, identical to the
-          pre-v1.28.0 page from their perspective. */}
-      {showDevTab && (
-        <div className="mx-5 mb-3 flex gap-1 rounded-full bg-black/[0.05] p-1">
-          <TabButton active={tab === "user"} onClick={() => setTab("user")}>
-            {t("updates.tabUser")}
-          </TabButton>
-          <TabButton active={tab === "dev"} onClick={() => setTab("dev")}>
-            {t("updates.tabDev")}
-          </TabButton>
-        </div>
-      )}
 
       <div className="px-5 space-y-4">
         {versions.length === 0 ? (
@@ -112,40 +100,16 @@ export default function UpdatesShell({ showDevTab }: { showDevTab: boolean }) {
 }
 
 /**
- * Does this entry (with the given audience tag) show on the given tab?
+ * Does this entry (with the given audience tag) show on the given view?
  *
- *   - undefined / 'all' → shows on both tabs (backwards-compatible
+ *   - undefined / 'all' → shows on both routes (backwards-compatible
  *                          default for legacy entries pre-v1.28.0)
- *   - 'user'            → User tab only
- *   - 'dev'             → Developer tab only
+ *   - 'user'            → User route only
+ *   - 'dev'             → Developer route only
  */
-function matchesTab(audience: Audience | undefined, tab: Tab): boolean {
+function matchesView(audience: Audience | undefined, view: View): boolean {
   if (!audience || audience === "all") return true;
-  return audience === tab;
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
-        active
-          ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm"
-          : "text-[var(--label-secondary)]"
-      )}
-    >
-      {children}
-    </button>
-  );
+  return audience === view;
 }
 
 function ChangeIcon({ type }: { type: ChangeEntry["type"] }) {
