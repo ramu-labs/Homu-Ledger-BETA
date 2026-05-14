@@ -2,6 +2,33 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.29.0 - May 15, 2026
+
+Follow-up to v1.28.0 — split the two changelog views onto two separate routes instead of using a tab switcher.
+
+### Why
+
+v1.28.0 put User / Developer tabs inside `/settings/updates`. The user wanted devs to see the **same** page users see (no extra dev tab on it), and a separate dedicated entry under the Developer group for the technical breakdown. Cleaner mental model: one route, one audience.
+
+### What shipped
+
+- **`/settings/updates`** is now user-only. Renamed in the UI to **"Version Updates"**. Everyone — including devs — sees the same plain-language release notes. Still lives under Settings → Support.
+- **`/settings/dev-changelog`** is new. Lives under Settings → Developer (only visible to `is_developer` accounts; `notFound()` if a non-dev navigates to the URL directly). Shows the technical breakdown.
+- **`components/updates-shell.tsx`** no longer renders a tab switcher. Now takes a `view: 'user' | 'dev'` prop + explicit `title`. The two routes pass their own props and the shell stays presentation-only.
+- **i18n**: `settings.updates` → "Version Updates" / "Pembaruan Versi". New key `settings.devChangelog` → "Dev Changelog" / "Changelog Developer".
+
+### Files touched
+
+- `components/updates-shell.tsx` — tab-switcher removed, accepts `view` + `title` props
+- `app/(app)/settings/updates/page.tsx` — server wrapper, always passes `view="user"` + the i18n title
+- `app/(app)/settings/dev-changelog/page.tsx` — new, gated on `is_developer`, passes `view="dev"`
+- `app/(app)/settings/page.tsx` — RowLink for the Dev Changelog added to the Developer group
+- `lib/i18n/dictionaries.ts` — label rename + new key
+- `lib/changelog.ts` — v1.29.0 entry
+- Version bumps in `package.json`, `public/sw.js`, settings footer
+
+---
+
 ## v1.28.0 - May 15, 2026
 
 Two things — a UX split for the in-app changelog, and a fix for the cut-off Add Transaction button.

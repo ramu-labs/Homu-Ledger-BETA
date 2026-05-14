@@ -45,6 +45,20 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.29.0",
+    date: "May 15, 2026",
+    changes: [
+      // ── User-facing ──
+      { type: "improvement", audience: "user",
+        en: "Renamed 'Updates' to 'Version Updates' so it's clearer what this page is about.",
+        id: "'Updates' diganti menjadi 'Version Updates' agar lebih jelas isi halaman ini." },
+      // ── Developer-facing ──
+      { type: "improvement", audience: "dev",
+        en: "Updates split into two distinct routes: /settings/updates (Version Updates, user-only view; shown to everyone including devs in the Support group) and /settings/dev-changelog (technical view; under the Developer group, gated on is_developer). Tab switcher removed; updates-shell now takes a `view: 'user'|'dev'` prop + explicit `title`.",
+        id: "Updates dipecah ke dua route berbeda: /settings/updates (Version Updates, hanya tampilan user; ditampilkan ke semua termasuk dev di grup Support) dan /settings/dev-changelog (tampilan teknis; di grup Developer, dijaga is_developer). Tab switcher dihapus; updates-shell sekarang menerima prop `view: 'user'|'dev'` + `title` eksplisit." },
+    ],
+  },
+  {
     version: "1.28.0",
     date: "May 15, 2026",
     changes: [
