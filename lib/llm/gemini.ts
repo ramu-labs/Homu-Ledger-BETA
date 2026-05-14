@@ -54,8 +54,14 @@ export async function categorize(args: {
   description: string;
   categoryNames: string[];
   feature: string;
+  // Household's AI-language preference (added v1.27.0). When set to
+  // 'id' / 'en' the prompt explicitly tells the model the description
+  // is in that language — otherwise Flash-Lite tends to interpret
+  // Indonesian phrases as English ("Babi Cincang" → "Baby" instead of
+  // "Pork"). 'auto' (default) leaves it to the model to guess.
+  language?: "auto" | "en" | "id";
 }): Promise<CategorizeResult> {
-  const { description, categoryNames, feature } = args;
+  const { description, categoryNames, feature, language = "auto" } = args;
 
   const supabase = await createClient();
 
@@ -92,9 +98,22 @@ export async function categorize(args: {
   //    the model's answer is just a category name. The "Reply with
   //    ONLY the category name" line is critical: without it Flash-Lite
   //    occasionally wraps the answer in punctuation or explains itself.
+  //
+  //    Language hint: when the household has set `ai_language` to a
+  //    specific language, we prepend a one-line instruction so the
+  //    model interprets the description in that language. Fixes
+  //    "Babi Cincang" being read as "Baby..." instead of pork.
+  const languageHint =
+    language === "id"
+      ? "The description is in Bahasa Indonesia (Indonesian). Interpret it accordingly — do NOT translate Indonesian words as if they were English (e.g. 'babi' means pork, not baby).\n\n"
+      : language === "en"
+      ? "The description is in English.\n\n"
+      : "";
+
   const prompt =
     `You are a transaction categorizer. Pick ONE category from the list ` +
     `that best fits the description.\n\n` +
+    languageHint +
     `Categories:\n${categoryNames.map((n) => `- ${n}`).join("\n")}\n\n` +
     `Description: ${description.slice(0, 200)}\n\n` +
     `Reply with ONLY the category name, exactly as it appears in the list. ` +

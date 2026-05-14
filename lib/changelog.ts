@@ -29,6 +29,15 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.27.0",
+    date: "May 15, 2026",
+    changes: [
+      { type: "new", en: "Each ledger can now tell the AI what language transaction descriptions are in (Auto-detect / English / Indonesian). Fixes mis-categorisation of Indonesian phrases like 'Babi Cincang' (pork) being read as 'Baby Needs'. Set it from Settings → Household → AI Language.", id: "Setiap ledger sekarang bisa memberi tahu AI bahasa deskripsi transaksinya (Deteksi otomatis / Inggris / Indonesia). Memperbaiki salah kategori seperti 'Babi Cincang' yang terbaca sebagai 'Baby Needs'. Atur di Pengaturan → Rumah Tangga → Bahasa AI." },
+      { type: "improvement", en: "AI Settings now shows live usage vs free-tier limits as progress bars (RPM/RPD/TPM), and the token total is split into Input + Output so the cost math is legible at a glance.", id: "Pengaturan AI sekarang menampilkan penggunaan langsung vs batas tier gratis sebagai progress bar (RPM/RPD/TPM), dan total token dipisah jadi Input + Output supaya perhitungan biayanya mudah dibaca." },
+      { type: "fix", en: "Ledger creation now hard-caps at 20 per owner, with a clear error message if you try to create a 21st (delete one to make room).", id: "Pembuatan ledger sekarang dibatasi maksimal 20 per pemilik, dengan pesan error jelas jika kamu mencoba membuat yang ke-21 (hapus salah satu untuk membuat tempat)." },
+    ],
+  },
+  {
     version: "1.26.0",
     date: "May 15, 2026",
     changes: [

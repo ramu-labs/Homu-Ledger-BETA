@@ -2,6 +2,71 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.27.0 - May 15, 2026
+
+Four things from the v1.26.0 review.
+
+### 1. Per-household AI language
+
+Auto-detection in Flash-Lite trips on Indonesian phrases that look English-ish ("Babi Cincang" → "Baby Needs" instead of pork → Groceries). New per-household setting tells the AI explicitly.
+
+- Migration `0024_household_ai_language.sql` adds `households.ai_language text not null default 'auto' check (ai_language in ('auto','en','id'))`.
+- New action `setHouseholdAiLanguage` in `app/actions/households.ts` (member-gated via existing household RLS).
+- `lib/llm/gemini.ts` accepts a `language` arg and prepends a one-line instruction to the prompt when set: for `id` we add *"The description is in Bahasa Indonesia. Do NOT translate Indonesian words as if they were English (e.g. 'babi' means pork, not baby)."* — surgical and cheap (~25 input tokens extra per miss).
+- `app/actions/ai.ts` reads the household's `ai_language` alongside categories in one parallel query, passes it through to `categorize`.
+- New picker at `/settings/ai-language` (Auto-detect / English / Indonesian, three rows, same Check-on-selected pattern as `/settings/language`).
+- New RowLink in the Household section of Settings shows current selection.
+
+Takes effect on the next AI call. Cache hits don't use it — once a hint is stored, the language hint was already applied at first miss.
+
+### 2. AI Settings: usage vs free-tier limits
+
+Replaced the static "limits" cells with three progress bars that show live `used / limit` numbers:
+
+```
+RPM    7 / 15              47%
+████████░░░░░░░░░░
+Requests in the last 1 min
+
+RPD    312 / 1,000         31%
+█████░░░░░░░░░░░░░
+Requests in the last 24 hr
+
+TPM    1.4K / 250K          1%
+░░░░░░░░░░░░░░░░░░
+Input tokens in the last 1 min
+```
+
+Bar color shifts at 75% (amber) and 90% (rose) so you get a visual nudge before hitting Google's caps.
+
+New SECURITY DEFINER RPC `api_usage_recent_window()` returns the four numbers in one round-trip (last-1-min count, last-24h count, last-1-min input-tokens sum, last-1-min error count). Page fetches it in parallel with the chart data.
+
+### 3. Token in / out split
+
+The previous Tokens mini-stat was just a single number (e.g. "1.4K"). Updated to show the breakdown:
+
+```
+TOKENS
+1.4K
+1.2K in · 200 out
+```
+
+Useful because Google charges **4×** more for output tokens ($0.10 input vs $0.40 output per 1M). Knowing the proportion makes the cost number make sense.
+
+Server-side aggregation in `app/(app)/settings/ai-admin/page.tsx` now sums `input_tokens` and `output_tokens` separately into the totals object.
+
+### 4. 20-ledger cap per owner
+
+Sanity ceiling on owned ledgers. Silent until you hit it; on attempt to create the 21st you get a clear error:
+
+> *You've reached the limit of 20 ledgers. Delete one to create a new ledger.*
+
+Implementation in `createNewLedger` (the action used when you tap "Create new ledger" from the ledger switcher). One indexed `COUNT()` query on `households` WHERE `owner_id = auth.uid()`. Joining someone else's household doesn't count against the cap — you didn't create it.
+
+Initial onboarding (`createHousehold` in `app/actions/auth.ts`) is not guarded since you can't be at the cap if you're onboarding.
+
+---
+
 ## v1.26.0 - May 15, 2026
 
 AI dev-panel polish + a real fix for the iOS background scroll bleed.

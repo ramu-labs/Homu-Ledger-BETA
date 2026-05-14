@@ -18,11 +18,36 @@ import { cn } from "@/lib/cn";
 type Stats = {
   calls: number;
   totalTokens: number;
+  // Token in/out split (v1.27.0) so the cost math is legible at a
+  // glance — Google bills input ($0.10/1M) and output ($0.40/1M) at
+  // different rates, so the proportions matter.
+  inputTokens: number;
+  outputTokens: number;
   cost: number;
   hits: number;
   misses: number;
   errors: number;
   hitRate: number | null;
+};
+
+// Live "right-now" snapshot for the usage-vs-limit bars (last 1 minute
+// for RPM/TPM, last 1 day for RPD). Comes from the
+// api_usage_recent_window RPC; passed through so it can be shown
+// regardless of the selected chart range.
+type Live = {
+  rpm: number;
+  rpd: number;
+  tpm: number;
+  rpmErrors: number;
+};
+
+// Free-tier limits — passed in so the shell stays "dumb" (just
+// renders), and a future per-tier dynamic value can land in the page
+// without shell churn.
+type Limits = {
+  rpm: number;
+  rpd: number;
+  tpm: number;
 };
 
 type DailyRow = {
@@ -40,17 +65,9 @@ type Props = {
   keyConfigured: boolean;
   range: RangeKey;
   stats: Stats;
+  live: Live;
+  limits: Limits;
   daily: DailyRow[];
-};
-
-// Free tier limits per Google's published rate-limit dashboard for
-// Gemini 2.5 Flash-Lite. Hard-coded as a reference panel so the dev
-// doesn't have to dig through aistudio.google.com/rate-limit to see
-// what tier they're on. If Google updates these, edit here.
-const FREE_TIER_LIMITS = {
-  rpm: 15,
-  rpd: 1_000,
-  tpm: "250K",
 };
 
 // Chart series — also exposed as a toggle. "Calls" (default) shows
@@ -59,7 +76,7 @@ const FREE_TIER_LIMITS = {
 // chunky.
 type Metric = "calls" | "tokens";
 
-export default function AiAdminShell({ keyConfigured, range, stats, daily }: Props) {
+export default function AiAdminShell({ keyConfigured, range, stats, live, limits, daily }: Props) {
   const router = useRouter();
   const t = useT();
   const [metric, setMetric] = useState<Metric>("calls");
@@ -118,17 +135,36 @@ export default function AiAdminShell({ keyConfigured, range, stats, daily }: Pro
         </TapLink>
       </section>
 
-      {/* Free-tier limits card. Reference for the developer ("how
-          much can I push through before billing kicks in?"). Numbers
-          are pulled from Google's published rate-limit dashboard. */}
+      {/* Free-tier usage card.
+          v1.27.0: shows CURRENT usage vs limit, not just the static
+          limit. The bars are computed from the api_usage_recent_window
+          RPC so they update on every page load (no client polling).
+          Bar fill turns amber at 75%, red at 90% — visual nudge before
+          you hit a hard wall. */}
       <section className="mx-5 mt-4 rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] p-4">
         <p className="mb-3 text-[12px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
           {t("ai.admin.freeTierHeading")}
         </p>
-        <div className="grid grid-cols-3 gap-2">
-          <LimitCell label="RPM" value={String(FREE_TIER_LIMITS.rpm)} />
-          <LimitCell label="RPD" value={FREE_TIER_LIMITS.rpd.toLocaleString()} />
-          <LimitCell label="TPM" value={FREE_TIER_LIMITS.tpm} />
+        <div className="space-y-2.5">
+          <UsageBar
+            label="RPM"
+            sub={t("ai.admin.rpmHint")}
+            used={live.rpm}
+            limit={limits.rpm}
+          />
+          <UsageBar
+            label="RPD"
+            sub={t("ai.admin.rpdHint")}
+            used={live.rpd}
+            limit={limits.rpd}
+          />
+          <UsageBar
+            label="TPM"
+            sub={t("ai.admin.tpmHint")}
+            used={live.tpm}
+            limit={limits.tpm}
+            formatValue={formatNumber}
+          />
         </div>
         <p className="mt-3 text-[11px] text-[var(--label-tertiary)]">
           {t("ai.admin.freeTierHint")}
@@ -176,7 +212,14 @@ export default function AiAdminShell({ keyConfigured, range, stats, daily }: Pro
 
         <div className="mt-3 grid grid-cols-3 gap-2">
           <MiniStat label={t("ai.admin.usageCalls")} value={String(stats.calls)} />
-          <MiniStat label={t("ai.admin.usageTokens")} value={formatNumber(stats.totalTokens)} />
+          {/* Token tile shows the split (In / Out) instead of just the
+              total — Google charges 4x more for output tokens, so the
+              proportion matters when looking at cost. */}
+          <MiniStat
+            label={t("ai.admin.usageTokens")}
+            value={formatNumber(stats.totalTokens)}
+            footer={`${formatNumber(stats.inputTokens)} in · ${formatNumber(stats.outputTokens)} out`}
+          />
           <MiniStat
             label={t("ai.admin.usageHits")}
             value={String(stats.hits)}
@@ -328,10 +371,14 @@ function MiniStat({
   label,
   value,
   tone = "neutral",
+  footer,
 }: {
   label: string;
   value: string;
   tone?: "neutral" | "ok" | "warn";
+  // Optional secondary line under the value. Currently used for the
+  // input/output token split.
+  footer?: string;
 }) {
   const toneClass =
     tone === "ok"
@@ -345,19 +392,57 @@ function MiniStat({
         {label}
       </p>
       <p className={cn("mt-0.5 text-[15px] font-semibold tabular-nums", toneClass)}>{value}</p>
+      {footer && (
+        <p className="mt-0.5 truncate text-[10px] tabular-nums text-[var(--label-tertiary)]">
+          {footer}
+        </p>
+      )}
     </div>
   );
 }
 
-function LimitCell({ label, value }: { label: string; value: string }) {
+/**
+ * Horizontal "used / limit" bar with a tone change at 75% (amber) and
+ * 90% (red). Used for RPM/RPD/TPM in the free-tier card.
+ */
+function UsageBar({
+  label,
+  sub,
+  used,
+  limit,
+  formatValue = (n: number) => n.toLocaleString(),
+}: {
+  label: string;
+  sub: string;
+  used: number;
+  limit: number;
+  formatValue?: (n: number) => string;
+}) {
+  const ratio = limit > 0 ? Math.min(1, used / limit) : 0;
+  const pct = Math.round(ratio * 100);
+  // Use bg classes that match other tonal accents in the app —
+  // emerald (good), amber (caution), rose (close to cap).
+  const tone =
+    ratio >= 0.9 ? "bg-rose-500" : ratio >= 0.75 ? "bg-amber-500" : "bg-emerald-500";
   return (
-    <div className="rounded-xl bg-[var(--background)] px-3 py-2 ring-1 ring-black/[0.04] text-center">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--label-tertiary)]">
-        {label}
-      </p>
-      <p className="mt-0.5 text-[16px] font-semibold tabular-nums text-[var(--foreground)]">
-        {value}
-      </p>
+    <div>
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <p className="text-[12px] font-semibold tabular-nums text-[var(--foreground)]">
+          <span className="mr-1.5 rounded bg-black/[0.06] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-[var(--label-secondary)]">
+            {label}
+          </span>
+          {formatValue(used)}
+          <span className="text-[var(--label-tertiary)]"> / {formatValue(limit)}</span>
+        </p>
+        <p className="text-[11px] tabular-nums text-[var(--label-tertiary)]">{pct}%</p>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/[0.05]">
+        <div
+          className={cn("h-full rounded-full transition-[width] duration-300", tone)}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="mt-1 text-[10px] text-[var(--label-tertiary)]">{sub}</p>
     </div>
   );
 }

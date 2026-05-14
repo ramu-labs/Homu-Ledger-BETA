@@ -1,5 +1,5 @@
 // AUTO-GENERATED — do not edit by hand.
-// Regenerated via Supabase MCP after migration 0023_ai_categorization.
+// Regenerated via Supabase MCP after migration 0024_household_ai_language.
 export type Json =
   | string
   | number
@@ -343,6 +343,7 @@ export type Database = {
       }
       households: {
         Row: {
+          ai_language: string
           created_at: string
           currency: string
           id: string
@@ -353,6 +354,7 @@ export type Database = {
           symbol: string
         }
         Insert: {
+          ai_language?: string
           created_at?: string
           currency?: string
           id?: string
@@ -363,6 +365,7 @@ export type Database = {
           symbol?: string
         }
         Update: {
+          ai_language?: string
           created_at?: string
           currency?: string
           id?: string
@@ -696,6 +699,15 @@ export type Database = {
       accept_household_invitation: {
         Args: { p_invitation_id: string }
         Returns: string
+      }
+      api_usage_recent_window: {
+        Args: never
+        Returns: {
+          rpd_now: number
+          rpm_errors: number
+          rpm_now: number
+          tpm_now: number
+        }[]
       }
       can_access_feedback_attachment: {
         Args: { p_path: string }

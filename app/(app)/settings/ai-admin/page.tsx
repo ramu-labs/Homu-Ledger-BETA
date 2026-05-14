@@ -21,6 +21,18 @@ type DailyRow = {
   cost: number;
 };
 
+// Free-tier limits for gemini-2.5-flash-lite per Google's published
+// dashboard. Mirrored on the client to draw the progress bars. Kept
+// in the page (not the shell) so a future per-key dynamic lookup
+// could replace the constants without touching the chart logic.
+const FREE_TIER = {
+  rpm: 15,
+  rpd: 1_000,
+  // Google's TPM is published as "250K" — we store the raw integer so
+  // arithmetic stays simple.
+  tpm: 250_000,
+};
+
 const RANGES = { "7d": 7, "28d": 28, "90d": 90 } as const;
 type RangeKey = keyof typeof RANGES;
 
@@ -59,27 +71,50 @@ export default async function AiAdminPage({
   since.setUTCDate(since.getUTCDate() - (days - 1));
   since.setUTCHours(0, 0, 0, 0);
 
-  const { data: logsRaw } = await supabase
-    .from("api_usage_logs")
-    .select("input_tokens, output_tokens, total_tokens, estimated_cost_usd, cache_status, created_at")
-    .gte("created_at", since.toISOString());
+  // Two queries in parallel:
+  //   1. The full range for the chart + range-window totals.
+  //   2. A tiny "right-now" snapshot (last 1 min / 1 day) via the
+  //      api_usage_recent_window RPC so the usage-vs-limit bars show
+  //      live numbers regardless of the user's selected range.
+  const [logsRes, liveRes] = await Promise.all([
+    supabase
+      .from("api_usage_logs")
+      .select("input_tokens, output_tokens, total_tokens, estimated_cost_usd, cache_status, created_at")
+      .gte("created_at", since.toISOString()),
+    supabase.rpc("api_usage_recent_window"),
+  ]);
 
-  const logs = logsRaw ?? [];
+  const logs = logsRes.data ?? [];
+
+  // The RPC returns a single-row table. Defensive defaults — if the
+  // RPC ever fails or returns nothing we render zeros (means "no
+  // recent calls", which is correct for a fresh install).
+  const liveRow = Array.isArray(liveRes.data) ? liveRes.data[0] : liveRes.data;
+  const live = {
+    rpm: Number(liveRow?.rpm_now ?? 0),
+    rpd: Number(liveRow?.rpd_now ?? 0),
+    tpm: Number(liveRow?.tpm_now ?? 0),
+    rpmErrors: Number(liveRow?.rpm_errors ?? 0),
+  };
 
   // ── Totals for the headline card. Hit rate is hits / (hits+misses);
   //    errors are excluded so a flaky network call doesn't penalise
-  //    the cache stat. ─────────────────────────────────────────────
+  //    the cache stat. Input / output tokens are summed separately so
+  //    the dev panel can show the split — Google bills them at
+  //    different rates ($0.10 vs $0.40 per 1M). ────────────────────
   const totals = logs.reduce(
     (acc, row) => {
       acc.calls += 1;
       acc.tokens += row.total_tokens ?? 0;
+      acc.inputTokens += row.input_tokens ?? 0;
+      acc.outputTokens += row.output_tokens ?? 0;
       acc.cost += Number(row.estimated_cost_usd ?? 0);
       if (row.cache_status === "hit") acc.hits += 1;
       else if (row.cache_status === "miss") acc.misses += 1;
       else if (row.cache_status === "error") acc.errors += 1;
       return acc;
     },
-    { calls: 0, tokens: 0, cost: 0, hits: 0, misses: 0, errors: 0 }
+    { calls: 0, tokens: 0, inputTokens: 0, outputTokens: 0, cost: 0, hits: 0, misses: 0, errors: 0 }
   );
   const hitDenom = totals.hits + totals.misses;
   const hitRate = hitDenom > 0 ? totals.hits / hitDenom : null;
@@ -114,12 +149,16 @@ export default async function AiAdminPage({
       stats={{
         calls: totals.calls,
         totalTokens: totals.tokens,
+        inputTokens: totals.inputTokens,
+        outputTokens: totals.outputTokens,
         cost: totals.cost,
         hits: totals.hits,
         misses: totals.misses,
         errors: totals.errors,
         hitRate,
       }}
+      live={live}
+      limits={FREE_TIER}
       daily={daily}
     />
   );

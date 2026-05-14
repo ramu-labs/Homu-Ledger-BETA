@@ -64,13 +64,21 @@ export async function suggestCategory(
   const candidates = candidateKeys(description);
   if (candidates.length === 0) return { ok: false, reason: "no_match" };
 
-  // Pull the household's categories ONCE — we need them both for the
-  // cache lookup (to filter by `type`) and as the option list if we
-  // fall through to Gemini.
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("id, name, type")
-    .eq("household_id", profile.household_id);
+  // Pull the household's categories + ai_language in two parallel
+  // queries. We need ai_language to bias the Gemini prompt correctly
+  // on cache miss; cache hits don't use it but we pay one cheap round
+  // trip either way.
+  const [{ data: categories }, { data: householdRow }] = await Promise.all([
+    supabase
+      .from("categories")
+      .select("id, name, type")
+      .eq("household_id", profile.household_id),
+    supabase
+      .from("households")
+      .select("ai_language")
+      .eq("id", profile.household_id)
+      .maybeSingle(),
+  ]);
 
   if (!categories || categories.length === 0) {
     return { ok: false, reason: "no_categories" };
@@ -114,10 +122,12 @@ export async function suggestCategory(
   }
 
   // ── Cache miss → Gemini ───────────────────────────────────────────
+  const aiLanguage = (householdRow?.ai_language ?? "auto") as "auto" | "en" | "id";
   const result = await categorize({
     description,
     categoryNames: allowedByType.map((c) => c.name),
     feature: FEATURE_CATEGORIZE,
+    language: aiLanguage,
   });
 
   if (!result.ok) {

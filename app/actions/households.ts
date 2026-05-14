@@ -160,10 +160,33 @@ export async function deleteCurrentHousehold(): Promise<{ error?: string }> {
   return {};
 }
 
+// Hard cap on owned ledgers per user. Picked at 20 because it covers
+// even power users with separate ledgers for each business / event /
+// household-shared budget, while still being a low enough ceiling to
+// catch runaway loops or scripts in the wild. Surfaced only at the
+// moment of attempted creation — the UI is silent until you hit it.
+const MAX_LEDGERS_PER_OWNER = 20;
+
 export async function createNewLedger(formData: FormData): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
+
+  // Cap check uses an indexed COUNT on owner_id. We count ledgers the
+  // user OWNS, not all memberships — joining someone else's household
+  // doesn't count against the limit (you didn't create it). RLS lets
+  // the user SELECT their own owned households so this is allowed
+  // without elevation.
+  const { count: ownedCount, error: countError } = await supabase
+    .from("households")
+    .select("id", { count: "exact", head: true })
+    .eq("owner_id", user.id);
+  if (countError) return { error: countError.message };
+  if ((ownedCount ?? 0) >= MAX_LEDGERS_PER_OWNER) {
+    return {
+      error: `You've reached the limit of ${MAX_LEDGERS_PER_OWNER} ledgers. Delete one to create a new ledger.`,
+    };
+  }
 
   const name = (formData.get("name") as string).trim();
   const currency = (formData.get("currency") as string) || "IDR";
@@ -202,5 +225,47 @@ export async function createNewLedger(formData: FormData): Promise<{ error?: str
   revalidatePath("/transactions");
   revalidatePath("/reports");
   revalidatePath("/settings");
+  return {};
+}
+
+const AI_LANGUAGES = ["auto", "en", "id"] as const;
+export type HouseholdAiLanguage = (typeof AI_LANGUAGES)[number];
+
+/**
+ * Set the household's AI-categorisation language hint. Affects the
+ * Gemini prompt — see lib/llm/gemini.ts. RLS already gates updates to
+ * the household to members, so we just need to look up the active
+ * household for this user and patch the column.
+ */
+export async function setHouseholdAiLanguage(
+  language: HouseholdAiLanguage
+): Promise<{ error?: string }> {
+  if (!AI_LANGUAGES.includes(language)) {
+    return { error: "Invalid language" };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("household_id")
+    .eq("id", user.id)
+    .single();
+  if (!profile?.household_id) return { error: "No household" };
+
+  const { error } = await supabase
+    .from("households")
+    .update({ ai_language: language })
+    .eq("id", profile.household_id);
+  if (error) return { error: error.message };
+
+  // The AI prompt reads ai_language at categorisation time, so the
+  // change takes effect on the very next suggestion. Revalidate the
+  // settings page so the picker reflects the new value when you
+  // navigate back.
+  revalidatePath("/settings");
+  revalidatePath("/settings/ai-language");
   return {};
 }

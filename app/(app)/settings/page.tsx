@@ -44,10 +44,20 @@ export default async function SettingsPage() {
   const { data: household } = profile?.household_id
     ? await supabase
         .from("households")
-        .select("id, name, invite_code, owner_id, currency, symbol")
+        .select("id, name, invite_code, owner_id, currency, symbol, ai_language")
         .eq("id", profile.household_id)
         .single()
     : { data: null };
+
+  // Helper to display the household's current AI-language pick on the
+  // RowLink without forcing the user to dive in just to see the value.
+  const aiLanguageRaw = (household?.ai_language ?? "auto") as "auto" | "en" | "id";
+  const aiLanguageLabel =
+    aiLanguageRaw === "en"
+      ? "English"
+      : aiLanguageRaw === "id"
+      ? "Indonesian"
+      : t("ai.lang.auto");
 
   // Open-tickets count for the dev badge. We only fetch this for developers
   // (RLS lets a dev SELECT all feedback; non-devs can only see their own,
@@ -173,6 +183,22 @@ export default async function SettingsPage() {
               <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">{t("settings.members")}</p>
               <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
             </TapLink>
+
+            {/* AI Language link — per-household preference for AI
+                categorisation. Shown to every member (not just devs)
+                since it affects everyone's experience inside the
+                ledger. Defaults to "Auto-detect". */}
+            <TapLink
+              href={`/settings/ai-language?current=${aiLanguageRaw}`}
+              className="flex items-center gap-3 border-t border-[var(--separator)] px-4 py-3.5 active:bg-black/[0.02] transition-colors [touch-action:manipulation]"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-[var(--foreground)]">
+                <Sparkles className="h-[18px] w-[18px]" strokeWidth={2} />
+              </span>
+              <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">{t("settings.aiLanguage")}</p>
+              <p className="mr-1 text-[14px] font-medium text-[var(--label-secondary)]">{aiLanguageLabel}</p>
+              <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
+            </TapLink>
           </div>
         </section>
       )}
@@ -232,7 +258,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.26.0</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.27.0</p>
     </div>
   );
 }
