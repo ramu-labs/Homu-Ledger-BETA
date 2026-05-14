@@ -63,6 +63,100 @@ export async function signUp(formData: FormData) {
   redirect("/onboarding?welcome=1");
 }
 
+/**
+ * Completes onboarding for a user that signed in via OAuth (Google).
+ *
+ * Required: username (3–20 chars, lowercase letters/digits/underscores).
+ * Optional: promo code. If provided and valid, it's redeemed and the user
+ * gets a PRO subscription tier. If omitted, the user lands on the free tier
+ * (subscription_tier stays NULL — the PRO badge and welcome modal both
+ * handle null gracefully).
+ *
+ * Profile may already exist (created by the auth-side handle_new_user
+ * trigger on Google sign-in) with `name` populated from Google's metadata;
+ * we always upsert so this works whether or not the trigger ran.
+ */
+export async function completeGoogleProfile(formData: FormData): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+  // Profiles schema requires a non-null email. Google OAuth always provides
+  // one (it's the user's verified Google email), so this branch is more of
+  // a TypeScript guard than a real runtime case.
+  if (!user.email) return { error: "Email missing from auth session — please re-sign in." };
+
+  const username = ((formData.get("username") as string) ?? "").trim().toLowerCase();
+  const nameInput = ((formData.get("name") as string) ?? "").trim();
+  const promoRaw = ((formData.get("promo_code") as string | null) ?? "").trim();
+  const promoCode = promoRaw ? promoRaw.toUpperCase() : "";
+
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+    return { error: "Username must be 3–20 characters: letters, numbers, underscores only." };
+  }
+
+  // Username uniqueness — case-insensitive. Exclude the current user (if
+  // they're somehow re-running setup, e.g. via a back/refresh).
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("id")
+    .ilike("username", username)
+    .neq("id", user.id)
+    .maybeSingle();
+  if (existing) return { error: "Username already taken." };
+
+  // Optional: if a promo code was provided, validate it BEFORE writing the
+  // username. Avoids leaving the user with a half-completed setup if the
+  // code is bad.
+  if (promoCode) {
+    const admin = getAdminClient();
+    const { data: codeIsValid } = await admin.rpc("is_promo_code_valid", { p_code: promoCode });
+    if (!codeIsValid) return { error: "Invalid or already-redeemed promo code." };
+  }
+
+  // Derive a sensible default for `name` and `initials` if the trigger
+  // hasn't populated them (Google's `full_name` metadata isn't always set
+  // for OAuth-only signups). Falls back to the part before @ in the email.
+  const fallbackName =
+    nameInput ||
+    (user.user_metadata?.full_name as string | undefined) ||
+    (user.user_metadata?.name as string | undefined) ||
+    (user.email ? user.email.split("@")[0] : "Friend");
+  const initials = fallbackName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("") || "?";
+
+  // Upsert the profile so we cover both "trigger created it" and "trigger
+  // didn't fire" cases. RLS update policy already permits self-edit.
+  const { error: upsertError } = await supabase
+    .from("profiles")
+    .upsert(
+      {
+        id: user.id,
+        username,
+        name: fallbackName,
+        email: user.email,
+        initials,
+      },
+      { onConflict: "id" }
+    );
+  if (upsertError) return { error: upsertError.message };
+
+  // Redeem the promo last so failures here don't leave the username unset
+  // (the validation pre-check above means this almost always succeeds, but
+  // a concurrent redemption from another session is still possible).
+  if (promoCode) {
+    const { error: redeemError } = await supabase.rpc("redeem_promo_code", { p_code: promoCode });
+    if (redeemError) {
+      return { error: `Profile saved, but promo redemption failed: ${redeemError.message}` };
+    }
+  }
+
+  redirect(promoCode ? "/onboarding?welcome=1" : "/onboarding");
+}
+
 export async function signIn(formData: FormData) {
   const supabase = await createClient();
   const identifier = (formData.get("identifier") as string).trim();

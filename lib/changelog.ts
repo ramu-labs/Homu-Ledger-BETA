@@ -29,9 +29,11 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
-    version: "1.21.2",
-    date: "May 13, 2026",
+    version: "1.22.0",
+    date: "May 14, 2026",
     changes: [
+      { type: "new", en: "Continue with Google! Sign in or sign up using your Google account — no email + password to remember. Lands you on a setup page where you just pick a username (promo code is optional, skip it for the free tier)", id: "Lanjut dengan Google! Masuk atau daftar memakai akun Google-mu — tidak perlu mengingat email dan kata sandi. Lalu kamu hanya perlu memilih nama pengguna di halaman setup (kode promo opsional, lewati untuk paket gratis)" },
+      { type: "new", en: "Free tier introduced: Google sign-up without a promo code gets you the full app without the PRO badge", id: "Paket gratis diperkenalkan: pendaftaran via Google tanpa kode promo memberimu seluruh aplikasi tanpa lencana PRO" },
       { type: "fix", en: "Real fix for the 'background scrolls while a sheet is open' bug: the pull-to-refresh listener was firing on touches inside open sheets and pushing the page underneath down as you dragged. It now bails entirely whenever any sheet/modal has locked body scroll", id: "Perbaikan sesungguhnya untuk bug 'latar bisa di-scroll saat sheet terbuka': listener pull-to-refresh ternyata tetap aktif saat sheet dibuka, dan menggeser halaman di bawahnya saat kamu menyeret. Kini dimatikan total selama ada sheet/modal yang mengunci scroll body" },
     ],
   },

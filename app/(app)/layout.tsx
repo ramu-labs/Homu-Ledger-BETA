@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import BottomNav from "@/components/bottom-nav";
 import { LanguageProvider } from "@/lib/i18n/provider";
 import { getServerT } from "@/lib/i18n/server";
@@ -9,7 +10,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // getUser() a second time would race the Supabase SSR cookie refresh and
   // silently log the user out on the next navigation (Server Components
   // can't persist refreshed cookies). See lib/i18n/server.ts comment.
-  const { lang, isDeveloper } = await getServerT();
+  const { lang, isDeveloper, username } = await getServerT();
+
+  // Google-OAuth users who haven't picked a username yet land here if they
+  // type a URL directly (the OAuth callback already routes them to /auth/setup
+  // on first sign-in, but a refresh or direct nav lands here). Defense in
+  // depth: bounce them back to setup. Existing email/password users always
+  // have a username, so this is a no-op for them.
+  if (username === null) {
+    redirect("/auth/setup");
+  }
 
   return (
     <LanguageProvider lang={lang}>

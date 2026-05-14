@@ -1,17 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { signIn } from "@/app/actions/auth";
 import AddToHomescreenBanner from "@/components/add-to-homescreen-banner";
+import GoogleSignInButton from "@/components/google-sign-in-button";
 import { useT } from "@/lib/i18n/provider";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
+  );
+}
+
+function LoginPageInner() {
   const t = useT();
-  const [error, setError] = useState<string | null>(null);
+  const params = useSearchParams();
+  // OAuth errors from /auth/callback are surfaced via ?oauth_error=…
+  const oauthError = params.get("oauth_error");
+  const [error, setError] = useState<string | null>(oauthError);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Refresh the error if the URL param changes (e.g. after a fresh OAuth
+  // failure routes back here).
+  useEffect(() => {
+    if (oauthError) setError(oauthError);
+  }, [oauthError]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -31,6 +50,18 @@ export default function LoginPage() {
         <p className="mt-1 text-[14px] text-[var(--label-secondary)]">
           {t("auth.signInTo")}
         </p>
+      </div>
+
+      {/* Google sign-in — top of the form so it reads as the primary path
+          (we want most new users to land here rather than typing creds). */}
+      <GoogleSignInButton />
+
+      <div className="my-4 flex items-center gap-3">
+        <div className="h-px flex-1 bg-black/[0.07]" />
+        <span className="text-[11px] uppercase tracking-wide text-[var(--label-tertiary)]">
+          {t("auth.or")}
+        </span>
+        <div className="h-px flex-1 bg-black/[0.07]" />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
