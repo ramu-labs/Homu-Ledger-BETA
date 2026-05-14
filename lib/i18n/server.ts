@@ -22,14 +22,21 @@ export async function getServerT() {
   const { data: { user } } = await supabase.auth.getUser();
   let lang: Lang = "en";
   let isDeveloper = false;
+  // `username` is included so callers (notably the (app) layout) can detect
+  // Google-OAuth users who haven't completed /auth/setup and bounce them
+  // there. Cost is zero (same row, two extra columns).
+  let username: string | null = null;
+  let hasHousehold = false;
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("language, is_developer")
+      .select("language, is_developer, username, household_id")
       .eq("id", user.id)
       .single();
     lang = (profile?.language as Lang) ?? "en";
     isDeveloper = profile?.is_developer === true;
+    username = profile?.username ?? null;
+    hasHousehold = !!profile?.household_id;
   }
-  return { t: getT(lang), lang, isDeveloper };
+  return { t: getT(lang), lang, isDeveloper, username, hasHousehold };
 }

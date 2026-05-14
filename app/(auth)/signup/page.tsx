@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { signUp } from "@/app/actions/auth";
+import GoogleSignInButton from "@/components/google-sign-in-button";
 import { useT } from "@/lib/i18n/provider";
 
 export default function SignupPage() {
@@ -31,6 +32,18 @@ export default function SignupPage() {
         <p className="mt-1 text-[14px] text-[var(--label-secondary)]">
           {t("auth.trackTogether")}
         </p>
+      </div>
+
+      {/* Google sign-up — primary path for new users; the username + (optional)
+          promo flow lives on /auth/setup after the OAuth callback. */}
+      <GoogleSignInButton />
+
+      <div className="my-4 flex items-center gap-3">
+        <div className="h-px flex-1 bg-black/[0.07]" />
+        <span className="text-[11px] uppercase tracking-wide text-[var(--label-tertiary)]">
+          {t("auth.or")}
+        </span>
+        <div className="h-px flex-1 bg-black/[0.07]" />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">

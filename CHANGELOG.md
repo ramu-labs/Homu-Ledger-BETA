@@ -2,6 +2,53 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.22.0 - May 14, 2026
+
+### Continue with Google
+
+Sign in / sign up via Google OAuth, no email + password to remember.
+
+**Flow:**
+1. Tap "Continue with Google" on `/login` or `/signup`.
+2. Supabase opens the Google consent screen, then redirects back to a new `app/auth/callback/route.ts` handler.
+3. Callback exchanges the code for a session, looks up the profile, and routes:
+   - No `username` → `/auth/setup` (pick username + optional promo)
+   - Has username but no household → `/onboarding`
+   - Has both → `/transactions`
+
+**`/auth/setup` page:** username (required, 3–20 chars, lowercase + digits + underscores) plus an optional disclosure for a HOMU promo code. Name + initials are pre-filled from Google's `full_name` metadata, falling back to the email local-part.
+
+**Free tier introduced:** skipping the promo on `/auth/setup` lands you on the free tier — `subscription_tier` stays NULL, no PRO badge, but otherwise full app. Existing PRO-badge / welcome-modal logic already handles null gracefully.
+
+**New files:**
+- `app/auth/callback/route.ts` — OAuth code exchange + routing
+- `app/auth/setup/page.tsx` — server component that auth-gates + pre-fills
+- `app/auth/setup/setup-form.tsx` — client form
+- `app/auth/layout.tsx` — mirrors the (auth) group chrome
+- `components/google-sign-in-button.tsx` — reusable button with inline multi-colour G glyph
+
+**Modified:**
+- `app/(auth)/login/page.tsx` + `app/(auth)/signup/page.tsx` — Google button at top of each form, "or" divider, suspense for the new `useSearchParams()` reading `?oauth_error=…`
+- `app/actions/auth.ts` — new `completeGoogleProfile(formData)` server action. Validates username uniqueness, optionally redeems the promo, upserts the profile, redirects to `/onboarding`
+- `lib/supabase/middleware.ts` — `/auth/callback` is always passthrough (session-less and session-holding both allowed, no auto-redirect); `/auth/setup` requires session but isn't bounced to `/transactions`
+- `lib/i18n/server.ts` — `getServerT()` now also returns `username` and `hasHousehold` so the (app) layout can gate users mid-setup
+- `app/(app)/layout.tsx` — defense in depth: if `username === null` for a signed-in user, bounce to `/auth/setup`
+- `lib/i18n/dictionaries.ts` — 12 new keys (`auth.continueWithGoogle`, `auth.almostThere`, `auth.pickUsernameSub`, `auth.usernameHint`, `auth.promoCodeOptional`, `auth.promoCodeHintOptional`, `auth.haveAPromoCode`, `auth.saving`, `auth.continue`, `auth.redirecting`, `auth.or`, …), both EN and ID
+
+**Manual config required before this can work in prod / preview:**
+
+1. **Google Cloud Console** — create an OAuth 2.0 Web client. Authorized redirect URI must be `https://qunbbkptumtzgzzwnszy.supabase.co/auth/v1/callback`.
+2. **Supabase dashboard** — Authentication → Providers → Google → enable, paste Client ID + Secret.
+3. **Supabase dashboard** — Authentication → URL Configuration → Site URL `https://homu.ramu.app`, allow-listed Redirect URLs include `https://homu.ramu.app/auth/callback` (and `http://localhost:3000/auth/callback` for local dev).
+
+Until those are done the button will return a Supabase error and route to `/login?oauth_error=…`.
+
+### Hotfix included — background-scroll while sheet open
+
+Folded in the previously-unmerged v1.21.2 fix: pull-to-refresh was firing on touches inside open sheets and pushing the page content underneath downward, which read as "the background is scrolling." `components/pull-to-refresh.tsx` now bails when `document.body.style.overflow === "hidden"` (the universal "modal is open" signal every sheet in this codebase sets).
+
+---
+
 ## v1.21.1 - May 13, 2026
 
 Three follow-up tweaks to v1.21.0's Add Transaction / Add Recurring sheet changes.
