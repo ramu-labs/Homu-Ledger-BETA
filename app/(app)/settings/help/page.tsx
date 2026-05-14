@@ -1,14 +1,11 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth/session";
 import HelpShell from "@/components/help-shell";
 
 export default async function HelpPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { user } = await requireSession();
 
   return (
     <div className="pb-10">

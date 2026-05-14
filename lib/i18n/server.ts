@@ -1,42 +1,23 @@
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth/session";
 import { getT, type Lang } from "./dictionaries";
 
 /**
- * Server-side translation helper. Reads the current user's language preference
- * from their profile and returns a t() function for that language.
+ * Server-side translation helper. Returns the user's language, plus a few
+ * profile fields that callers (notably the (app) layout) need so they don't
+ * have to refetch.
  *
- * Also returns `isDeveloper` because:
- *   - The layout needs it to decide whether to mount the dev feedback
- *     notifier, and
- *   - The profile fetch here is already happening, so adding `is_developer`
- *     to the SELECT costs nothing extra.
- *
- * Doing it this way avoids a second `auth.getUser()` call inside the (app)
- * layout — two getUser() calls in one request can race the Supabase SSR
- * cookie-refresh flow and trigger a "refresh token already used" error
- * (Server Components silently swallow cookie writes), which kicks the user
- * out to /login on the next navigation.
+ * Routed through getSession() (React.cache), so this is FREE if any other
+ * code in the same request has already called it — auth.getUser() and the
+ * profile SELECT happen exactly once per request, no matter how many places
+ * pull from getServerT()/getSession()/requireSession(). See
+ * lib/auth/session.ts for why that matters (it closes the SSR cookie-refresh
+ * race that kept kicking users to /login).
  */
 export async function getServerT() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  let lang: Lang = "en";
-  let isDeveloper = false;
-  // `username` is included so callers (notably the (app) layout) can detect
-  // Google-OAuth users who haven't completed /auth/setup and bounce them
-  // there. Cost is zero (same row, two extra columns).
-  let username: string | null = null;
-  let hasHousehold = false;
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("language, is_developer, username, household_id")
-      .eq("id", user.id)
-      .single();
-    lang = (profile?.language as Lang) ?? "en";
-    isDeveloper = profile?.is_developer === true;
-    username = profile?.username ?? null;
-    hasHousehold = !!profile?.household_id;
-  }
+  const { profile } = await getSession();
+  const lang: Lang = (profile?.language as Lang) ?? "en";
+  const isDeveloper = profile?.is_developer === true;
+  const username: string | null = profile?.username ?? null;
+  const hasHousehold = !!profile?.household_id;
   return { t: getT(lang), lang, isDeveloper, username, hasHousehold };
 }

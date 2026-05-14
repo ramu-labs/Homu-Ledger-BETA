@@ -1,19 +1,10 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth/session";
 import FeedbackAdminShell from "@/components/feedback-admin-shell";
 import type { DbFeedback } from "@/lib/types";
 
 export default async function FeedbackAdminPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_developer")
-    .eq("id", user.id)
-    .single();
-
+  const { supabase, profile } = await requireSession();
   if (!profile?.is_developer) redirect("/settings");
 
   const { data: feedbackRaw } = await supabase

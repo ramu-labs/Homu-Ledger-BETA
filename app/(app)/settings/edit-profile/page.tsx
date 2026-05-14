@@ -1,18 +1,9 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth/session";
 import EditProfileShell from "@/components/edit-profile-shell";
 
 export default async function EditProfilePage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, name, initials, avatar_color, username, email")
-    .eq("id", user.id)
-    .single();
-
+  const { user, profile } = await requireSession();
   if (!profile) redirect("/login");
 
   return (

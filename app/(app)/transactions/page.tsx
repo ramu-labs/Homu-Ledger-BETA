@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth/session";
 import TransactionsShell from "@/components/transactions-shell";
 import type { DbTransaction, DbCategory, DbWallet, DbMember, DbHousehold, DbHouseholdMembership, DbRecurringItem, DbPendingInvitation } from "@/lib/types";
 
@@ -77,16 +78,7 @@ function normalizePhotoPath(value: string | null): string | null {
 }
 
 export default async function TransactionsPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, initials, avatar_color, household_id, icon_style")
-    .eq("id", user.id)
-    .single();
-
+  const { supabase, profile } = await requireSession();
   if (!profile?.household_id) redirect("/onboarding");
 
   const { data: household } = await supabase
@@ -101,9 +93,14 @@ export default async function TransactionsPage() {
   // SECURITY DEFINER RPC inserts transactions and advances next_due_date.
   // Best-effort: if the migration hasn't been applied to this DB yet, the
   // RPC won't exist — we swallow the error so the page still renders.
-  await supabase.rpc("materialize_due_recurring_items").then(({ error }) => {
-    if (error) console.warn("[recurring] materialize failed:", error.message);
-  });
+  //
+  // Note: the previous form `await ....rpc(...).then(...)` resolved before
+  // the RPC actually completed (the .then returns a Promise that resolves
+  // to undefined immediately). Pages could render with stale rows.
+  // Awaiting the rpc() directly fixes that — first hit after a due date
+  // now sees the materialised rows.
+  const { error: materializeError } = await supabase.rpc("materialize_due_recurring_items");
+  if (materializeError) console.warn("[recurring] materialize failed:", materializeError.message);
 
   const [{ data: categoriesRaw }, { data: walletsRaw }, { data: membersRaw }, txRaw, { data: membershipsRaw }, { data: recurringRaw }, { data: invitationsRaw }, totals] = await Promise.all([
     supabase
@@ -212,11 +209,11 @@ export default async function TransactionsPage() {
       balance={balance}
       income={income}
       expenses={expenses}
-      currentUser={{ initials: profile.initials, avatar_color: profile.avatar_color }}
+      currentUser={{ initials: profile.initials ?? "?", avatar_color: profile.avatar_color ?? "#3b82f6" }}
       memberships={memberships}
       pendingInvitations={pendingInvitations}
       recurringItems={recurringItems}
-      iconStyle={(profile.icon_style as "2d" | "3d") ?? "3d"}
+      iconStyle={profile.icon_style ?? "3d"}
     />
   );
 }

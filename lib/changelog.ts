@@ -29,6 +29,15 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.23.0",
+    date: "May 14, 2026",
+    changes: [
+      { type: "fix", en: "Closed the intermittent 'kicked to /login' bug for good. v1.18.1 fixed it for the layout; v1.23.0 fixes it everywhere by routing every page through a single per-request session cache, so auth.getUser() runs exactly once per page render no matter how many components ask for it", id: "Menutup bug intermiten 'tiba-tiba kembali ke halaman /login' untuk selamanya. v1.18.1 memperbaikinya untuk layout; v1.23.0 memperbaikinya di semua tempat dengan menyalurkan setiap halaman melalui satu cache sesi per-request, sehingga auth.getUser() berjalan tepat sekali per render halaman tidak peduli berapa banyak komponen yang memintanya" },
+      { type: "fix", en: "Recurring items show up immediately on first load after their due date. Previously the materialise RPC was fire-and-forget — it resolved before the rows were actually inserted, so the first page render missed them", id: "Item berulang muncul langsung saat pertama dibuka setelah jatuh tempo. Sebelumnya RPC materialise dipanggil tapi tidak ditunggu — selesai sebelum baris benar-benar dimasukkan, jadi render pertama melewatkannya" },
+      { type: "improvement", en: "Cleaner script tag handling in the root layout — replaces the inline <script> bootstrap with next/script and adds suppressHydrationWarning to <html>, fixing two console warnings that appeared in dev", id: "Penanganan tag script di root layout dirapikan — mengganti bootstrap <script> inline dengan next/script dan menambahkan suppressHydrationWarning pada <html>, memperbaiki dua peringatan console yang muncul di dev" },
+    ],
+  },
+  {
     version: "1.22.0",
     date: "May 14, 2026",
     changes: [

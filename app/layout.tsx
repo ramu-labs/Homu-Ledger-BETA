@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import ServiceWorkerRegistrar from "@/components/service-worker-registrar";
 import SplashScreen from "@/components/splash-screen";
@@ -48,26 +49,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <head>
+    // suppressHydrationWarning is required on <html> because the theme
+    // bootstrap script below writes `data-theme` to this element *before*
+    // React hydrates. Without it React would warn on every page load that
+    // server-rendered `<html>` (no data-theme) differs from the client.
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <body className="min-h-full">
         {/* Theme + design-system override bootstrap. Both run BEFORE first
             paint so there's no flash. Theme sets data-theme on <html> from
             localStorage. Design overrides (set via /design-system) write
             individual --token CSS variables onto <html>, scoped to the
-            active theme's mode (light/dark). */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{
+            active theme's mode (light/dark).
+            Uses next/script with strategy="beforeInteractive" — the
+            Next.js 16 way to inject inline scripts that need to run before
+            hydration without tripping the bare-<script>-in-React warning. */}
+        <Script id="homu-theme-bootstrap" strategy="beforeInteractive">{`try{
 var t=localStorage.getItem('homu-theme');
 if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}
 var resolved=(t==='light'||t==='dark')?t:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
 var raw=localStorage.getItem('homu-design-overrides');
 if(raw){var o=JSON.parse(raw);for(var k in o){var parts=k.split(':');if(parts.length===2&&parts[1]===resolved){document.documentElement.style.setProperty(parts[0],o[k]);}}}
-}catch(e){}`,
-          }}
-        />
-      </head>
-      <body className="min-h-full">
+}catch(e){}`}</Script>
         <SplashScreen />
         {children}
         <ServiceWorkerRegistrar />
