@@ -232,7 +232,11 @@ export default function AddRecurringSheet({
           open ? "translate-y-0" : "translate-y-full"
         )}
         style={{
-          height: "100lvh",
+          // v1.28.0 — see add-transaction-sheet.tsx for the long note;
+          // 100lvh extended below visible chrome on some devices and
+          // cut off the footer button. 100dvh tracks the live visible
+          // height instead.
+          height: "100dvh",
           paddingTop: "env(safe-area-inset-top)",
         }}
       >
@@ -455,7 +459,7 @@ export default function AddRecurringSheet({
 
           <div
             className="shrink-0 border-t border-[var(--separator)] bg-[var(--surface)] px-5 pt-3 space-y-2"
-            style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
+            style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}
           >
             <button
               type="submit"
