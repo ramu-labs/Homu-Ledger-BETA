@@ -35,15 +35,25 @@ async function requireVoiceAccess(): Promise<
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
+  // v1.41.1: dev-only gate as defense-in-depth. The UI hides the FAB
+  // for non-devs already, but a stale tab or replayed request could
+  // otherwise still hit these actions. Fetched in parallel with the
+  // flag below so this adds one column, not one round-trip.
+  const [{ data: profileRow }, { data: flagRow }] = await Promise.all([
+    supabase.from("profiles").select("is_developer").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "voice_input_enabled")
+      .maybeSingle(),
+  ]);
+  if (!profileRow?.is_developer) {
+    return { ok: false, error: "Voice transactions are limited to developers right now." };
+  }
   // voice_input_enabled is a soft kill-switch — flip it off in the AI
   // admin if a regression or cost spike shows up. Default off when the
   // row hasn't been created yet (so a fresh install doesn't accidentally
   // start charging Groq before the dev configures it).
-  const { data: flagRow } = await supabase
-    .from("app_settings")
-    .select("value")
-    .eq("key", "voice_input_enabled")
-    .maybeSingle();
   if (flagRow?.value !== "true") {
     return { ok: false, error: "Voice transactions are disabled for this environment." };
   }

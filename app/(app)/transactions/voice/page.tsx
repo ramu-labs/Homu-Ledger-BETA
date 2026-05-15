@@ -16,6 +16,11 @@ import type { DbCategory, DbWallet } from "@/lib/types";
 export default async function VoiceTransactionsPage() {
   const { supabase, profile } = await requireSession();
   if (!profile?.household_id) redirect("/onboarding");
+  // v1.41.1: dev-only access while we validate the pipeline on real
+  // hardware. Returning notFound() (not redirect) so the URL behaves
+  // identically for non-devs whether or not the flag is on — no info
+  // leak about feature existence.
+  if (!profile.is_developer) notFound();
 
   const { data: flagRow } = await supabase
     .from("app_settings")

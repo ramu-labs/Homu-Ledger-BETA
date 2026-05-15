@@ -45,6 +45,18 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.41.1",
+    date: "May 15, 2026",
+    changes: [
+      { type: "improvement", audience: "user",
+        en: "Voice transactions are now developer-only while we validate the pipeline on real hardware. The mic FAB is hidden for non-dev accounts; the URL 404s instead of opening.",
+        id: "Voice transactions sekarang hanya untuk developer sementara kami memvalidasi pipeline di perangkat asli. Tombol mikrofon disembunyikan untuk akun non-dev; URL-nya 404 alih-alih terbuka." },
+      { type: "improvement", audience: "dev",
+        en: "Three layers of gating: (1) /transactions reads profile.is_developer alongside the voice_input_enabled flag and only passes voiceEnabled=true when both hold. (2) /transactions/voice notFound()s when !profile.is_developer. (3) requireVoiceAccess() in app/actions/voice.ts adds the developer check so a stale tab can't hit Groq/Gemini.",
+        id: "Tiga lapis penjaga: (1) /transactions membaca profile.is_developer bersama flag voice_input_enabled dan hanya meneruskan voiceEnabled=true ketika keduanya benar. (2) /transactions/voice mengembalikan notFound() ketika !profile.is_developer. (3) requireVoiceAccess() di app/actions/voice.ts menambahkan cek developer supaya tab basi tidak bisa memanggil Groq/Gemini." },
+    ],
+  },
+  {
     version: "1.41.0",
     date: "May 15, 2026",
     changes: [
