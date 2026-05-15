@@ -2,11 +2,28 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
-## v1.36.0 - May 15, 2026
+## v1.35.1 - May 15, 2026
 
-**Pragmatic offline, Phase 3 of 3** — queued writes. The user-facing payoff of the whole rollout.
+**Pragmatic offline, Phase 3 of 3** — queued writes, plus the timeout fixes that make offline reliable on iOS.
 
-After Phase 1 (cached reads, v1.34.0) and Phase 2 (idempotency foundation, v1.35.0), this PR lights the queue on top of those primitives. Tapping "Add" on the train, on a plane, on hostile wifi — the action lands locally, the sheet closes, and the row materialises on the server whenever the network comes back.
+After Phase 1 (cached reads, v1.34.0) and Phase 2 (idempotency foundation, v1.35.0), this release lights the queue on top of those primitives. Tapping "Add" on the train, on a plane, on hostile wifi — the action lands locally, the sheet closes, and the row materialises on the server whenever the network comes back.
+
+Shipped as a patch (1.35.0 → 1.35.1) because most users in good network conditions will never notice the queue exists; it just keeps working when the network drops.
+
+### 0. iOS-PWA offline hang fix (the bug that motivated the patch number)
+
+First in-the-wild test surfaced two related hangs on iPhone in airplane mode:
+
+1. **Save button stuck on "Saving…" forever.** Root cause: iOS Safari in installed-PWA mode reports `navigator.onLine === true` even when the device is fully offline (long-standing iOS quirk), AND the OS queues the underlying fetch instead of rejecting it. So `queuedAddTransaction` skipped its offline branch, fell through to `await addTransaction(fd)`, and hung — neither resolving nor throwing.
+2. **AI sparkle spinner runs forever.** Same root cause: `suggestCategory()` awaits a server action that never returns, so the cleanup `setAiSuggestingFor(null)` never runs.
+
+Fix: new `lib/with-timeout.ts` utility (Promise.race against a timer, typed `TimeoutError`). Wrapped every previously-trusting `await`:
+
+- **lib/queue-actions.ts**: 6s deadline per add\* server action. On timeout, queue the op and return `{ queued: true }` — same path as the offline-detected branch, so the sheet closes immediately.
+- **components/add-transaction-sheet.tsx**: AI effect now (a) skips entirely when `navigator.onLine === false`, and (b) caps `suggestCategory` at 4s.
+- **components/sync-replay.tsx**: 8s per-op deadline so one stuck request can't block the rest of the queue forever.
+
+Numbers tuned so 4G in a bad signal area (typical 2–4s RTT) still completes naturally, while iOS-PWA airplane-mode hangs fall through to the queue in under 6s.
 
 ### 1. `lib/sync-queue.ts` — IndexedDB queue
 

@@ -14,7 +14,7 @@
 // On a routine release where older clients keep working, leave the floor
 // alone. Bumping it kicks every offline-queued write on older devices.
 
-export const APP_VERSION = "1.36.0";
+export const APP_VERSION = "1.35.1";
 export const MIN_CLIENT_VERSION = "1.34.0";
 
 /**

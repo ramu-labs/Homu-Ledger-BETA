@@ -45,13 +45,19 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
-    version: "1.36.0",
+    version: "1.35.1",
     date: "May 15, 2026",
     changes: [
       // ── User-facing ──
       { type: "new", audience: "user",
         en: "Add a transaction, wallet, or category while offline — it just works. Your tap is captured locally and quietly sent when you're back online. A small pill at the top shows what's still waiting to sync (e.g. ‘2 pending’).",
         id: "Tambah transaksi, dompet, atau kategori saat offline — sekarang langsung bisa. Ketukanmu disimpan lokal dan dikirim diam-diam begitu online. Pil kecil di atas menampilkan apa yang masih menunggu sinkron (misal ‘2 pending’)." },
+      { type: "fix", audience: "user",
+        en: "Save no longer hangs on ‘Saving…’ forever when you're in airplane mode or on dead wifi — the app now gives up waiting after about 6 seconds and queues the tap locally instead.",
+        id: "Tombol Save tidak lagi macet di ‘Saving…’ terus-menerus saat mode pesawat atau wifi mati — aplikasi sekarang berhenti menunggu setelah sekitar 6 detik dan menyimpan ketukanmu lokal." },
+      { type: "fix", audience: "user",
+        en: "The AI category sparkle no longer spins forever when you're offline. It just skips and lets you pick a category yourself.",
+        id: "Sparkle AI kategori tidak lagi muter terus saat offline. Sekarang dia langsung skip dan kamu bisa pilih kategori sendiri." },
       { type: "improvement", audience: "user",
         en: "Editing and deleting still need an internet connection for now — that's the next phase. We focused on ‘add’ first because it's what you do most when you're out and about.",
         id: "Mengedit dan menghapus masih perlu koneksi internet untuk saat ini — itu fase berikutnya. Untuk versi ini kami fokus dulu pada operasi ‘tambah’ karena itu yang paling sering kamu lakukan saat di luar rumah." },
@@ -74,6 +80,9 @@ export const CHANGELOG: VersionEntry[] = [
       { type: "improvement", audience: "dev",
         en: "Out of scope for Phase 3a: UPDATE/DELETE queuing (needs server-side conflict detection on updated_at — Phase 3b), optimistic UI for queued rows (would require teaching transactions-shell to merge pending state), photo-upload queuing (uploads land in Storage directly, separate problem).",
         id: "Di luar lingkup Phase 3a: queue UPDATE/DELETE (butuh deteksi konflik server-side di updated_at — Phase 3b), UI optimistic untuk baris queued (perlu mengajari transactions-shell merge state pending), queue upload foto (upload langsung ke Storage, masalah terpisah)." },
+      { type: "fix", audience: "dev",
+        en: "iOS PWA in airplane mode reports navigator.onLine === true and queues the underlying fetch instead of rejecting it — so awaiting a server action hangs forever. New lib/with-timeout.ts wraps every network call: 6s for queue-actions (sheet closes into ‘pending’ on timeout), 4s for the suggestCategory AI effect (also short-circuits when navigator.onLine === false), 8s per op in sync-replay (one stuck request can't block the queue).",
+        id: "iOS PWA di mode pesawat melaporkan navigator.onLine === true dan OS men-queue fetch alih-alih reject — jadi await server action macet selamanya. lib/with-timeout.ts baru membungkus tiap network call: 6 detik untuk queue-actions (sheet tutup ke ‘pending’ saat timeout), 4 detik untuk AI suggestCategory (juga short-circuit kalau navigator.onLine === false), 8 detik per op di sync-replay (satu request macet tidak bisa block queue)." },
     ],
   },
   {
