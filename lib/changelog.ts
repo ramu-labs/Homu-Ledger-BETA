@@ -45,6 +45,35 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.32.0",
+    date: "May 15, 2026",
+    changes: [
+      // ── User-facing ──
+      { type: "improvement", audience: "user",
+        en: "Sign up flow cleaned up — the form is just email & password now (the Google option lives on the Sign in landing). The header is locked at the top with a back button, so navigating is easier when the keyboard is up.",
+        id: "Alur Sign up dirapikan — formnya kini email & password saja (opsi Google ada di halaman Sign in). Header dikunci di atas dengan tombol kembali, jadi lebih mudah navigasi saat keyboard naik." },
+      { type: "new", audience: "user",
+        en: "Sign up now asks for Gender, Date of birth, and a Password confirmation. The 'Already have an account? Sign in' link goes straight to the password sign-in form now.",
+        id: "Sign up sekarang menanyakan Jenis kelamin, Tanggal lahir, dan Konfirmasi password. Link 'Sudah punya akun? Sign in' langsung ke form sign-in password sekarang." },
+      { type: "new", audience: "user",
+        en: "Email verification: after you fill out the sign up form, we send a 6-digit code to your email. Enter it on the next screen to finish creating your account.",
+        id: "Verifikasi email: setelah mengisi form sign up, kami kirim kode 6 digit ke email kamu. Masukkan di layar berikutnya untuk menyelesaikan pembuatan akun." },
+      // ── Developer-facing ──
+      { type: "new", audience: "dev",
+        en: "Migration 0027 adds profiles.gender (text + CHECK in 'male'|'female'|'other'|'prefer_not_to_say') and profiles.birth_date (date). Both nullable so existing rows survive.",
+        id: "Migrasi 0027 menambahkan profiles.gender (text + CHECK in 'male'|'female'|'other'|'prefer_not_to_say') dan profiles.birth_date (date). Keduanya nullable agar baris lama tetap aman." },
+      { type: "improvement", audience: "dev",
+        en: "Signup action split into signUpStartEmailOtp + verifySignUpOtp + resendSignUpOtp. Promo redemption + profile-field writes happen ONLY after the OTP is verified, so an abandoned signup doesn't burn a promo code. If Supabase email-confirmation is disabled at the project level, supabase.auth.signUp returns a session directly and we finalise inline (old behaviour preserved).",
+        id: "Aksi signup dipecah menjadi signUpStartEmailOtp + verifySignUpOtp + resendSignUpOtp. Redemption promo + tulis field profil hanya dilakukan SETELAH OTP diverifikasi, jadi signup yang ditinggalkan tidak menghabiskan kode promo. Jika email-confirmation di-disable di project level, supabase.auth.signUp mengembalikan session langsung dan kami menyelesaikan inline (perilaku lama dipertahankan)." },
+      { type: "improvement", audience: "dev",
+        en: "Signup page rewritten as a two-step state machine (form ↔ otp). Locked sticky header with back button (top-left, matches the app convention). The previous Google sign-in button removed from /signup; new users either continue through /login (Google) or fill the form (email + OTP). Sign-in link target updated to /login/password.",
+        id: "Halaman signup ditulis ulang sebagai state machine dua-langkah (form ↔ otp). Header sticky terkunci dengan tombol kembali (kiri-atas, mengikuti konvensi app). Tombol Google sign-in dihapus dari /signup; user baru lewat /login (Google) atau isi form (email + OTP). Target link sign-in diubah ke /login/password." },
+      { type: "fix", audience: "dev",
+        en: "Required after deploy: enable email confirmation in Supabase Dashboard → Authentication → Sign in / providers → Email → Confirm email. Without it the new OTP step never fires (signUp returns a session and we redirect inline). Code handles both states so no regression.",
+        id: "Diperlukan setelah deploy: aktifkan email confirmation di Supabase Dashboard → Authentication → Sign in / providers → Email → Confirm email. Tanpa itu, langkah OTP tidak akan muncul (signUp mengembalikan session dan kami redirect inline). Kode menangani kedua kondisi jadi tidak ada regresi." },
+    ],
+  },
+  {
     version: "1.31.0",
     date: "May 15, 2026",
     changes: [
