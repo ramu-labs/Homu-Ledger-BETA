@@ -45,6 +45,15 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.43.3",
+    date: "May 15, 2026",
+    changes: [
+      { type: "improvement", audience: "user",
+        en: "AI sparkle FAB on the Transactions screen moved a little lower — sits closer to the bottom-nav so it feels anchored to it instead of floating in mid-canvas.",
+        id: "Tombol AI sparkle di layar Transactions dipindah sedikit lebih bawah — duduk lebih dekat ke bottom-nav supaya terasa menempel padanya, bukan mengambang di tengah." },
+    ],
+  },
+  {
     version: "1.43.2",
     date: "May 15, 2026",
     changes: [

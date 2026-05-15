@@ -1,5 +1,5 @@
 // Bump this version whenever you want to force-evict old caches.
-const CACHE_NAME = "homu-v79";
+const CACHE_NAME = "homu-v80";
 const NAV_CACHE_NAME = "homu-nav-v1";
 const NAV_CACHE_MAX = 30;
 

@@ -9,8 +9,10 @@
 //
 // Position math:
 //   • right: 18px — flush with the screen edge but not touching it
-//   • bottom: env(safe-area-inset-bottom) + 96px — sits above the
-//     bottom-nav (≈72px tall) with breathing room
+//   • bottom: env(safe-area-inset-bottom) + 78px — sits just above
+//     the bottom-nav (≈72px tall). v1.43.3 lowered from 96px → 78px
+//     so the FAB feels visually anchored to the bottom-nav strip
+//     instead of floating in mid-canvas.
 //
 // Offline behaviour: getUserMedia + Whisper need network. When
 // navigator.onLine is false we render the button greyed out and
@@ -51,7 +53,7 @@ export default function SpeakToAddFab() {
       className="fixed z-[49] inline-flex h-[52px] w-[52px] items-center justify-center rounded-full text-white shadow-[0_10px_22px_rgba(238,100,82,0.35)] transition-opacity active:scale-95 disabled:opacity-40 disabled:shadow-none [touch-action:manipulation]"
       style={{
         right: 18,
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 78px)",
         background: "#EE6452",
         animation: "speak-fab-in 360ms cubic-bezier(.22,1,.36,1) both",
       }}
