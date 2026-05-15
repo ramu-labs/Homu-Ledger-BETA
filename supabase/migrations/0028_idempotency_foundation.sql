@@ -19,9 +19,13 @@
 -- for existing clients. v1.34.0 keeps working unchanged.
 
 -- ── Trigger function (idempotent) ─────────────────────────────────────
+-- search_path locked to '' per the function_search_path_mutable lint —
+-- only references new.updated_at + now(), neither schema-qualified, so
+-- correctness isn't affected; this is the secure default.
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   new.updated_at = now();
