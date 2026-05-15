@@ -81,7 +81,9 @@ export default function VoiceShell({
 
   const [rows, setRows] = useState<VoiceDraft[]>([]);
   const [paused, setPaused] = useState(false);
-  const [utterance, setUtterance] = useState<string | null>(null);
+  // v1.42.2: removed `utterance` state — we no longer display the
+  // live transcript. The waveform + the row landing are the user
+  // feedback.
   const [volume, setVolume] = useState(0.05);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -150,40 +152,63 @@ export default function VoiceShell({
     return [];
   }, []);
 
-  // ── Reducer: promote a ghost row based on Gemini's parsed action ────
+  // v1.42.2 — applyParsedAction replaces the ghost-row promoter.
   //
-  // The flow is: an utterance comes in, we drop a ghost row at `ghostId`
-  // with the raw transcript while we wait on Gemini. When the parse
-  // returns:
-  //   add      → in-place upgrade the ghost to a real ParsedTransaction
-  //              (same id, so React keeps the DOM node and the row
-  //              doesn't unmount → no flicker / no animation restart).
-  //   transfer → drop the ghost, append a transfer row.
-  //   update   → drop the ghost, patch the target row.
-  //   remove   → drop the ghost, mark target exiting.
-  //   noop     → drop the ghost silently.
-  const promoteGhost = useCallback(
-    (ghostId: string, action: VoiceAction) => {
-      if (action.kind === "noop") {
-        setRows((rs) => rs.filter((r) => r.id !== ghostId));
-        return;
-      }
+  // The flow: an utterance comes in → Whisper → Gemini parse → THIS.
+  // No optimistic insert before the parse decision lands.
+  //
+  //   add      → insert a row with name+amount+type, but category_id=null +
+  //              `category_pending: true`. A setTimeout 250ms later fills
+  //              in the parsed category and toggles `changed: 'category'`,
+  //              which kicks the sparkle animation. This matches the
+  //              two-phase appearance the user asked for: "description
+  //              and numbers first, then auto-categorisation later."
+  //   transfer → append a transfer row (no category for transfers).
+  //   update   → patch the target row.
+  //   remove   → mark target exiting.
+  //   noop     → no-op.
+  const applyParsedAction = useCallback(
+    (action: VoiceAction) => {
+      if (action.kind === "noop") return;
 
       if (action.kind === "add") {
-        lastAddedIdRef.current = ghostId;
-        setRows((rs) =>
-          rs.map((r) =>
-            r.id === ghostId
-              ? ({
-                  ...action.tx,
-                  id: ghostId,
-                  version: 1,
-                  changed: null,
-                  ghost: false,
-                } as ParsedTransaction)
-              : r
-          )
-        );
+        const id = crypto.randomUUID();
+        const finalCategoryId = action.tx.category_id;
+        // Phase 1: row appears WITHOUT a category. Category icon slot
+        // shows a Loader2 (driven by `category_pending: true`).
+        const phase1: ParsedTransaction = {
+          ...action.tx,
+          id,
+          category_id: null,
+          version: 1,
+          changed: null,
+          category_pending: true,
+          category_ai: false,
+        };
+        lastAddedIdRef.current = id;
+        setRows((rs) => [...rs, phase1]);
+
+        // Phase 2: 250ms later, fill in the auto-pick (Gemini's parse or
+        // a category_hints cache override). The version bump + changed
+        // flag triggers voice-cell-pop on the icon and the row tint
+        // flash. Skipped silently if the row was deleted in the
+        // meantime (e.g. user said "delete the last one" mid-flight).
+        setTimeout(() => {
+          setRows((rs) =>
+            rs.map((r) => {
+              if (r.id !== id) return r;
+              if (r.type === "transfer") return r; // shouldn't happen, but…
+              return {
+                ...r,
+                category_id: finalCategoryId,
+                category_pending: false,
+                category_ai: finalCategoryId !== null,
+                version: r.version + 1,
+                changed: "category",
+              };
+            })
+          );
+        }, 250);
         return;
       }
 
@@ -197,12 +222,11 @@ export default function VoiceShell({
           changed: null,
         };
         lastAddedIdRef.current = id;
-        setRows((rs) => [...rs.filter((r) => r.id !== ghostId), next]);
+        setRows((rs) => [...rs, next]);
         return;
       }
 
-      // update / remove → ghost is irrelevant, route through applyAction.
-      setRows((rs) => rs.filter((r) => r.id !== ghostId));
+      // update / remove
       applyActionInternal(action);
     },
     // applyActionInternal is stable via useCallback below
@@ -210,15 +234,14 @@ export default function VoiceShell({
     []
   );
 
-  // ── Reducer: apply non-add VoiceActions (used by promoteGhost) ──────
+  // ── Reducer: apply non-add VoiceActions ─────────────────────────────
   //
-  // The original applyAction included add/transfer too, but with ghost
-  // rows those branches are handled by promoteGhost. This helper exists
-  // for the update/remove cases where the ghost is already gone.
+  // Handles update + remove. add/transfer are handled in applyParsedAction
+  // because they have the two-phase appearance + lastAddedId bookkeeping.
   const applyActionInternal = useCallback(
     (action: VoiceAction) => {
       if (action.kind === "noop") return;
-      if (action.kind === "add" || action.kind === "transfer") return; // handled by promoteGhost
+      if (action.kind === "add" || action.kind === "transfer") return; // handled by applyParsedAction
 
       if (action.kind === "update") {
         const targetId = resolveTarget(action.target);
@@ -297,22 +320,19 @@ export default function VoiceShell({
       onSilenceFlush: () => {},
       onUtterance: async (blob, meta) => {
         if (cancelled) return;
-        // v1.42.1: heavier minimum-size guard.
-        // Was 1000 bytes — too small to filter the ~3-5 KB silent-air
-        // blobs that triggered Whisper hallucinations like "Terima
-        // Kasih sudah menonton". 6 KB is roughly 1s of opus at typical
-        // bitrates. Anything below = ship-no, save Whisper a call.
+        // Heavier minimum-size guard kills silent blobs before they
+        // reach Whisper (see hallucination notes in v1.42.1).
         if (blob.size < 6000) return;
-        // v1.42.1: defence-in-depth — the mic layer now only emits
-        // onUtterance when real voice was detected during the chunk,
-        // so this branch normally won't run. Keep the guard anyway in
-        // case a different mic implementation skips that check.
         if (meta.hadVoice === false) return;
 
-        // Stable ghost-row id reserved up-front. Whisper-done milestone
-        // inserts a skeleton row at this id; Gemini-done morphs it in
-        // place. DOM node never unmounts → no flicker.
-        const ghostId = crypto.randomUUID();
+        // v1.42.2: REMOVED the ghost-row optimistic insert. The user
+        // found the "draft list of what I said" — a row with the raw
+        // transcript text — distracting. Now we keep the screen quiet
+        // (just the waveform moving) while Whisper + Gemini work, and
+        // the row only appears AFTER Gemini decides. The two-phase
+        // appearance (name+amount+type first → category fills in with
+        // a sparkle) preserves the "AI is thinking" feel without
+        // showing intermediate transcript noise.
         try {
           const fd = new FormData();
           fd.set("audio", blob, "utterance" + extFor(meta.mime));
@@ -320,81 +340,39 @@ export default function VoiceShell({
           const transcribed = await transcribeVoiceAudio(fd);
           if (cancelled) return;
           if (!transcribed.ok) {
-            setUtterance(null);
             setSaveError(transcribed.error);
             return;
           }
           const text = transcribed.text.trim();
-          if (!text) {
-            setUtterance(null);
-            return;
-          }
-          // v1.42.1: post-hoc hallucination filter. Whisper-large-v3
-          // is trained heavily on YouTube data and, given silent /
-          // near-silent audio that snuck past the size check, will
-          // confidently emit common outros — "Terima kasih sudah
-          // menonton", "Thanks for watching", "Subscribe to my
-          // channel", music-note unicode, etc. None of those are real
-          // utterances; drop them silently rather than send to Gemini.
-          if (isWhisperHallucination(text)) {
-            setUtterance(null);
-            return;
-          }
-          setUtterance(text);
-
-          // Optimistically insert the ghost row.
-          setRows((rs) => [
-            ...rs,
-            {
-              id: ghostId,
-              name: text,
-              amount: 0,
-              type: "expense",
-              category_id: null,
-              wallet_id: null,
-              version: 1,
-              changed: null,
-              ghost: true,
-            } as ParsedTransaction,
-          ]);
+          if (!text) return;
+          if (isWhisperHallucination(text)) return;
 
           // Parse — context built fresh from rowsRef so Gemini sees the
-          // latest names (minus the ghost we just inserted; we strip it
-          // here so the parser doesn't try to "update" itself).
+          // latest names. No ghost to filter out anymore.
           const parsed = await parseVoiceUtterance(text, {
             categories: geminiCats.map((c) => ({ id: c.id, name: c.name, type: c.type })),
             wallets: wallets.map((w) => ({ id: w.id, name: w.name })),
             rows: rowsRef.current
-              .filter((r) => !r.exiting && !r.ghost)
+              .filter((r) => !r.exiting)
               .map((r) => ({ id: r.id, name: r.name })),
             defaultWalletId: wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
           });
           if (cancelled) return;
           if (!parsed.ok) {
-            // Remove the ghost on error.
-            setRows((rs) => rs.filter((r) => r.id !== ghostId));
             setSaveError(parsed.error);
             return;
           }
-          // v1.42.1: ambiguity check for update/remove. If multiple
-          // rows match the target name, hand off to the chip-ladder
-          // resolver instead of silently picking the latest.
+          // Ambiguity check for update/remove.
           if (parsed.action.kind === "update" || parsed.action.kind === "remove") {
             const cands = resolveCandidates(parsed.action.target);
             if (cands.length > 1) {
-              setRows((rs) => rs.filter((r) => r.id !== ghostId));
               setPendingAmbiguous({ action: parsed.action, candidateIds: cands });
               return;
             }
           }
-          // Promote the ghost based on the action kind.
-          promoteGhost(ghostId, parsed.action);
-          setTimeout(() => {
-            if (!cancelled) setUtterance(null);
-          }, 1500);
+          applyParsedAction(parsed.action);
         } catch (err) {
           if (cancelled) return;
-          setRows((rs) => rs.filter((r) => r.id !== ghostId));
           setSaveError((err as Error).message ?? "Unknown error");
         }
       },
@@ -452,7 +430,6 @@ export default function VoiceShell({
   }
   function cancelAmbiguous() {
     setPendingAmbiguous(null);
-    setUtterance(null);
   }
 
   function onTogglePause() {
@@ -651,7 +628,17 @@ export default function VoiceShell({
                   setRows((rs) =>
                     rs.map((r) =>
                       r.id === row.id && r.type !== "transfer"
-                        ? { ...r, category_id: categoryId, version: r.version + 1, changed: "category" as const }
+                        ? {
+                            ...r,
+                            category_id: categoryId,
+                            // v1.42.2: a manual pick is no longer AI-picked.
+                            // Mirrors how the typed Add Transaction sheet
+                            // clears the sparkle once you override.
+                            category_ai: false,
+                            category_pending: false,
+                            version: r.version + 1,
+                            changed: "category" as const,
+                          }
                         : r
                     )
                   )
@@ -721,21 +708,13 @@ export default function VoiceShell({
             paddingTop: 8,
           }}
         >
-          {/* Caption — v1.42.1: dropped the dedicated 'Thinking…' state.
-              The waveform is the activity indicator; an extra text label
-              was redundant noise (and got stuck on after a silence-flush
-              that turned out to be too quiet to ship to Whisper). */}
+          {/* Caption — v1.42.2: removed the "you said X" live transcript
+              display. User asked that nothing intermediate appear before
+              Gemini's decision lands; the waveform shows activity and the
+              row landing IS the feedback. Only the fallback hint
+              ("Try: \"Bensin tiga ratus ribu\"" / "Paused…") stays. */}
           <div className="min-h-[22px] text-center" aria-live="polite">
-            {utterance ? (
-              <span
-                key={utterance}
-                className="voice-caption inline-block text-[13px] font-medium italic leading-tight text-[var(--label-secondary)]"
-              >
-                “{utterance}”
-              </span>
-            ) : (
-              <span className="text-[11.5px] text-[var(--label-tertiary)]">{captionFallback}</span>
-            )}
+            <span className="text-[11.5px] text-[var(--label-tertiary)]">{captionFallback}</span>
           </div>
 
           {saveError && (

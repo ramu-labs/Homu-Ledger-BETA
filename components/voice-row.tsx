@@ -2,23 +2,24 @@
 
 // One row inside the voice screen's draft list.
 //
-// v1.42.0 rework:
-//   • Sub-line is now PLAIN TEXT — matches components/transaction-list.tsx.
-//     No category pill, no wallet pill, no chevrons. Just "Category · Wallet".
-//   • The big 40×40 icon is the category tap target. The wallet pill goes
-//     away too — wallet edits happen via a small "Wallet ▾" affordance to
-//     the right of the sub-line text.
-//   • Category icon uses <CategoryIcon> so 2D mode is honoured.
-//   • Ghost rows render with a pulsing skeleton state while the parse is
-//     in flight (Whisper done, Gemini not yet).
+// v1.42.2 layout:
+//   • Big 40×40 category icon = primary tap target for the category
+//     picker. While the row's category is still being auto-picked
+//     (`category_pending`), this slot renders a Loader2 spinner over a
+//     muted background — same "AI is thinking" cue the typed Add
+//     Transaction sheet uses for auto-categorisation.
+//   • Sub-line is "Category · Wallet". Category is PLAIN TEXT (no
+//     chip). Wallet is a CHIP BUTTON with its swatch icon + name +
+//     chevron — easier to spot as tappable than plain text.
+//   • Small Sparkles badge in the corner of the category icon when
+//     the row's `category_ai` flag is true (cleared on manual pick).
 //
 // Edit feedback (unchanged):
-//   • The parent row gets a soft emerald tint flash on every version bump.
-//   • The specific cell that changed (icon / name / wallet / amount) gets
-//     an emerald halo + scale pop.
+//   • Parent row gets a soft emerald tint flash on every version bump.
+//   • The specific cell that changed gets an emerald halo + scale pop.
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ArrowRightLeft } from "lucide-react";
+import { ChevronDown, ArrowRightLeft, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { formatAmount } from "@/lib/format";
 import { CategoryIcon } from "@/components/category-icon";
@@ -61,8 +62,10 @@ export default function VoiceRow({
   onSetCategory,
 }: Props) {
   const isTransfer = row.type === "transfer";
-  const isGhost = "ghost" in row && row.ghost === true;
-  const category = !isTransfer ? categories.find((c) => c.id === row.category_id) : undefined;
+  const isParsedTx = !isTransfer;
+  const categoryPending = isParsedTx && row.category_pending === true;
+  const categoryAi = isParsedTx && row.category_ai === true;
+  const category = isParsedTx ? categories.find((c) => c.id === row.category_id) : undefined;
   const cat = category ?? VOICE_FALLBACK_CAT;
 
   const defaultWallet = wallets.find((w) => w.is_default) ?? wallets[0];
@@ -114,12 +117,11 @@ export default function VoiceRow({
   const anyOpen = walletOpen || categoryOpen;
 
   function toggleWallet() {
-    if (isGhost) return; // can't edit while parse is still resolving
     setCategoryOpen(false);
     setWalletOpen((v) => !v);
   }
   function toggleCategory() {
-    if (isGhost || isTransfer) return;
+    if (isTransfer || categoryPending) return;
     setWalletOpen(false);
     setCategoryOpen((v) => !v);
   }
@@ -161,10 +163,11 @@ export default function VoiceRow({
         animationDelay: flying ? `${flyIndex * 50}ms` : undefined,
       }}
     >
-      {/* ─── Big icon (40×40). v1.42.0: now the primary tap target for
-            the category picker, mirroring the AI-categorisation pattern
-            in the typed Add Transaction sheet. Transfers get a static
-            coral arrow icon (no picker). ──────────────────────────────── */}
+      {/* ─── Big icon (40×40). The primary category tap target.
+            Transfers get a static coral arrow icon (no picker).
+            Non-transfers with a pending category render a Loader2
+            inside the slot (auto-categorisation in flight) — matches
+            the typed Add Transaction sheet pattern. ─────────────────── */}
       {isTransfer ? (
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
@@ -177,24 +180,45 @@ export default function VoiceRow({
           ref={iconRef}
           type="button"
           onClick={toggleCategory}
-          aria-label="Change category"
+          aria-label={categoryPending ? "Categorising…" : "Change category"}
+          disabled={categoryPending}
           className={cn(
             "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-transform active:scale-95",
-            isGhost && "animate-pulse"
+            categoryPending && "cursor-default"
           )}
-          style={{ backgroundColor: `${cat.color}1A` }}
+          style={{
+            backgroundColor: categoryPending ? "var(--ring-subtle)" : `${cat.color}1A`,
+          }}
         >
-          <CategoryIcon
-            symbol={cat.symbol}
-            iconStyle={iconStyle}
-            size={20}
-            emojiSize="18px"
-            color={iconStyle === "2d" ? cat.color : undefined}
-          />
-          {/* Tiny down-chevron in the corner is the only visual hint
-              that this is tappable. Subtle on purpose — the row's mass
-              is the category icon; we don't want a busy chip ring. */}
-          {!isGhost && (
+          {categoryPending ? (
+            <Loader2
+              className="h-[18px] w-[18px] animate-spin text-[var(--label-tertiary)]"
+              strokeWidth={2.25}
+            />
+          ) : (
+            <CategoryIcon
+              symbol={cat.symbol}
+              iconStyle={iconStyle}
+              size={20}
+              emojiSize="18px"
+              color={iconStyle === "2d" ? cat.color : undefined}
+            />
+          )}
+          {/* AI sparkle indicator — only when the category was AI-
+              picked AND the user hasn't manually overridden. Cleared
+              by onSetCategory in the parent reducer. */}
+          {!categoryPending && categoryAi && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -right-0.5 -top-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[var(--surface)] text-[#EE6452] ring-1 ring-[var(--ring-subtle)]"
+              style={{ animation: "ai-sparkle-blink 2.8s ease-in-out infinite" }}
+            >
+              <Sparkles className="h-2.5 w-2.5" strokeWidth={2.5} />
+            </span>
+          )}
+          {/* Subtle down-chevron in the corner when nothing else is
+              there — the only visual hint that the icon is tappable. */}
+          {!categoryPending && !categoryAi && (
             <span
               aria-hidden
               className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--label-tertiary)] ring-1 ring-[var(--ring-subtle)]"
@@ -205,16 +229,14 @@ export default function VoiceRow({
         </button>
       )}
 
-      {/* ─── Body. Sub-line is now plain text: "Category · Wallet".
-            The wallet "name" is wrapped in a button so it stays tappable
-            (no chip styling), and a chevron sits next to it as the only
-            visual cue that it's editable. ──────────────────────────────── */}
+      {/* ─── Body. Sub-line layout:
+            "Category-name-text · [Wallet-chip-button]"
+            Category is plain text (left). Wallet is a chip with its
+            swatch + name + chevron — restored in v1.42.2 after the
+            "everything is plain text" simplification proved too subtle. */}
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 truncate text-[15px] font-medium text-[var(--foreground)]">
-          <span
-            ref={nameRef}
-            className={cn("inline-block truncate", isGhost && "italic text-[var(--label-secondary)]")}
-          >
+          <span ref={nameRef} className="inline-block truncate">
             {row.name}
           </span>
         </p>
@@ -225,26 +247,30 @@ export default function VoiceRow({
             <ArrowRightLeft className="mx-0.5 h-2.5 w-2.5 shrink-0" strokeWidth={2.5} />
             <span className="truncate">{peerWallet?.name ?? "?"}</span>
           </p>
-        ) : isGhost ? (
-          <p className="mt-0.5 text-[12px] italic text-[var(--label-tertiary)]">
-            Thinking…
-          </p>
         ) : (
-          <p className="mt-0.5 flex items-center gap-1 truncate text-[12px] text-[var(--label-secondary)]">
-            <span className="truncate">{cat.name}</span>
+          <div className="mt-0.5 flex items-center gap-1.5 text-[12px] text-[var(--label-secondary)]">
+            {/* Category — plain text. Italic + muted while pending. */}
+            <span
+              className={cn(
+                "truncate",
+                categoryPending && "italic text-[var(--label-tertiary)]"
+              )}
+            >
+              {categoryPending ? "Categorising…" : cat.name}
+            </span>
             <span>·</span>
-            {/* Wallet — plain text, but the whole text+chevron is a
-                button so the hit target stays comfortable on mobile. */}
+            {/* Wallet — chip button with its colour swatch icon. */}
             <button
               ref={walletRef}
               type="button"
               onClick={toggleWallet}
-              className="inline-flex shrink-0 items-center gap-0.5 text-[var(--label-secondary)] transition-opacity active:opacity-60"
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-black/[0.05] px-1.5 py-0.5 text-[11px] font-medium text-[var(--foreground)] transition-transform active:scale-95 dark:bg-white/[0.08]"
             >
-              <span className="truncate">{wallet?.name ?? "Wallet"}</span>
+              <span className="text-[12px]">{wallet?.symbol ?? "💳"}</span>
+              <span>{wallet?.name ?? "Wallet"}</span>
               <ChevronDown className="h-2.5 w-2.5" strokeWidth={2.25} />
             </button>
-          </p>
+          </div>
         )}
 
         {/* Wallet picker — anchored to the wallet button row. */}
@@ -284,9 +310,8 @@ export default function VoiceRow({
           </div>
         )}
 
-        {/* Category picker — anchored under the big icon. Bigger tiles
-            now that the icon (not the pill) opens it; the user expects
-            a substantial picker after tapping the prominent target. */}
+        {/* Category picker — anchored under the big icon. Shows the
+            FULL household category list filtered by this row's type. */}
         {categoryOpen && !isTransfer && (
           <div
             className="absolute z-[60] mt-1 grid max-h-[240px] grid-cols-3 gap-1.5 overflow-y-auto rounded-2xl border border-[var(--ring-default)] p-2 shadow-[0_14px_36px_rgba(0,0,0,0.22)]"
@@ -326,22 +351,16 @@ export default function VoiceRow({
         )}
       </div>
 
-      {/* Amount. Ghost rows show a skeleton bar instead of "0". */}
-      {isGhost ? (
-        <div
-          aria-hidden
-          className="h-4 w-16 shrink-0 animate-pulse rounded-md bg-[var(--label-tertiary)]/20"
-        />
-      ) : (
-        <p
-          ref={amountRef}
-          className="shrink-0 text-[15px] font-semibold tracking-tight tabular-nums"
-          style={{ color: amountColor }}
-        >
-          {amountPrefix}
-          {formatAmount(row.amount, currency)}
-        </p>
-      )}
+      {/* Amount. Real amount renders for both pending-category and
+          ready-category rows — only the icon slot is in flux. */}
+      <p
+        ref={amountRef}
+        className="shrink-0 text-[15px] font-semibold tracking-tight tabular-nums"
+        style={{ color: amountColor }}
+      >
+        {amountPrefix}
+        {formatAmount(row.amount, currency)}
+      </p>
     </li>
   );
 }

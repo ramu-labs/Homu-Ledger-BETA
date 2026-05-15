@@ -25,6 +25,18 @@ import { estimateCostUsd } from "@/lib/llm/pricing";
 import { canonicalKey, candidateKeys } from "@/lib/llm/normalize";
 import type { VoiceAction, VoiceContext } from "@/lib/voice/types";
 
+// v1.42.2: capitalize the first letter of the first word in a
+// transaction name. Whisper occasionally hands us lowercase output
+// ("kopi tiga ribu") and Gemini's parse echoes it verbatim. Mirror
+// the typed Add Transaction flow's habit of "Kopi", "Bensin" — and
+// matters for downstream auto-categorise cache keys to stay readable.
+// We don't title-case the whole name (would mangle proper nouns like
+// "iPhone"); just the first character.
+function ucFirst(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 // ── Auth + flag check ────────────────────────────────────────────────
 
 // v1.42.0: cache the dev-check + flag-read for the lifetime of one
@@ -433,7 +445,7 @@ function safeParseAction(raw: string, ctx: VoiceContext): VoiceAction {
   if (kind === "add") {
     const tx = obj.tx as Record<string, unknown> | undefined;
     if (!tx) return { kind: "noop" };
-    const name = typeof tx.name === "string" ? tx.name.trim() : "";
+    const name = ucFirst(typeof tx.name === "string" ? tx.name.trim() : "");
     const amount = typeof tx.amount === "number" ? Math.round(tx.amount) : NaN;
     const type = tx.type === "income" ? "income" : "expense";
     if (!name || !Number.isFinite(amount) || amount <= 0) return { kind: "noop" };
@@ -447,7 +459,7 @@ function safeParseAction(raw: string, ctx: VoiceContext): VoiceAction {
   if (kind === "transfer") {
     const tx = obj.tx as Record<string, unknown> | undefined;
     if (!tx) return { kind: "noop" };
-    const name = (typeof tx.name === "string" ? tx.name.trim() : "") || "Transfer";
+    const name = ucFirst((typeof tx.name === "string" ? tx.name.trim() : "") || "Transfer");
     const amount = typeof tx.amount === "number" ? Math.round(tx.amount) : NaN;
     const from = typeof tx.from_wallet_id === "string" ? tx.from_wallet_id : "";
     const to = typeof tx.to_wallet_id === "string" ? tx.to_wallet_id : "";
@@ -479,7 +491,7 @@ function safeParseAction(raw: string, ctx: VoiceContext): VoiceAction {
     if (typeof patch.amount === "number" && patch.amount > 0) cleanPatch.amount = Math.round(patch.amount);
     if (typeof patch.category_id === "string" && catIds.has(patch.category_id)) cleanPatch.category_id = patch.category_id;
     if (typeof patch.wallet_id === "string" && walletIds.has(patch.wallet_id)) cleanPatch.wallet_id = patch.wallet_id;
-    if (typeof patch.name === "string" && patch.name.trim()) cleanPatch.name = patch.name.trim();
+    if (typeof patch.name === "string" && patch.name.trim()) cleanPatch.name = ucFirst(patch.name.trim());
     if (Object.keys(cleanPatch).length === 0) return { kind: "noop" };
     return {
       kind: "update",

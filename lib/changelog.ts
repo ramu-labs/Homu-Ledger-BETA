@@ -45,6 +45,33 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.42.2",
+    date: "May 15, 2026",
+    changes: [
+      { type: "fix", audience: "user",
+        en: "Voice no longer cuts you off mid-sentence. The silence-detection hold grew from 0.9s to 1.5s so a brief pause to think of the next number doesn't auto-flush the half-sentence to Whisper.",
+        id: "Voice tidak lagi memotong kamu di tengah kalimat. Hold deteksi senyap dinaikkan dari 0,9d ke 1,5d sehingga jeda singkat untuk memikirkan angka berikutnya tidak otomatis mengirim setengah kalimat ke Whisper." },
+      { type: "improvement", audience: "user",
+        en: "Removed the live 'you said X' transcript and the placeholder row that briefly appeared with your raw words. The screen stays calm while the AI thinks; the row lands ONCE with the final result.",
+        id: "Menghapus transkrip 'kamu bilang X' dan baris placeholder yang sebentar muncul dengan kata-kata mentah kamu. Layar tetap tenang saat AI berpikir; baris muncul SATU KALI dengan hasil final." },
+      { type: "new", audience: "user",
+        en: "Two-phase row appearance with AI sparkle: when a new row lands, it shows the description, amount, and expense/income type first. The category icon is a small spinner for ~250ms while auto-categorisation runs, then snaps in with a sparkle — same nice touch as the manual Add Transaction sheet's auto-categorise.",
+        id: "Baris muncul dua tahap dengan kilauan AI: saat baris baru muncul, deskripsi, jumlah, dan tipe expense/income tampil dulu. Ikon kategori jadi spinner kecil sekitar 250md sementara auto-kategorisasi berjalan, lalu pop masuk dengan kilauan — sentuhan yang sama dengan auto-kategorisasi di sheet Add Transaction manual." },
+      { type: "improvement", audience: "user",
+        en: "Wallet on a voice row is a chip button again (icon + name + chevron) instead of plain text. Easier to spot as tappable. Category stays plain text on the left.",
+        id: "Wallet di baris voice kembali jadi chip button (ikon + nama + chevron) bukan teks polos. Lebih mudah dikenali sebagai bisa-diketuk. Kategori tetap teks polos di sebelah kiri." },
+      { type: "fix", audience: "user",
+        en: "Voice transactions always capitalise the first letter of the description now. Lowercase 'kopi di kaldi' → 'Kopi di kaldi'. Matches how typed entries look.",
+        id: "Voice transactions sekarang selalu mengkapitalisasi huruf pertama deskripsi. 'kopi di kaldi' jadi 'Kopi di kaldi'. Sama dengan tampilan transaksi yang diketik." },
+      { type: "improvement", audience: "dev",
+        en: "Voice-shell two-phase reveal: applyParsedAction inserts the row with category_id=null + category_pending=true, then a 250ms setTimeout patches in the parsed category_id with version+changed='category' to trigger the existing voice-cell-pop. New category_ai flag drives a small Sparkles overlay until the user manually overrides (cleared in onSetCategory).",
+        id: "Voice-shell reveal dua tahap: applyParsedAction memasukkan baris dengan category_id=null + category_pending=true, lalu setTimeout 250md menambal category_id terparse dengan version+changed='category' untuk memicu voice-cell-pop yang sudah ada. Flag baru category_ai menggerakkan overlay Sparkles kecil sampai pengguna override manual (dibersihkan di onSetCategory)." },
+      { type: "improvement", audience: "dev",
+        en: "mic-capture SILENCE_HOLD_MS 900→1500. ucFirst() applied in safeParseAction to all add/update/transfer names (single-character capitalisation; doesn't title-case proper nouns like 'iPhone'). Removed the now-unused `ghost` insertion path from voice-shell.",
+        id: "SILENCE_HOLD_MS mic-capture 900→1500. ucFirst() diterapkan di safeParseAction untuk semua nama add/update/transfer (kapitalisasi satu karakter; tidak title-case kata benda seperti 'iPhone'). Menghapus jalur insert `ghost` yang sudah tidak terpakai dari voice-shell." },
+    ],
+  },
+  {
     version: "1.42.1",
     date: "May 15, 2026",
     changes: [

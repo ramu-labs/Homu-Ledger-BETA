@@ -37,8 +37,21 @@ export type ParsedTransaction = {
   /** v1.42.0 — true while Whisper has returned a transcript but
    *  Gemini parse hasn't completed yet. Renders as a skeleton row
    *  with the raw transcript as a placeholder; filtered out of the
-   *  save batch. Replaced in-place when parse completes. */
+   *  save batch. Replaced in-place when parse completes.
+   *  v1.42.2: ghost-row pattern removed from the shell entirely;
+   *  field kept for backwards-compat with the type union but never
+   *  set anymore. Safe to drop in a follow-up cleanup pass. */
   ghost?: boolean;
+  /** v1.42.2 — true between row-mount and the moment the auto-
+   *  categoriser fills in. Voice row renders the category icon slot
+   *  as a Loader2 spinner during this window; flips to false once
+   *  the category arrives, triggering the sparkle finish animation. */
+  category_pending?: boolean;
+  /** v1.42.2 — true when the category was AI-picked (parse or cache
+   *  hint), false after the user manually overrides. Drives the
+   *  small Sparkles indicator next to the row's category icon, same
+   *  signal the typed Add Transaction sheet shows for AI picks. */
+  category_ai?: boolean;
 };
 
 /** A transfer row — visually distinct (coral arrow icon), saves via

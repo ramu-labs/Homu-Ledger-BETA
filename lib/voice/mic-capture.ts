@@ -36,7 +36,13 @@ const SILENCE_RMS = 0.012;          // below this for SILENCE_HOLD_MS → flush
 // Crossing this at least once per chunk gates whether the chunk gets
 // shipped to Whisper. Tuned with a quiet office room as the floor.
 const VOICE_RMS = 0.04;
-const SILENCE_HOLD_MS = 900;        // user pauses this long → utterance done
+// v1.42.2: raised from 900ms to 1500ms. The 900ms cutoff was firing
+// mid-sentence when users paused briefly to think of the next number
+// — they'd say "Gajian..." pause "...lima belas juta" and the first
+// half had already been flushed. 1500ms gives natural sentence pauses
+// the room to breathe; the trade-off is the row appears ~600ms later
+// after a true full stop, which is acceptable.
+const SILENCE_HOLD_MS = 1500;
 const MIN_UTTERANCE_MS = 350;       // don't flush a sub-half-second blob
 const MAX_UTTERANCE_MS = 12_000;    // hard cap so a long monologue still flushes
 
