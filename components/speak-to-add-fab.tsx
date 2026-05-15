@@ -1,28 +1,20 @@
 "use client";
 
-// Sparkle-icon button that opens the voice-transactions screen.
+// Sparkle-icon FAB that opens the voice-transactions screen.
 //
-// v1.43.0 — rehomed from "floating coral FAB at bottom-right" to "small
-// sparkle icon in the transactions header, next to the search + filter
-// buttons". User feedback: the FAB was competing for thumb-reach with
-// the bottom-nav "+" button, and a bottom-right coral disc was visually
-// loud for what's effectively a power-user action. The header location
-// keeps it discoverable but stops it dominating the page.
+// v1.43.1 history note: tried integrating into the header icon row in
+// v1.43.0 — user reverted, found it too easy to miss in the cluster of
+// chrome-tinted chips. Back to the floating coral disc style, bottom-
+// right above the bottom-nav. Sparkle remains the only glyph (no mic).
 //
-// Styling rationale:
-//   • 36×36 round button, matching the existing IconButton dimensions.
-//   • Coral background — same accent as the rest of the AI feature
-//     surface (waveform stroke, edit-pulse). Distinguishes it from the
-//     neutral search/filter chips at a glance without screaming.
-//   • Sparkle is the ONLY glyph now. v1.42.x had a mic glyph + corner
-//     sparkle, which felt like two ideas competing. The sparkle alone
-//     reads as "AI" with no extra ink.
-//   • The sparkle gently blinks via the existing ai-sparkle-blink
-//     keyframes (2.8s ease loop). Stops when offline.
+// Position math:
+//   • right: 18px — flush with the screen edge but not touching it
+//   • bottom: env(safe-area-inset-bottom) + 96px — sits above the
+//     bottom-nav (≈72px tall) with breathing room
 //
-// Offline: getUserMedia + Whisper both need network. When the browser
-// is offline we render the button disabled + greyed out rather than
-// letting the user tap into a dead end.
+// Offline behaviour: getUserMedia + Whisper need network. When
+// navigator.onLine is false we render the button greyed out and
+// disable taps rather than letting the user hit a dead end.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -56,12 +48,17 @@ export default function SpeakToAddFab() {
       disabled={!online}
       aria-label={t("voice.fab.aria") || "Speak to add transactions"}
       title={online ? t("voice.fab.aria") || "Speak to add transactions" : t("voice.fab.offline") || "Voice needs internet"}
-      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-white shadow-[0_2px_6px_rgba(238,100,82,0.30)] ring-1 ring-[#EE6452]/40 transition-all active:scale-95 disabled:opacity-40 disabled:shadow-none [touch-action:manipulation]"
-      style={{ background: "#EE6452" }}
+      className="fixed z-[49] inline-flex h-[52px] w-[52px] items-center justify-center rounded-full text-white shadow-[0_10px_22px_rgba(238,100,82,0.35)] transition-opacity active:scale-95 disabled:opacity-40 disabled:shadow-none [touch-action:manipulation]"
+      style={{
+        right: 18,
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
+        background: "#EE6452",
+        animation: "speak-fab-in 360ms cubic-bezier(.22,1,.36,1) both",
+      }}
     >
       <span
         aria-hidden
-        className="inline-flex h-4 w-4 items-center justify-center"
+        className="inline-flex h-6 w-6 items-center justify-center"
         style={{ animation: online ? "ai-sparkle-blink 2.8s ease-in-out infinite" : undefined }}
       >
         <SparkleStar />
@@ -72,8 +69,8 @@ export default function SpeakToAddFab() {
 
 function SparkleStar() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"
-      style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }}>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"
+      style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.25))" }}>
       <path d="M12 2 L13.8 10.2 L22 12 L13.8 13.8 L12 22 L10.2 13.8 L2 12 L10.2 10.2 Z" />
     </svg>
   );

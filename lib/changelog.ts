@@ -45,6 +45,36 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.43.1",
+    date: "May 15, 2026",
+    changes: [
+      { type: "improvement", audience: "user",
+        en: "Voice transactions feel ~400ms faster. The row now appears the moment Whisper finishes — about 150ms after you stop talking — with a cleaned placeholder description (number words stripped). Gemini's parse fills in the exact name, amount, and type a few hundred ms later. Was ~3s end-to-end on real hardware; should feel closer to ~1.7s now.",
+        id: "Voice transactions terasa ~400md lebih cepat. Baris sekarang muncul saat Whisper selesai — sekitar 150md setelah kamu berhenti bicara — dengan deskripsi placeholder yang sudah dibersihkan (kata-kata angka dilepas). Hasil parse Gemini mengisi nama, jumlah, dan tipe persis beberapa ratus ms kemudian. Dari ~3d end-to-end di perangkat asli; sekarang terasa lebih dekat ke ~1.7d." },
+      { type: "improvement", audience: "user",
+        en: "Voice mic FAB moved back to the bottom-right above the bottom nav. Same 52×52 coral circle, sparkle icon (no mic glyph). The header-bar placement from v1.43.0 was too easy to miss.",
+        id: "Tombol mic voice dikembalikan ke kanan-bawah di atas bottom nav. Lingkaran karang 52×52 yang sama, ikon sparkle (tanpa glyph mic). Penempatan di header-bar dari v1.43.0 terlalu mudah terlewat." },
+      { type: "improvement", audience: "user",
+        en: "Recurring icon moved from the loud violet 'Recurring' pill on the first line to a small repeat-symbol next to the wallet name, matching the way photo attachments are shown. Calmer rows.",
+        id: "Ikon recurring dipindah dari pill 'Recurring' violet pada baris pertama ke simbol repeat kecil di samping nama wallet, mengikuti cara lampiran foto ditampilkan. Baris jadi lebih tenang." },
+      { type: "improvement", audience: "user",
+        en: "Voice Save now uses the emerald 'success' glow instead of coral when rows fly off. Coral was reserved for AI / experimental affordances — emerald says 'committed' which is what Save means. Also: the home screen's data refresh now runs IN PARALLEL with the fly-out animation, so when the navigation lands you don't see a white-screen blink — the saved rows just appear with their normal landing animation.",
+        id: "Save di voice sekarang memakai kilauan emerald 'success' alih-alih karang saat baris terbang. Karang dikhususkan untuk AI / fitur eksperimental — emerald berarti 'committed' yang adalah arti Save. Juga: refresh data layar utama sekarang berjalan PARALEL dengan animasi terbang, jadi saat navigasi mendarat tidak terlihat kelap-kelip layar putih — baris yang baru saja disimpan langsung muncul dengan animasi landing normal." },
+      { type: "fix", audience: "user",
+        en: "Colors normalised across the app. The red on the Total Balance, the red on the Expense tab in Add Transaction, the income green on the home page, and the income green on the transactions list all use the same shade now. Three different reds and three different greens were in play before — now there's one of each, and they also adapt to dark mode automatically.",
+        id: "Warna dinormalisasi di seluruh aplikasi. Merah di Total Balance, merah di tab Expense di Add Transaction, hijau income di home, dan hijau income di list transaksi sekarang pakai shade yang sama. Sebelumnya ada tiga merah dan tiga hijau yang berbeda — sekarang satu masing-masing, dan otomatis menyesuaikan dark mode." },
+      { type: "improvement", audience: "dev",
+        en: "Ghost row pattern reintroduced with cleaned placeholder. cleanTranscriptForPlaceholder() strips Indonesian + English number words via a single regex (ribu/juta/miliar/satu..sembilan/puluh/ratus/sebelas/belas + thousand/million/billion/etc. + rp/idr/k/rb). Ghost id reserved up front; promoteGhostOrDrop morphs it into the real row when Gemini's parse returns 'add', drops it for any other kind. The DOM node never unmounts so animations stay smooth.",
+        id: "Pola ghost row dimunculkan kembali dengan placeholder yang sudah dibersihkan. cleanTranscriptForPlaceholder() melepas kata-kata angka Bahasa Indonesia + Inggris via satu regex. Id ghost dipesan di muka; promoteGhostOrDrop mengubahnya jadi baris asli saat parse Gemini mengembalikan 'add', dibuang untuk kind lain. Node DOM tidak pernah unmount jadi animasi tetap mulus." },
+      { type: "improvement", audience: "dev",
+        en: "Save flow now calls router.prefetch + router.refresh BEFORE the fly-out finishes — Next starts re-fetching /transactions data in parallel with the 1.1s animation. The router.push at the end of the animation lands on warm data.",
+        id: "Alur save sekarang memanggil router.prefetch + router.refresh SEBELUM fly-out selesai — Next mulai re-fetch data /transactions paralel dengan animasi 1.1d. router.push di akhir animasi mendarat di data yang sudah hangat." },
+      { type: "improvement", audience: "dev",
+        en: "Add Transaction / Add Recurring type tab backgrounds switched from bg-rose-500 / bg-emerald-500 to inline style with var(--color-expense) / var(--color-income). Transaction-list + recurring-item-list + reports-shell income amounts switched from text-emerald-600 to text-[var(--color-income)] so they adapt to dark theme.",
+        id: "Latar tab tipe Add Transaction / Add Recurring diubah dari bg-rose-500 / bg-emerald-500 ke style inline dengan var(--color-expense) / var(--color-income). Jumlah income di transaction-list + recurring-item-list + reports-shell diubah dari text-emerald-600 ke text-[var(--color-income)] agar adaptif terhadap dark theme." },
+    ],
+  },
+  {
     version: "1.43.0",
     date: "May 15, 2026",
     changes: [
