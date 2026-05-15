@@ -448,6 +448,12 @@ export default function TransactionsShell({
             </button>
 
             <div className="flex items-center gap-2">
+              {/* v1.43.0 — voice transactions moved here from the
+                  bottom-right floating FAB. Sits alongside Search /
+                  Filter as a peer chip, coral-tinted so it still reads
+                  as the AI / experimental surface. Server-gated by
+                  voiceEnabled (dev-only). */}
+              {voiceEnabled && <SpeakToAddFab />}
               <IconButton ariaLabel="Search" active={searchOpen} onClick={toggleSearchOpen}>
                 <Search className="h-[18px] w-[18px]" strokeWidth={2} />
               </IconButton>
@@ -622,10 +628,6 @@ export default function TransactionsShell({
         </>
       )}
 
-      {/* v1.41.0 — AI voice FAB. Server-gated by app_settings.voice_input_enabled,
-          which TransactionsShell receives as `voiceEnabled`. The FAB itself
-          handles the offline-disabled visual. */}
-      {voiceEnabled && <SpeakToAddFab />}
     </>
   );
 }

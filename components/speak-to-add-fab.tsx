@@ -1,14 +1,28 @@
 "use client";
 
-// Mic FAB on the Transactions screen — opens the voice surface.
-// Sits above the bottom nav, on the right. Coral background, white
-// mic glyph, a small sparkle in the corner gently fades to signal
-// "AI is here" without a heavy pulsing aura. See PRD §3.
+// Sparkle-icon button that opens the voice-transactions screen.
+//
+// v1.43.0 — rehomed from "floating coral FAB at bottom-right" to "small
+// sparkle icon in the transactions header, next to the search + filter
+// buttons". User feedback: the FAB was competing for thumb-reach with
+// the bottom-nav "+" button, and a bottom-right coral disc was visually
+// loud for what's effectively a power-user action. The header location
+// keeps it discoverable but stops it dominating the page.
+//
+// Styling rationale:
+//   • 36×36 round button, matching the existing IconButton dimensions.
+//   • Coral background — same accent as the rest of the AI feature
+//     surface (waveform stroke, edit-pulse). Distinguishes it from the
+//     neutral search/filter chips at a glance without screaming.
+//   • Sparkle is the ONLY glyph now. v1.42.x had a mic glyph + corner
+//     sparkle, which felt like two ideas competing. The sparkle alone
+//     reads as "AI" with no extra ink.
+//   • The sparkle gently blinks via the existing ai-sparkle-blink
+//     keyframes (2.8s ease loop). Stops when offline.
 //
 // Offline: getUserMedia + Whisper both need network. When the browser
-// is offline we render the FAB greyed out + non-interactive rather
-// than letting the user tap into a dead end. (We still mount in the
-// DOM so the layout doesn't shift when connectivity flickers.)
+// is offline we render the button disabled + greyed out rather than
+// letting the user tap into a dead end.
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -33,8 +47,6 @@ export default function SpeakToAddFab() {
   }, []);
 
   function open() {
-    // Prefetched by Next on hover; route push retains scroll position
-    // back to /transactions when the voice screen exits.
     router.push("/transactions/voice");
   }
 
@@ -44,18 +56,12 @@ export default function SpeakToAddFab() {
       disabled={!online}
       aria-label={t("voice.fab.aria") || "Speak to add transactions"}
       title={online ? t("voice.fab.aria") || "Speak to add transactions" : t("voice.fab.offline") || "Voice needs internet"}
-      className="fixed z-[49] inline-flex h-[52px] w-[52px] items-center justify-center rounded-full text-white shadow-[0_10px_22px_rgba(238,100,82,0.35)] transition-opacity active:scale-95 disabled:opacity-40"
-      style={{
-        right: 18,
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 96px)",
-        background: "#EE6452",
-        animation: "speak-fab-in 360ms cubic-bezier(.22,1,.36,1) both",
-      }}
+      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-white shadow-[0_2px_6px_rgba(238,100,82,0.30)] ring-1 ring-[#EE6452]/40 transition-all active:scale-95 disabled:opacity-40 disabled:shadow-none [touch-action:manipulation]"
+      style={{ background: "#EE6452" }}
     >
-      <MicIcon />
       <span
         aria-hidden
-        className="pointer-events-none absolute -right-[4px] -top-[4px] inline-flex h-4 w-4 items-center justify-center text-white"
+        className="inline-flex h-4 w-4 items-center justify-center"
         style={{ animation: online ? "ai-sparkle-blink 2.8s ease-in-out infinite" : undefined }}
       >
         <SparkleStar />
@@ -64,21 +70,10 @@ export default function SpeakToAddFab() {
   );
 }
 
-function MicIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="9" y="2" width="6" height="12" rx="3" />
-      <path d="M5 11a7 7 0 0 0 14 0" />
-      <line x1="12" y1="18" x2="12" y2="22" />
-    </svg>
-  );
-}
-
 function SparkleStar() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"
-      style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.25))" }}>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"
+      style={{ filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.25))" }}>
       <path d="M12 2 L13.8 10.2 L22 12 L13.8 13.8 L12 22 L10.2 13.8 L2 12 L10.2 10.2 Z" />
     </svg>
   );

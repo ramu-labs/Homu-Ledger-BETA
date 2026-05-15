@@ -119,6 +119,83 @@ export default function VoiceShell({
     rowsRef.current = rows;
   }, [rows]);
 
+  // v1.43.0 — per-row inflight categorize cancellation. When the user
+  // edits a row's name (voice or manual) we re-run suggestCategory()
+  // to get the correct category for the new name. If they edit a
+  // second time before the first call returned, we want to cancel
+  // the first so the stale answer doesn't race in and overwrite the
+  // new one. Map of rowId → AbortController.
+  const categorizeAbortRef = useRef<Map<string, AbortController>>(new Map());
+
+  /** Cancel any inflight categorize call for this row. Safe to call
+   *  even when nothing is inflight. */
+  const cancelCategorize = useCallback((rowId: string) => {
+    const ctrl = categorizeAbortRef.current.get(rowId);
+    if (ctrl) {
+      ctrl.abort();
+      categorizeAbortRef.current.delete(rowId);
+    }
+  }, []);
+
+  /** Fire suggestCategory for a row, cancelling any previous inflight
+   *  request for the same row. Marks the row as `category_pending`
+   *  while we wait; clears + sparkles when the answer lands. Silent on
+   *  abort (which is normal during rapid edits). */
+  const runCategorize = useCallback(
+    (rowId: string, name: string, type: "income" | "expense") => {
+      cancelCategorize(rowId);
+      const ctrl = new AbortController();
+      categorizeAbortRef.current.set(rowId, ctrl);
+      // Flag the row as pending immediately so the icon spins.
+      setRows((rs) =>
+        rs.map((r) =>
+          r.id === rowId && r.type !== "transfer"
+            ? { ...r, category_pending: true }
+            : r
+        )
+      );
+      void (async () => {
+        let resolved: string | null = null;
+        try {
+          const res = await suggestCategory(name, type);
+          if (ctrl.signal.aborted) return;
+          if (res.ok) resolved = res.categoryId;
+        } catch {
+          /* swallow */
+        }
+        if (ctrl.signal.aborted) return;
+        categorizeAbortRef.current.delete(rowId);
+        setRows((rs) =>
+          rs.map((r) => {
+            if (r.id !== rowId || r.type === "transfer") return r;
+            // If the user manually picked a category while we were
+            // mid-flight, don't overwrite — preserve their choice.
+            if (!r.category_pending) return r;
+            return {
+              ...r,
+              category_id: resolved,
+              category_pending: false,
+              category_ai: resolved !== null,
+              version: r.version + 1,
+              changed: resolved !== null ? "category" : null,
+            };
+          })
+        );
+      })();
+    },
+    [cancelCategorize]
+  );
+
+  // Cancel all pending categorize calls on unmount so we don't get
+  // late state writes after the screen has been left.
+  useEffect(() => {
+    const map = categorizeAbortRef.current;
+    return () => {
+      for (const ctrl of map.values()) ctrl.abort();
+      map.clear();
+    };
+  }, []);
+
   // ── Resolve a Gemini target → row id ────────────────────────────────
   // Used for `update` and `remove` actions. Returns null if no row
   // matches; caller should treat that as a soft failure (no toast on
@@ -179,68 +256,41 @@ export default function VoiceShell({
       if (action.kind === "undo") {
         const lastId = lastAddedIdRef.current;
         if (!lastId) return;
+        // v1.43.0 — cancel any inflight categorize for this row so a
+        // late answer doesn't write to state after the row is gone.
+        cancelCategorize(lastId);
         setRows((rs) => rs.map((r) => (r.id === lastId ? { ...r, exiting: true } : r)));
         setTimeout(() => {
           setRows((rs) => rs.filter((r) => r.id !== lastId));
         }, 280);
-        // Clear lastAdded so a second consecutive "undo" doesn't try
-        // to remove an already-gone row. A new add will refresh this.
         lastAddedIdRef.current = null;
         return;
       }
 
       if (action.kind === "add") {
         const id = crypto.randomUUID();
-        // v1.42.3 — Phase 1: row appears IMMEDIATELY with
-        // name + amount + type. The category icon shows a Loader2
-        // spinner because category_pending=true. We fire the
-        // categorisation call in parallel via suggestCategory() which
-        // is cache-first (instant on hit, ~400ms Gemini on miss). No
-        // artificial 250ms delay — the gap between phases is whatever
-        // suggestCategory takes.
+        const isIncomplete = action.tx.amount === 0;
+        // Phase 1: row appears IMMEDIATELY with name + amount + type.
+        // Category-pending only when we have a real amount — an
+        // incomplete row (amount=0, waiting for the amount-only
+        // follow-up) doesn't burn a categorize call yet.
         const phase1: ParsedTransaction = {
           ...action.tx,
           id,
           category_id: null,
           version: 1,
           changed: null,
-          category_pending: true,
+          category_pending: !isIncomplete,
           category_ai: false,
         };
         lastAddedIdRef.current = id;
         setRows((rs) => [...rs, phase1]);
 
-        // Phase 2: categorise. suggestCategory() is the same call the
-        // typed Add Transaction sheet uses, so voice + typing share
-        // the category_hints cache — train once, both benefit.
-        // Fire-and-forget: on failure we leave category_id null, the
-        // user picks manually from the picker.
-        void (async () => {
-          let resolved: string | null = null;
-          try {
-            const res = await suggestCategory(
-              action.tx.name,
-              action.tx.type
-            );
-            if (res.ok) resolved = res.categoryId;
-          } catch {
-            /* swallow — row stays in pending state until user picks */
-          }
-          setRows((rs) =>
-            rs.map((r) => {
-              if (r.id !== id) return r;
-              if (r.type === "transfer") return r;
-              return {
-                ...r,
-                category_id: resolved,
-                category_pending: false,
-                category_ai: resolved !== null,
-                version: r.version + 1,
-                changed: resolved !== null ? "category" : null,
-              };
-            })
-          );
-        })();
+        // Skip categorisation for incomplete rows — we'll fire it
+        // when the amount-stitch update lands and the name is final.
+        if (!isIncomplete) {
+          runCategorize(id, action.tx.name, action.tx.type);
+        }
         return;
       }
 
@@ -280,25 +330,46 @@ export default function VoiceShell({
         const targetId = resolveTarget(action.target);
         if (!targetId) return;
         const patch = action.patch;
+
+        // v1.43.0 — Resolve category_name → category_id by fuzzy-matching
+        // against the FULL household category list (not the trimmed
+        // top-N). Matches are scored:
+        //   1. exact case-insensitive name match → highest priority
+        //   2. case-insensitive substring (either direction)
+        //   3. type-correct match preferred over wrong-type
+        // If no match found, the patch silently drops category — the
+        // user can still pick manually from the row's picker.
+        let resolvedCategoryId: string | null | undefined = patch.category_id;
+        if (patch.category_name && resolvedCategoryId === undefined) {
+          const targetRow = rowsRef.current.find((r) => r.id === targetId);
+          const targetType = targetRow && targetRow.type !== "transfer" ? targetRow.type : null;
+          resolvedCategoryId = fuzzyResolveCategory(patch.category_name, categories, targetType);
+        }
+
         // Determine which cell changed for the per-cell pop animation.
         // Priority follows the order Gemini's most likely to emit.
         const changed: VoiceDraft["changed"] =
           patch.amount !== undefined
             ? "amount"
-            : patch.category_id !== undefined
+            : resolvedCategoryId !== undefined
               ? "category"
               : patch.wallet_id !== undefined
                 ? "wallet"
                 : patch.name !== undefined
                   ? "name"
                   : null;
+
+        // Was this row incomplete (amount=0) BEFORE this update?
+        // If yes, and the update fills in the amount, we need to fire
+        // the deferred categorize call (the add-branch skipped it).
+        const targetRow = rowsRef.current.find((r) => r.id === targetId);
+        const wasIncomplete =
+          targetRow && targetRow.type !== "transfer" && targetRow.amount === 0;
+        const stitchingAmount = wasIncomplete && patch.amount !== undefined && patch.amount > 0;
+
         setRows((rs) =>
           rs.map((r) => {
             if (r.id !== targetId) return r;
-            // Transfers can only have name/amount/wallet edits via voice
-            // (and category never applies to a transfer). The picker
-            // doesn't render category on transfer rows, so we just
-            // drop category_id updates on transfers here.
             if (r.type === "transfer") {
               const next: ParsedTransfer = {
                 ...r,
@@ -313,7 +384,13 @@ export default function VoiceShell({
               ...r,
               ...(patch.name !== undefined ? { name: patch.name } : {}),
               ...(patch.amount !== undefined ? { amount: patch.amount } : {}),
-              ...(patch.category_id !== undefined ? { category_id: patch.category_id } : {}),
+              ...(resolvedCategoryId !== undefined
+                ? {
+                    category_id: resolvedCategoryId,
+                    category_ai: false, // explicit voice pick — not AI-guessed
+                    category_pending: false,
+                  }
+                : {}),
               ...(patch.wallet_id !== undefined ? { wallet_id: patch.wallet_id } : {}),
               version: r.version + 1,
               changed,
@@ -321,12 +398,38 @@ export default function VoiceShell({
             return nextExp;
           })
         );
+
+        // Cache the narrowed transactional row (TS doesn't carry the
+        // earlier `wasIncomplete` narrowing into these later checks).
+        const txRow =
+          targetRow && targetRow.type !== "transfer" ? targetRow : null;
+
+        // v1.43.0 — when the voice update changed the description, the
+        // CURRENT category is now stale (it was suggested for the OLD
+        // name). Re-run suggestCategory to refresh it. Cancels any
+        // inflight categorise for this row first.
+        // Skipped if the user ALSO explicitly set a category in this
+        // same update (their voice pick beats the auto-suggest).
+        if (
+          patch.name !== undefined &&
+          resolvedCategoryId === undefined &&
+          txRow
+        ) {
+          runCategorize(targetId, patch.name, txRow.type);
+        }
+        // Stitching path: incomplete row just got its amount → run
+        // the categorize call we deferred when the description landed.
+        if (stitchingAmount && txRow) {
+          const finalName = patch.name ?? txRow.name;
+          runCategorize(targetId, finalName, txRow.type);
+        }
         return;
       }
 
       if (action.kind === "remove") {
         const targetId = resolveTarget(action.target);
         if (!targetId) return;
+        cancelCategorize(targetId);
         // Mark exiting so the row plays the exit animation, then
         // remove it from state 280ms later.
         setRows((rs) => rs.map((r) => (r.id === targetId ? { ...r, exiting: true } : r)));
@@ -336,7 +439,7 @@ export default function VoiceShell({
         return;
       }
     },
-    [resolveTarget]
+    [resolveTarget, cancelCategorize]
   );
 
   // ── Mic capture lifecycle ──────────────────────────────────────────
@@ -381,13 +484,21 @@ export default function VoiceShell({
           if (isWhisperHallucination(text)) return;
 
           // Parse — context built fresh from rowsRef so Gemini sees the
-          // latest names. No ghost to filter out anymore.
+          // latest names + which rows are incomplete (stitching path).
           const parsed = await parseVoiceUtterance(text, {
             categories: geminiCats.map((c) => ({ id: c.id, name: c.name, type: c.type })),
             wallets: wallets.map((w) => ({ id: w.id, name: w.name })),
             rows: rowsRef.current
               .filter((r) => !r.exiting)
-              .map((r) => ({ id: r.id, name: r.name })),
+              .map((r) => ({
+                id: r.id,
+                name: r.name,
+                // v1.43.0 — non-transfer rows with amount=0 are
+                // "incomplete" (waiting for the user to say the
+                // amount). The server uses this for the stitching
+                // safety net.
+                incomplete: r.type !== "transfer" && r.amount === 0,
+              })),
             defaultWalletId: wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
           });
           if (cancelled) return;
@@ -476,7 +587,13 @@ export default function VoiceShell({
 
   // v1.42.0: ghosts (Whisper-done-but-Gemini-pending) are excluded
   // from save — they have amount=0 and would land as zero-rows.
-  const liveRows = useMemo(() => rows.filter((r) => !r.exiting && !r.ghost), [rows]);
+  // v1.43.0: incomplete rows (amount=0, waiting for stitch) likewise
+  // excluded from save. They stay visible in the UI so the user knows
+  // they need to follow up with a number, but Save skips them.
+  const liveRows = useMemo(
+    () => rows.filter((r) => !r.exiting && !r.ghost && r.amount > 0),
+    [rows]
+  );
   // Count of all visible rows (incl. ghosts) for the close-confirmation
   // count — losing a ghost feels just as bad as losing a real row from
   // the user's POV.
@@ -813,6 +930,62 @@ function CheckIcon() {
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
+}
+
+// v1.43.0 — fuzzy category-name resolver.
+//
+// Voice says "transport" or "food and drinks" or "kategori transport".
+// We map that string to an actual category id from the household list.
+// Scoring:
+//   1. Exact case-insensitive name match (best)
+//   2. Substring match (either direction)
+//   3. Type-correct match preferred over wrong type
+//
+// Returns null when nothing reasonable matches — caller should silently
+// drop the category from the patch in that case (the user can still
+// open the picker and choose manually).
+function fuzzyResolveCategory(
+  spoken: string,
+  categories: DbCategory[],
+  preferType: "income" | "expense" | null
+): string | null {
+  if (!spoken || categories.length === 0) return null;
+  const needle = spoken
+    .toLowerCase()
+    .replace(/\b(kategori|category|ke|to|menjadi|jadi|into|the)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!needle) return null;
+
+  type Cand = { id: string; score: number; rightType: boolean };
+  const cands: Cand[] = [];
+  for (const c of categories) {
+    const cname = c.name.toLowerCase();
+    let score = 0;
+    if (cname === needle) score = 100;
+    else if (cname.includes(needle) || needle.includes(cname)) {
+      // longer overlap = better
+      const overlap = Math.min(cname.length, needle.length);
+      score = 40 + overlap;
+    } else {
+      // word-level intersection — "food and drinks" vs "food & drink"
+      const a = new Set(cname.split(/\s+/));
+      const b = new Set(needle.split(/\s+/));
+      let inter = 0;
+      for (const tok of b) if (a.has(tok)) inter += 1;
+      if (inter > 0) score = inter * 10;
+    }
+    if (score === 0) continue;
+    cands.push({ id: c.id, score, rightType: preferType ? c.type === preferType : true });
+  }
+  if (cands.length === 0) return null;
+  cands.sort((a, b) => {
+    // Wrong-type penalty: a right-type match always beats wrong-type
+    // unless the wrong-type score is dramatically higher (rarely useful).
+    if (a.rightType !== b.rightType) return a.rightType ? -1 : 1;
+    return b.score - a.score;
+  });
+  return cands[0].id;
 }
 
 function extFor(mime: string): string {

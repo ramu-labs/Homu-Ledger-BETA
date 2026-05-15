@@ -356,16 +356,26 @@ export default function VoiceRow({
         )}
       </div>
 
-      {/* Amount. Real amount renders for both pending-category and
-          ready-category rows — only the icon slot is in flux. */}
-      <p
-        ref={amountRef}
-        className="shrink-0 text-[15px] font-semibold tracking-tight tabular-nums"
-        style={{ color: amountColor }}
-      >
-        {amountPrefix}
-        {formatAmount(row.amount, currency)}
-      </p>
+      {/* Amount. v1.43.0 — incomplete row (amount=0, waiting for a
+          stitch) renders as a muted dashes placeholder. Real amount
+          appears when the user follows up with the number. */}
+      {!isTransfer && row.amount === 0 ? (
+        <p
+          ref={amountRef}
+          className="shrink-0 text-[15px] font-semibold tracking-tight tabular-nums text-[var(--label-tertiary)]"
+        >
+          —
+        </p>
+      ) : (
+        <p
+          ref={amountRef}
+          className="shrink-0 text-[15px] font-semibold tracking-tight tabular-nums"
+          style={{ color: amountColor }}
+        >
+          {amountPrefix}
+          {formatAmount(row.amount, currency)}
+        </p>
+      )}
     </li>
   );
 }

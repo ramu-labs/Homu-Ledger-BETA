@@ -35,24 +35,38 @@ export default function VoiceWaveform({ volume, listening, color = "#EE6452" }: 
     let lastT = performance.now();
     const W = 320;
     const H = 80;
-    const N = 70;
+    // v1.43.0 — point count bumped 70 → 110 to give the new high-
+    // frequency components enough resolution. At 70 points the
+    // u·34 ripples were aliasing into a fuzzy mess; 110 renders
+    // them as distinct peaks. Still cheap (one rAF per frame).
+    const N = 110;
 
     function buildPath(t: number, vol: number): string {
       const mid = H / 2;
       const parts: string[] = [];
+      // v1.43.0 — frequency MULTIPLIER scales with volume.
+      // Quiet (vol≈0.1) → freqBoost ≈ 1.0 → one slow wave across the
+      //   width. Calm idle-listening visual.
+      // Loud  (vol≈0.9) → freqBoost ≈ 2.4 → many small ripples — looks
+      //   like the line is following individual syllables.
+      // Without this, speaking just makes a SINGLE bigger wave; the
+      // line never feels "responsive" to consonants.
+      const freqBoost = 1 + vol * 1.6;
       for (let i = 0; i <= N; i++) {
         const u = i / N;
         const x = u * W;
-        // Three octaves so the line never reads as a pure sine.
-        // v1.42.3: amplitude multipliers bumped from .30/.18/.12 to
-        // .50/.32/.20 so the line reads as actually-wavy on speech,
-        // not just a slightly-jittery flat line. Tested against a quiet
-        // room (still readable) and a loud TV in the background (still
-        // looks like one wave, not chaos).
+        // Five octaves of motion (was three in v1.42.x). The two new
+        // higher-frequency components add the "rippling" detail that
+        // reads as words. All five scale with vol so quiet stays
+        // genuinely quiet — only the visible wave count goes up with
+        // volume, not just amplitude.
         const yRaw =
-          Math.sin(t * 0.0019 + u * 8) * vol * H * 0.50 +
-          Math.sin(t * 0.0033 + u * 14) * vol * H * 0.32 +
-          Math.sin(t * 0.0011 + u * 5) * vol * H * 0.20;
+          Math.sin(t * 0.0019 + u * 8 * freqBoost) * vol * H * 0.42 +
+          Math.sin(t * 0.0033 + u * 14 * freqBoost) * vol * H * 0.28 +
+          Math.sin(t * 0.0011 + u * 5 * freqBoost) * vol * H * 0.18 +
+          // New high-freq components — the "rippling per word" feel.
+          Math.sin(t * 0.0055 + u * 22 * freqBoost) * vol * H * 0.16 +
+          Math.sin(t * 0.0088 + u * 34 * freqBoost) * vol * H * 0.10;
         // Edge taper so the ends never whip out the side of the box.
         const taper = Math.sin(Math.PI * u);
         const y = mid + yRaw * taper;

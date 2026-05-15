@@ -202,14 +202,25 @@ export async function parseVoiceUtterance(
     ? context.rows.map((r) => `- ${r.id} | ${r.name}`).join("\n")
     : "(none yet)";
 
+  // v1.43.0 — category NAMES (not ids) embedded for the update path
+  // only. Used when the user says "ganti kategori jadi transport"
+  // — Gemini emits the name verbatim; the client fuzzy-matches it
+  // against the full household category list. Names-only stays
+  // cheap: ~30 categories × ~12 tokens = ~360 tokens. Add types so
+  // Gemini doesn't propose an income category for an expense row.
+  const categoryNamesList = context.categories.length
+    ? context.categories.map((c) => `- ${c.name} (${c.type})`).join("\n")
+    : "(none yet)";
+
   const prompt =
     `You are a transaction parser for a household ledger. The user spoke ` +
     `ONE short utterance in Indonesian or English. Return ONE JSON action.\n\n` +
     `Available wallets (id | name):\n${walletList}\n\n` +
+    `Available category names (name | type) — for category updates only:\n${categoryNamesList}\n\n` +
     `Current draft rows (id | name):\n${rowList}\n\n` +
     `Action shapes (output exactly one):\n` +
     `  {"kind":"add","tx":{"name":string,"amount":number,"type":"expense"|"income","wallet_id":string|null}}\n` +
-    `  {"kind":"update","target":{"name":string|null,"mostRecent":boolean},"patch":{"amount":number?,"wallet_id":string?,"name":string?}}\n` +
+    `  {"kind":"update","target":{"name":string|null,"mostRecent":boolean},"patch":{"amount":number?,"wallet_id":string?,"name":string?,"category_name":string?}}\n` +
     `  {"kind":"remove","target":{"name":string|null,"mostRecent":boolean}}\n` +
     `  {"kind":"transfer","tx":{"name":string,"amount":number,"from_wallet_id":string,"to_wallet_id":string}}\n` +
     `  {"kind":"undo"}\n` +
@@ -226,7 +237,20 @@ export async function parseVoiceUtterance(
     `  "tiga ratus ribu"         = 300000\n` +
     `  "satu juta dua ratus ribu" = 1200000\n` +
     `  "sepuluh ribu lima ratus"  = 10500\n\n` +
-    `Correction patterns (a follow-up that fixes the most recent row):\n` +
+    `Incomplete adds (description-only, amount unknown):\n` +
+    `If the user says ONLY a description with no amount, output amount=0.\n` +
+    `Then a follow-up number-only utterance attaches as an update.\n` +
+    `  "Beli kue"                       → {"kind":"add","tx":{"name":"Beli kue","amount":0,"type":"expense"}}\n` +
+    `  "Nasi goreng"                    → {"kind":"add","tx":{"name":"Nasi goreng","amount":0,"type":"expense"}}\n\n` +
+    `Number-only follow-up (attaches to the last row):\n` +
+    `When the user says ONLY an amount (no description, no corrective marker)\n` +
+    `AND the most recent row has amount=0 (incomplete), route to update mostRecent.\n` +
+    `  After "Beli kue", "Dua ratus ribu"   → {"kind":"update","target":{"mostRecent":true},"patch":{"amount":200000}}\n` +
+    `  After "Nasi goreng", "25 ribu"       → {"kind":"update","target":{"mostRecent":true},"patch":{"amount":25000}}\n` +
+    `(If the most recent row already has an amount, treat a bare number\n` +
+    `utterance with NO corrective marker as {"kind":"noop"} — we don't know\n` +
+    `if it's a new transaction or a correction.)\n\n` +
+    `Correction patterns (fix the most recent row):\n` +
     `When the user says ONLY a corrected amount with a corrective marker\n` +
     `("oh", "actually", "oops", "sorry", "not", "bukan", "eh", "maaf"),\n` +
     `route to update with target.mostRecent=true. Examples:\n` +
@@ -235,12 +259,19 @@ export async function parseVoiceUtterance(
     `  "Bukan 25 ribu, 35 ribu"         → {"kind":"update","target":{"mostRecent":true},"patch":{"amount":35000}}\n` +
     `  "Eh maaf, 50 ribu"               → {"kind":"update","target":{"mostRecent":true},"patch":{"amount":50000}}\n` +
     `  "Oops 35"                        → {"kind":"update","target":{"mostRecent":true},"patch":{"amount":35000}}\n\n` +
+    `Category updates by voice:\n` +
+    `When the user wants to change a row's category, emit category_name verbatim.\n` +
+    `If no row is explicitly named, default to mostRecent.\n` +
+    `  "Change category to Food and drinks"               → {"kind":"update","target":{"mostRecent":true},"patch":{"category_name":"Food and drinks"}}\n` +
+    `  "Ganti kategori jadi transport"                    → {"kind":"update","target":{"mostRecent":true},"patch":{"category_name":"transport"}}\n` +
+    `  "Yang cuci mobil tadi ganti kategori jadi transport" → {"kind":"update","target":{"name":"cuci mobil","mostRecent":false},"patch":{"category_name":"transport"}}\n` +
+    `  "Kopi category should be Dining out"               → {"kind":"update","target":{"name":"kopi","mostRecent":false},"patch":{"category_name":"Dining out"}}\n\n` +
     `Undo: if the user says "undo", "batalkan", "cancel the last", "remove the last",\n` +
     `"hapus yang terakhir" → {"kind":"undo"}. The client will pop the last added row.\n\n` +
     `Rules:\n` +
     `- target.name = case-insensitive substring on a draft row name. mostRecent:true = the row most recently added.\n` +
     `- wallet_id MUST be one of the wallet ids listed above, or null. Never invent ids.\n` +
-    `- DO NOT include category_id. Categories are handled separately by another call.\n` +
+    `- category_name: emit the user's verbatim phrasing. The client will fuzzy-match.\n` +
     `- If the utterance is off-topic (small talk, filler) return {"kind":"noop"}.\n` +
     `- For transfers, identify both from and to wallets from the list.\n` +
     `- Income vs expense: words like "gajian", "salary", "bonus", "refund", "income" → income. Everything else default to expense.\n` +
@@ -336,13 +367,18 @@ export async function parseVoiceUtterance(
 
   // v1.42.3: pass the raw transcript + a hint that there's a recent
   // row to the parser. Both feed the correction-marker safety net.
-  // hasRecentRow lets the safety net know an "update mostRecent"
-  // rewrite is actually safe (no recent row → keep the add).
+  // v1.43.0: also tells the parser whether the most recent row is
+  // INCOMPLETE (amount=0, waiting for a stitch). This lets the safety
+  // net rewrite a bare-number follow-up as an update even without a
+  // correction marker.
+  const lastRow = context.rows[context.rows.length - 1];
+  const lastRowIncomplete = !!lastRow && lastRow.incomplete === true;
   const action = safeParseAction(
     text,
     context,
     cleaned,
-    context.rows.length > 0
+    context.rows.length > 0,
+    lastRowIncomplete
   );
   return { ok: true, action, tokensIn, tokensOut };
 }
@@ -456,7 +492,13 @@ function isStubName(name: string): boolean {
   return false;
 }
 
-function safeParseAction(raw: string, ctx: VoiceContext, transcript: string, hasRecentRow: boolean): VoiceAction {
+function safeParseAction(
+  raw: string,
+  ctx: VoiceContext,
+  transcript: string,
+  hasRecentRow: boolean,
+  lastRowIncomplete: boolean
+): VoiceAction {
   let stripped = raw.trim();
   // Strip code fences if present
   if (stripped.startsWith("```")) {
@@ -489,13 +531,23 @@ function safeParseAction(raw: string, ctx: VoiceContext, transcript: string, has
     const name = ucFirst(typeof tx.name === "string" ? tx.name.trim() : "");
     let amount = typeof tx.amount === "number" ? Math.round(tx.amount) : NaN;
     const type = tx.type === "income" ? "income" : "expense";
-    if (!name || !Number.isFinite(amount) || amount <= 0) return { kind: "noop" };
+    // v1.43.0: amount=0 is now LEGAL — represents an incomplete row
+    // ("beli kue", no amount yet). Reject only NaN or negative.
+    if (!name || !Number.isFinite(amount) || amount < 0) return { kind: "noop" };
     amount = correctJutaMiliarConfusion(transcript, amount);
 
     // Correction safety net: stub name + correction marker + we have a
     // recent row to update → rewrite as {kind:"update", mostRecent}.
-    // This is the second line of defence after the prompt examples.
-    if (hasRecentRow && looksLikeCorrection(transcript) && isStubName(name)) {
+    // v1.43.0 — also covers the STITCHING case (description-then-
+    // amount): if the most recent row is incomplete (amount=0) and
+    // this utterance is a bare-number stub, attach the amount even
+    // WITHOUT a correction marker.
+    if (
+      amount > 0 &&
+      hasRecentRow &&
+      isStubName(name) &&
+      (looksLikeCorrection(transcript) || lastRowIncomplete)
+    ) {
       return {
         kind: "update",
         target: { name: null, mostRecent: true },
@@ -541,21 +593,34 @@ function safeParseAction(raw: string, ctx: VoiceContext, transcript: string, has
       amount?: number;
       wallet_id?: string | null;
       name?: string;
+      // v1.43.0 — category_name carried through verbatim. Client
+      // fuzzy-resolves to a real category_id from the household list.
+      category_name?: string;
     } = {};
     if (typeof patch.amount === "number" && patch.amount > 0) {
       cleanPatch.amount = correctJutaMiliarConfusion(transcript, Math.round(patch.amount));
     }
     if (typeof patch.wallet_id === "string" && walletIds.has(patch.wallet_id)) cleanPatch.wallet_id = patch.wallet_id;
     if (typeof patch.name === "string" && patch.name.trim()) cleanPatch.name = ucFirst(patch.name.trim());
-    // v1.42.3: category updates via voice no longer flow through this
-    // path — the user changes category via the picker in voice-row.
-    // The parse prompt also no longer mentions category_id.
+    if (typeof patch.category_name === "string" && patch.category_name.trim()) {
+      cleanPatch.category_name = patch.category_name.trim();
+    }
     if (Object.keys(cleanPatch).length === 0) return { kind: "noop" };
+
+    // v1.43.0: if no target was named AND there's only a category /
+    // name / amount change in the patch (i.e. the user said something
+    // like "change category to X"), default to mostRecent. Without
+    // this fallback resolveTarget returns null and the action gets
+    // silently dropped.
+    const hasName = typeof target.name === "string" && target.name.trim();
+    const hasMostRecent = target.mostRecent === true;
+    const targetMostRecent = !hasName && !hasMostRecent ? true : hasMostRecent;
+
     return {
       kind: "update",
       target: {
-        name: typeof target.name === "string" ? target.name : null,
-        mostRecent: target.mostRecent === true,
+        name: hasName ? (target.name as string) : null,
+        mostRecent: targetMostRecent,
       },
       patch: cleanPatch,
     };

@@ -92,7 +92,14 @@ export type VoiceActionUpdate = {
   target: VoiceTarget;
   patch: Partial<{
     amount: number;
+    /** Deprecated — voice no longer emits ids. v1.43.0 switched to
+     *  category_name + client-side fuzzy resolve. Kept on the type
+     *  for any consumer that still hands a pre-resolved id. */
     category_id: string | null;
+    /** v1.43.0 — verbatim phrasing from the user ("transport", "food
+     *  and drinks", etc). Client fuzzy-matches against the full
+     *  household category list. */
+    category_name: string;
     wallet_id: string | null;
     name: string;
   }>;
@@ -137,8 +144,11 @@ export type VoiceContext = {
   categories: VoiceCategoryLite[];
   wallets: VoiceWalletLite[];
   /** The current draft list — Gemini uses this to resolve "the kopi"
-   *  vs "the bensin" references. Only the name + id are needed. */
-  rows: Array<{ id: string; name: string }>;
+   *  vs "the bensin" references. Only the name + id are needed.
+   *  v1.43.0 — `incomplete: true` flags rows with amount=0 (waiting
+   *  for a follow-up amount). The server safety net uses this to
+   *  rewrite a bare-number utterance into an update-mostRecent. */
+  rows: Array<{ id: string; name: string; incomplete?: boolean }>;
   /** Default wallet id — used as fallback when Gemini returns null. */
   defaultWalletId: string | null;
 };
