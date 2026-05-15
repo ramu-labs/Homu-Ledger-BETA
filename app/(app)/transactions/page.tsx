@@ -146,7 +146,11 @@ export default async function TransactionsPage() {
     fetchLedgerTotalRows(supabase, household.id),
     voiceFlagPromise,
   ]);
-  const voiceEnabled = voiceFlagRow?.value === "true";
+  // v1.41.1: voice is dev-only for now. The flag still has to be flipped
+  // in app_settings AND the viewing profile has to be a developer. This
+  // narrows the blast radius while we shake out edge cases on real
+  // hardware before opening to everyone.
+  const voiceEnabled = voiceFlagRow?.value === "true" && profile.is_developer === true;
 
   const categories: DbCategory[] = categoriesRaw ?? [];
   const wallets: DbWallet[] = (walletsRaw ?? []).map((w) => ({
