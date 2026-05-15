@@ -96,12 +96,27 @@ export default function TransactionList({ transactions, members, currency = "IDR
           ? { animation: `row-in 0.22s ${staggerMs}ms ease both, tx-flash 0.9s ${staggerMs}ms ease both` }
           : { animationDelay: `${staggerMs}ms` };
 
+        // v1.36.0 — pending rows render at 60% opacity so the user
+        // can see they exist but they read as "not landed yet".
+        // We also disable the tap target (no edit sheet) until the
+        // server has the canonical row, so they don't try to mutate
+        // a transient client-side object.
+        const isPending = !!t._pending;
+
         return (
           <li
             key={t.id}
-            onClick={() => onTap?.(t)}
-            className="flex items-center gap-3 px-4 py-3.5 min-h-[60px] active:bg-black/[0.02] transition-colors cursor-pointer animate-row-in"
+            onClick={() => {
+              if (isPending) return;
+              onTap?.(t);
+            }}
+            className={`flex items-center gap-3 px-4 py-3.5 min-h-[60px] transition-colors animate-row-in ${
+              isPending
+                ? "opacity-60 cursor-default"
+                : "active:bg-black/[0.02] cursor-pointer"
+            }`}
             style={rowStyle}
+            aria-busy={isPending || undefined}
           >
             {isTransfer ? (
               // ── TRANSFER ROW ──────────────────────────────────────────────
@@ -177,19 +192,29 @@ export default function TransactionList({ transactions, members, currency = "IDR
               </p>
             </div>
 
-            <p
-              className={`text-[15px] font-semibold tabular-nums tracking-tight ${
-                isTransfer
-                  ? "text-[#EE6452]"
-                  : t.type === "income"
-                  ? "text-emerald-600"
-                  : "text-[var(--foreground)]"
-              }`}
-            >
-              {isTransfer
-                ? formatAmount(t.amount, currency)
-                : formatAmountSigned(t.amount, t.type, currency)}
-            </p>
+            <div className="flex flex-col items-end gap-0.5 shrink-0">
+              <p
+                className={`text-[15px] font-semibold tabular-nums tracking-tight ${
+                  isTransfer
+                    ? "text-[#EE6452]"
+                    : t.type === "income"
+                    ? "text-emerald-600"
+                    : "text-[var(--foreground)]"
+                }`}
+              >
+                {isTransfer
+                  ? formatAmount(t.amount, currency)
+                  : formatAmountSigned(t.amount, t.type, currency)}
+              </p>
+              {/* Pending badge — only renders for queued offline rows.
+                  Sized to match the inline "Recurring" pill on the
+                  first row so the right column reads visually balanced. */}
+              {isPending && (
+                <span className="rounded-full bg-[var(--label-tertiary)]/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[var(--label-secondary)]">
+                  {tr("common.pending")}
+                </span>
+              )}
+            </div>
           </li>
         );
             })}

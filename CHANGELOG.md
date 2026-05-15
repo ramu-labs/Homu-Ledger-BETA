@@ -2,6 +2,98 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.36.0 - May 15, 2026
+
+Four things from the post-v1.35.1 review:
+
+### 1. Optimistic "Pending" rows for queued offline transactions
+
+v1.35.1 shipped the queue + replay but explicitly deferred the optimistic-UI piece ("item #7 in deliberately NOT this PR"). Users on hostile networks would tap Add → the sheet would close → the row wouldn't appear until they reconnected and the replay loop drained. This PR closes that gap.
+
+**New hook** `lib/use-pending-transactions.ts` — `usePendingAddTransactionOps()` subscribes to `sync-queue`, filters to `addTransaction` ops, returns a live `QueuedOp[]` snapshot via `useState` + the queue's existing pub/sub.
+
+**Synthesis** in `components/transactions-shell.tsx` — for each pending op, build a `DbTransaction`-shaped row:
+- `id = op.id` (same as `client_op_id`, so replay's INSERT lands the same key and the SSR row supplants the synthetic one with zero flicker)
+- `category` / `wallets` looked up against the in-memory `allCategories` / `allWallets`
+- `created_at` from `op.createdAt` so within-day ordering matches server rows
+- `_pending: true` — a new optional flag on `DbTransaction`
+
+These synthetic rows are merged with the SSR'd transactions BEFORE the existing transfer-flatten / filter pipeline runs, so search / category / date filters apply to them uniformly.
+
+**Rendering** in `components/transaction-list.tsx` — when `_pending` is true:
+- Row at 60% opacity, `cursor-default`, `aria-busy`
+- Tap target disabled (you can't edit a row that hasn't landed yet)
+- "Pending" pill rendered under the amount (uses existing `common.pending` i18n key, already shipped for the status pill)
+
+When replay succeeds and the SSR list refreshes, the server-rendered row appears with the same id — React keys reconcile, the synthetic row falls out, no flicker.
+
+### 2. Edit Profile button contrast fixed
+
+The Save Changes button used `text-white` on `bg-[var(--foreground)]`, which is the one combo that breaks dark mode: `--foreground` is near-white in dark theme, so the white text disappeared on top of it (the bug from the user's screenshot).
+
+Fix is one line — switch `text-white` → `text-[var(--on-foreground)]` so the text always inverts against its background:
+
+```diff
+- "...text-white...",
+- saved ? "bg-emerald-500" : "bg-[var(--foreground)] disabled:opacity-60"
++ saved
++   ? "bg-emerald-500 text-white"           // green stays green
++   : "bg-[var(--foreground)] text-[var(--on-foreground)] disabled:opacity-60"
+```
+
+Audit grep across `app/` and `components/` turned up no similar offenders — every other `bg-[var(--foreground)]` button in the codebase already pairs it correctly with `text-[var(--on-foreground)]`. The pattern is solid; this was a one-off regression.
+
+### 3. Edit Profile reorganised into 3 sections + inline password change
+
+`components/edit-profile-shell.tsx` rewritten as three rounded cards:
+
+1. **Avatar** — preview + style toggle + initials/emoji + 9-colour swatch row (trimmed from 14)
+2. **Details** — name / username / gender / DoB
+3. **Email & Password** — email (read-only for now; change-email flow is queued for v1.37.0) + new password + confirm new password + Update password button
+
+Sections 1+2 share one submit `<form>` (Save Changes button). Section 3 lives in its own `<form>` with an Update password button — so password validation failures can't roll back identity edits.
+
+`updatePassword` server action stays as-is and is now called from inside Edit Profile.
+
+**`/settings/security` removed entirely.** The Settings → Account → Security RowLink is deleted, the `Lock` icon import on `app/(app)/settings/page.tsx` cleaned up, and both `app/(app)/settings/security/page.tsx` and `components/security-shell.tsx` are gone from the tree.
+
+**Google-only users** (no email/password identity) see an informational hint in section 3 instead of the form. Detection happens server-side via `user.identities[].provider` so the right shape renders on first paint, no flicker.
+
+### 4. Default light mode
+
+`app/layout.tsx` theme bootstrap: when `localStorage.getItem('homu-theme')` returns nothing, we now resolve to `'light'` instead of consulting `prefers-color-scheme`. Existing users with a theme preference are unaffected.
+
+```diff
+- var resolved=(t==='light'||t==='dark')?t:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
++ var resolved=(t==='light'||t==='dark')?t:'light';
+```
+
+Mostly cosmetic but it shrinks the surface of "did we audit every state in dark mode" anxiety. Users can still flip via Settings → Theme.
+
+### Files touched
+
+- `lib/types.ts` — `DbTransaction._pending?: boolean`
+- `lib/use-pending-transactions.ts` (new)
+- `components/transactions-shell.tsx` — synthesise + merge pending rows
+- `components/transaction-list.tsx` — opacity + Pending pill + disabled tap target
+- `components/edit-profile-shell.tsx` — rewritten as 3 sections, inline password, contrast fix, 9 colours
+- `app/(app)/settings/edit-profile/page.tsx` — passes `hasEmailPassword`
+- `app/(app)/settings/security/page.tsx` — deleted
+- `components/security-shell.tsx` — deleted
+- `app/(app)/settings/page.tsx` — Security RowLink + `Lock` import removed
+- `app/layout.tsx` — theme bootstrap defaults to light
+- `lib/version.ts` — `APP_VERSION = "1.36.0"`
+- `lib/changelog.ts` — v1.36.0 entry
+- Version bumps in `package.json`, `public/sw.js`, settings footer
+
+### Not in this PR (queued for follow-ups)
+
+- **Change email with OTP** — needs decision on which inbox gets the code (old vs new) + email template wording. v1.37.0.
+- **Onboarding redesign with use-case picker + preselected categories** — needs you to define the 6 use cases and per-case category sets. v1.38.0.
+- **Dark-mode design-system pass** — loading-skeletons, splash, broader button audit. v1.39.0 if it stays a priority after v1.37/v1.38 ship.
+
+---
+
 ## v1.35.1 - May 15, 2026
 
 **Pragmatic offline, Phase 3 of 3** — queued writes, plus the timeout fixes that make offline reliable on iOS.

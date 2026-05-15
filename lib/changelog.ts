@@ -45,6 +45,41 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.36.0",
+    date: "May 15, 2026",
+    changes: [
+      // ── User-facing ──
+      { type: "new", audience: "user",
+        en: "Add a transaction while offline and you'll now see it in the list straight away with a 'Pending' tag. The row syncs automatically once you're back online and the tag disappears.",
+        id: "Tambahkan transaksi saat offline dan kamu langsung melihatnya di daftar dengan tanda 'Pending'. Baris akan sinkron otomatis setelah online lagi dan tandanya hilang." },
+      { type: "fix", audience: "user",
+        en: "Fixed the 'Save Changes' button in Edit Profile being unreadable in dark mode (white text on a white button).",
+        id: "Memperbaiki tombol 'Save Changes' di Edit Profile yang tidak terbaca di mode gelap (teks putih di tombol putih)." },
+      { type: "improvement", audience: "user",
+        en: "Edit Profile reorganised into three clear sections: Avatar (now 9 colours), Details (name, username, gender, date of birth), and Email & Password. The standalone Security page is gone — change your password right inside Edit Profile.",
+        id: "Edit Profile dirapikan jadi tiga bagian: Avatar (sekarang 9 warna), Detail (nama, username, jenis kelamin, tanggal lahir), dan Email & Password. Halaman Security terpisah dihapus — ganti password langsung di Edit Profile." },
+      { type: "improvement", audience: "user",
+        en: "The app now opens in light mode by default. You can still flip to dark via Settings → Theme.",
+        id: "App sekarang terbuka di mode terang secara default. Kamu masih bisa ganti ke mode gelap lewat Pengaturan → Theme." },
+      // ── Developer-facing ──
+      { type: "new", audience: "dev",
+        en: "Optimistic rows for queued transactions. New `usePendingAddTransactionOps` hook in lib/use-pending-transactions.ts subscribes to sync-queue, returns the filtered op list. transactions-shell synthesises DbTransaction-shaped rows from each op (id = client_op_id), merges them with the SSR'd list, then runs everything through the existing transfer-flatten + filter pipeline so search / category / date filters apply uniformly. DbTransaction gets a `_pending?: boolean` flag; transaction-list reads it for 60% opacity + a Pending pill + a disabled tap target.",
+        id: "Optimistic row untuk transaksi yang sedang antri. Hook baru `usePendingAddTransactionOps` di lib/use-pending-transactions.ts subscribe ke sync-queue, return list op terfilter. transactions-shell mensintesis row berbentuk DbTransaction dari tiap op (id = client_op_id), menggabungkannya dengan list SSR, lalu menjalankan semuanya lewat pipeline transfer-flatten + filter yang sudah ada sehingga filter search / kategori / tanggal berlaku seragam. DbTransaction dapat flag `_pending?: boolean`; transaction-list membacanya untuk opacity 60% + pill Pending + tap target dinonaktifkan." },
+      { type: "fix", audience: "dev",
+        en: "Edit Profile Save Changes button: was `text-white` on `bg-[var(--foreground)]` which is white-on-white in dark mode. Switched to `text-[var(--on-foreground)]` so it always inverts against the background. No similar offenders found in the wider audit — every other `bg-[var(--foreground)]` button in the app already paired it with `text-[var(--on-foreground)]`.",
+        id: "Tombol Save Changes Edit Profile: dulu `text-white` di atas `bg-[var(--foreground)]` = putih di putih saat dark mode. Diubah ke `text-[var(--on-foreground)]` jadi selalu kebalikan dari background. Audit lebih luas tidak menemukan pelaku lain — tombol `bg-[var(--foreground)]` lain di aplikasi sudah benar pakai `text-[var(--on-foreground)]`." },
+      { type: "improvement", audience: "dev",
+        en: "Edit Profile is now three sections (Avatar / Details / Email & Password). Section 3 owns the password change form — `app/(app)/settings/security/page.tsx` and `components/security-shell.tsx` are deleted. updatePassword server action stays; it's now called from within Edit Profile. Google-only users (no email/password identity) see a hint instead of the password form. Settings page lost its Security RowLink + Lock icon import.",
+        id: "Edit Profile sekarang tiga section (Avatar / Detail / Email & Password). Section 3 punya form ganti password — `app/(app)/settings/security/page.tsx` dan `components/security-shell.tsx` dihapus. Aksi server updatePassword tetap; sekarang dipanggil dari dalam Edit Profile. User Google-only (tanpa identity email/password) melihat hint, bukan form password. Settings page kehilangan RowLink Security + import icon Lock." },
+      { type: "improvement", audience: "dev",
+        en: "Theme bootstrap defaults to 'light' instead of consulting `prefers-color-scheme`. Existing users with `homu-theme` in localStorage are unaffected — only the no-localStorage path changes. Trims the dark-mode-by-default audit surface.",
+        id: "Bootstrap tema default ke 'light' alih-alih konsultasi `prefers-color-scheme`. User yang sudah punya `homu-theme` di localStorage tidak terpengaruh — hanya jalur no-localStorage yang berubah. Mengecilkan permukaan audit dark-mode-by-default." },
+      { type: "improvement", audience: "dev",
+        en: "Avatar colour palette trimmed 14 → 9 in Edit Profile per the spec. Kept the most chromatically distinct hues across the wheel so they still read as separate options on a small swatch.",
+        id: "Palet warna avatar di Edit Profile dipangkas 14 → 9 sesuai spec. Disisakan warna yang paling beda di lingkaran agar tetap mudah dibedakan di swatch kecil." },
+    ],
+  },
+  {
     version: "1.35.1",
     date: "May 15, 2026",
     changes: [

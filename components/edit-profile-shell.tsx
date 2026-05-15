@@ -1,22 +1,39 @@
 "use client";
 
-// Edit Profile (v1.33.0).
+// Edit Profile (v1.36.0).
 //
-// Password change moved to /settings/security — Edit Profile is now
-// purely identity (name, username, avatar, gender, DoB, read-only
-// email). Keeps the surface focused: changes here can never lock you
-// out of your account, so we can keep them friction-light.
+// Reorganised into three cards matching the rest of the Settings UX:
+//   1. Avatar Style & Background Colour (9 colours, trimmed from 14)
+//   2. Details — name / username / gender / DoB
+//   3. Email & Password — email (read-only for now) + change-password
+//
+// The password subsection is hidden entirely for Google-only users
+// (no email/password identity) — `/settings/security` is gone in this
+// release, so we own that "Google-only sees a hint" behaviour here.
+//
+// We deliberately keep TWO submit buttons (identity vs. password) so
+// password validation failures don't roll back identity changes (and
+// vice versa). They write through different server actions anyway.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Check } from "lucide-react";
-import { updateProfile } from "@/app/actions/auth";
+import { ChevronLeft, Check, Eye, EyeOff, Lock } from "lucide-react";
+import { updateProfile, updatePassword } from "@/app/actions/auth";
 import { cn } from "@/lib/cn";
 
+// Trimmed from 14 → 9 in v1.36.0. Kept the most chromatically distinct
+// hues across the wheel so users can still tell them apart on a small
+// avatar circle.
 const COLOR_PALETTE = [
-  "#f97316", "#3b82f6", "#8b5cf6", "#ef4444",
-  "#ec4899", "#eab308", "#14b8a6", "#22c55e", "#6b7280",
-  "#f59e0b", "#06b6d4", "#84cc16", "#a855f7", "#f43f5e",
+  "#f97316", // orange
+  "#3b82f6", // blue
+  "#8b5cf6", // violet
+  "#ef4444", // red
+  "#ec4899", // pink
+  "#eab308", // amber
+  "#14b8a6", // teal
+  "#22c55e", // green
+  "#6b7280", // grey
 ];
 
 // 2 hair colours (blonde/light · dark/black) × 2 skin tones (light 🏻 · medium-light 🏼)
@@ -56,10 +73,12 @@ type Props = {
     gender: Gender | null;
     birth_date: string | null;
   };
+  hasEmailPassword: boolean;
 };
 
-export default function EditProfileShell({ profile }: Props) {
+export default function EditProfileShell({ profile, hasEmailPassword }: Props) {
   const router = useRouter();
+  // ── Section 1 + 2 identity state ────────────────────────────────────
   const [name, setName] = useState(profile.name);
   const [username, setUsername] = useState(profile.username ?? "");
   const [avatarColor, setAvatarColor] = useState(profile.avatar_color);
@@ -72,39 +91,70 @@ export default function EditProfileShell({ profile }: Props) {
   const [selectedEmoji, setSelectedEmoji] = useState(
     FACE_EMOJIS.includes(profile.initials) ? profile.initials : FACE_EMOJIS[0]
   );
-  // v1.33.0 — gender + birth_date now live on this form. Both
-  // optional, so users who pre-date the v1.32.0 signup flow can leave
-  // them blank.
   const [gender, setGender] = useState<Gender | null>(profile.gender);
   const [birthDate, setBirthDate] = useState<string>(profile.birth_date ?? "");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [identityLoading, setIdentityLoading] = useState(false);
+  const [identityError, setIdentityError] = useState<string | null>(null);
+  const [identitySaved, setIdentitySaved] = useState(false);
+
+  // ── Section 3 password state (isolated so its errors don't block
+  //    identity saves and vice versa) ─────────────────────────────────
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSaved, setPwSaved] = useState(false);
 
   const displayInitials = avatarMode === "emoji" ? selectedEmoji : (initials || profile.initials);
 
-  async function handleSave(e: React.FormEvent) {
+  async function handleIdentitySave(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
+    setIdentityError(null);
+    setIdentitySaved(false);
+    setIdentityLoading(true);
     const fd = new FormData();
     fd.set("name", name);
     fd.set("username", username);
     fd.set("avatar_color", avatarColor);
     fd.set("initials", displayInitials);
-    // Send gender + birth_date through. Empty strings tell the server
-    // action to leave the existing value untouched (for opted-out
-    // users who don't want to fill them in).
     if (gender) fd.set("gender", gender);
     if (birthDate) fd.set("birth_date", birthDate);
     const result = await updateProfile(fd);
+    setIdentityLoading(false);
     if (result.error) {
-      setError(result.error);
-      setLoading(false);
-    } else {
-      setSaved(true);
-      setTimeout(() => router.back(), 600);
+      setIdentityError(result.error);
+      return;
     }
+    setIdentitySaved(true);
+    // Auto-clear the saved state after a beat so the button returns
+    // to its "Save Changes" rest state — the user might want to make
+    // another tweak without remounting the page.
+    setTimeout(() => setIdentitySaved(false), 1500);
+  }
+
+  async function handlePasswordSave(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError(null);
+    setPwSaved(false);
+    if (newPw.length < 8) {
+      setPwError("Password must be at least 8 characters.");
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setPwError("Passwords don't match.");
+      return;
+    }
+    setPwLoading(true);
+    const result = await updatePassword(newPw);
+    setPwLoading(false);
+    if (result.error) {
+      setPwError(result.error);
+      return;
+    }
+    setPwSaved(true);
+    setNewPw("");
+    setConfirmPw("");
   }
 
   // Date picker bounds — match the signup form's 13–120 years range.
@@ -126,185 +176,294 @@ export default function EditProfileShell({ profile }: Props) {
         <div className="h-9 w-9" />
       </header>
 
-      <form onSubmit={handleSave} className="px-5 space-y-5 mt-4">
+      <form onSubmit={handleIdentitySave} className="px-5 mt-4 space-y-4">
 
-        {/* Avatar preview */}
-        <div className="flex flex-col items-center gap-3">
-          <div
-            className="flex h-20 w-20 items-center justify-center rounded-full text-[32px] font-semibold text-white shadow-md"
-            style={{ backgroundColor: avatarColor }}
-          >
-            {displayInitials}
-          </div>
-        </div>
+        {/* ── Section 1 — Avatar Style & Background Colour ───────── */}
+        <section className="rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] p-4 space-y-4">
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
+            Avatar
+          </p>
 
-        {/* Avatar mode toggle */}
-        <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Avatar style</label>
-          <div className="flex gap-1 rounded-full bg-black/[0.05] p-1 mb-3">
-            {(["initial", "emoji"] as const).map((m) => (
-              <button key={m} type="button" onClick={() => setAvatarMode(m)}
-                className={cn("flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
-                  avatarMode === m ? "bg-[var(--surface)] text-[var(--foreground)] shadow-sm" : "text-[var(--label-secondary)]"
-                )}
-              >
-                {m === "initial" ? "Initials" : "Face emoji"}
-              </button>
-            ))}
+          {/* Preview */}
+          <div className="flex flex-col items-center gap-3">
+            <div
+              className="flex h-20 w-20 items-center justify-center rounded-full text-[32px] font-semibold text-white shadow-md"
+              style={{ backgroundColor: avatarColor }}
+            >
+              {displayInitials}
+            </div>
           </div>
 
-          {avatarMode === "initial" ? (
-            <input
-              type="text"
-              value={initials}
-              onChange={(e) => setInitials(e.target.value.toUpperCase().slice(0, 2))}
-              placeholder="e.g. MJ"
-              maxLength={2}
-              className="h-12 w-full rounded-2xl bg-[var(--surface)] px-4 text-center text-[18px] font-semibold tracking-wider outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
-            />
-          ) : (
-            <>
-              <div className="grid grid-cols-6 gap-2">
-                {FACE_EMOJIS.map((em) => (
-                  <button key={em} type="button" onClick={() => setSelectedEmoji(em)}
-                    className={cn(
-                      "flex aspect-square items-center justify-center rounded-xl text-[22px] transition-all",
-                      selectedEmoji === em
-                        ? "bg-[var(--foreground)]/10 ring-2 ring-[var(--foreground)]/30 scale-95"
-                        : "bg-[var(--surface)] ring-1 ring-black/[0.06]"
-                    )}
-                  >
-                    {em}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <div className="h-px flex-1 bg-black/[0.07]" />
-                <span className="text-[11px] text-[var(--label-tertiary)]">or type your own</span>
-                <div className="h-px flex-1 bg-black/[0.07]" />
-              </div>
+          {/* Style toggle */}
+          <div>
+            <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Avatar style</label>
+            <div className="flex gap-1 rounded-full bg-black/[0.05] p-1 mb-3">
+              {(["initial", "emoji"] as const).map((m) => (
+                <button key={m} type="button" onClick={() => setAvatarMode(m)}
+                  className={cn("flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
+                    avatarMode === m ? "bg-[var(--background)] text-[var(--foreground)] shadow-sm" : "text-[var(--label-secondary)]"
+                  )}
+                >
+                  {m === "initial" ? "Initials" : "Face emoji"}
+                </button>
+              ))}
+            </div>
+
+            {avatarMode === "initial" ? (
               <input
                 type="text"
-                value={FACE_EMOJIS.includes(selectedEmoji) ? "" : selectedEmoji}
-                onChange={(e) => {
-                  const val = e.target.value.trim();
-                  if (val) setSelectedEmoji(val);
-                }}
-                placeholder="Paste any emoji ✨"
-                className="mt-2 h-12 w-full rounded-2xl bg-[var(--surface)] px-4 text-center text-[22px] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow placeholder:text-[18px] placeholder:text-[var(--label-tertiary)]"
+                value={initials}
+                onChange={(e) => setInitials(e.target.value.toUpperCase().slice(0, 2))}
+                placeholder="e.g. MJ"
+                maxLength={2}
+                className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-center text-[18px] font-semibold tracking-wider outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
               />
-            </>
-          )}
-        </div>
-
-        {/* Background color */}
-        <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Background color</label>
-          <div className="flex flex-wrap gap-2">
-            {COLOR_PALETTE.map((c) => (
-              <button key={c} type="button" onClick={() => setAvatarColor(c)}
-                className={cn("h-9 w-9 rounded-full transition-all",
-                  avatarColor === c ? "ring-2 ring-offset-2 ring-[var(--foreground)]/50 scale-110" : ""
-                )}
-                style={{ backgroundColor: c }}
-              />
-            ))}
+            ) : (
+              <>
+                <div className="grid grid-cols-6 gap-2">
+                  {FACE_EMOJIS.map((em) => (
+                    <button key={em} type="button" onClick={() => setSelectedEmoji(em)}
+                      className={cn(
+                        "flex aspect-square items-center justify-center rounded-xl text-[22px] transition-all",
+                        selectedEmoji === em
+                          ? "bg-[var(--foreground)]/10 ring-2 ring-[var(--foreground)]/30 scale-95"
+                          : "bg-[var(--background)] ring-1 ring-black/[0.06]"
+                      )}
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <div className="h-px flex-1 bg-black/[0.07]" />
+                  <span className="text-[11px] text-[var(--label-tertiary)]">or type your own</span>
+                  <div className="h-px flex-1 bg-black/[0.07]" />
+                </div>
+                <input
+                  type="text"
+                  value={FACE_EMOJIS.includes(selectedEmoji) ? "" : selectedEmoji}
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    if (val) setSelectedEmoji(val);
+                  }}
+                  placeholder="Paste any emoji ✨"
+                  className="mt-2 h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-center text-[22px] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow placeholder:text-[18px] placeholder:text-[var(--label-tertiary)]"
+                />
+              </>
+            )}
           </div>
-        </div>
 
-        {/* Full name */}
-        <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Full name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="h-12 w-full rounded-2xl bg-[var(--surface)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
-          />
-        </div>
+          {/* Background colour — 9 swatches now (was 14). Trimmed
+              in v1.36.0 per design — fewer choices, less decision tax. */}
+          <div>
+            <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Background colour</label>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_PALETTE.map((c) => (
+                <button key={c} type="button" onClick={() => setAvatarColor(c)}
+                  className={cn("h-9 w-9 rounded-full transition-all",
+                    avatarColor === c ? "ring-2 ring-offset-2 ring-[var(--foreground)]/50 scale-110" : ""
+                  )}
+                  style={{ backgroundColor: c }}
+                  aria-label={`Use colour ${c}`}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
 
-        {/* Username */}
-        <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Username</label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[15px] text-[var(--label-tertiary)]">@</span>
+        {/* ── Section 2 — Details ────────────────────────────────── */}
+        <section className="rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] p-4 space-y-4">
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
+            Details
+          </p>
+
+          {/* Full name */}
+          <div>
+            <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Full name</label>
             <input
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-              placeholder="yourname"
-              maxLength={20}
-              className="h-12 w-full rounded-2xl bg-[var(--surface)] pl-8 pr-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
             />
           </div>
-        </div>
 
-        {/* Email (read-only) */}
+          {/* Username */}
+          <div>
+            <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Username</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[15px] text-[var(--label-tertiary)]">@</span>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                placeholder="yourname"
+                maxLength={20}
+                className="h-12 w-full rounded-2xl bg-[var(--background)] pl-8 pr-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
+              />
+            </div>
+          </div>
+
+          {/* Gender */}
+          <div>
+            <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Gender</label>
+            <div className="grid grid-cols-2 gap-2">
+              {GENDER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setGender(opt.value)}
+                  className={cn(
+                    "h-11 rounded-2xl text-[13px] font-medium transition-colors [touch-action:manipulation]",
+                    gender === opt.value
+                      ? "bg-[var(--foreground)] text-[var(--on-foreground)]"
+                      : "bg-[var(--background)] text-[var(--foreground)] ring-1 ring-black/[0.08]"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Date of birth */}
+          <div>
+            <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Date of birth</label>
+            <input
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              min={dobMin}
+              max={dobMax}
+              className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow [color-scheme:light]"
+            />
+          </div>
+
+          {identityError && (
+            <p className="rounded-xl bg-rose-50 px-4 py-2.5 text-[13px] text-rose-700 ring-1 ring-rose-200">{identityError}</p>
+          )}
+
+          {/* Save Changes button — v1.36.0 contrast fix: was
+              `text-white` on `bg-[var(--foreground)]` which is
+              white-on-white in dark mode (the bug the user
+              screenshotted). Switched to `text-[var(--on-foreground)]`
+              which always inverts against the background. */}
+          <button
+            type="submit"
+            disabled={identityLoading || identitySaved}
+            className={cn(
+              "flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold transition-all",
+              identitySaved
+                ? "bg-emerald-500 text-white"
+                : "bg-[var(--foreground)] text-[var(--on-foreground)] disabled:opacity-60"
+            )}
+          >
+            {identitySaved ? (
+              <>
+                <Check className="h-4 w-4" /> Saved
+              </>
+            ) : identityLoading ? "Saving…" : "Save Changes"}
+          </button>
+        </section>
+      </form>
+
+      {/* ── Section 3 — Email & Password ──────────────────────────── */}
+      {/* Lives outside the identity <form> so submitting one doesn't
+          submit the other. Password row only renders for users who
+          actually have an email/password identity. */}
+      <section className="mx-5 mt-4 rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] p-4 space-y-4">
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-[var(--label-tertiary)]">
+          Email &amp; Password
+        </p>
+
+        {/* Email — read-only in this release. Change-email flow lands
+            in a follow-up PR (needs OTP design). */}
         <div>
           <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Email</label>
           <input
             type="email"
             value={profile.email}
             readOnly
-            className="h-12 w-full rounded-2xl bg-black/[0.03] px-4 text-[15px] text-[var(--label-secondary)] outline-none ring-1 ring-black/[0.05] cursor-default"
+            className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-[15px] text-[var(--label-secondary)] outline-none ring-1 ring-black/[0.05] cursor-default"
           />
         </div>
 
-        {/* Gender — same 4-option pill layout as the signup form so
-            users recognise it. Skipping the field leaves the existing
-            value untouched on save. */}
-        <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Gender</label>
-          <div className="grid grid-cols-2 gap-2">
-            {GENDER_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => setGender(opt.value)}
-                className={cn(
-                  "h-11 rounded-2xl text-[13px] font-medium transition-colors [touch-action:manipulation]",
-                  gender === opt.value
-                    ? "bg-[var(--foreground)] text-[var(--on-foreground)]"
-                    : "bg-[var(--surface)] text-[var(--foreground)] ring-1 ring-black/[0.08]"
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
+        {hasEmailPassword ? (
+          <form onSubmit={handlePasswordSave} className="space-y-3">
+            {/* New password */}
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">New password</label>
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  placeholder="••••••••"
+                  minLength={8}
+                  autoComplete="new-password"
+                  className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 pr-12 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full text-[var(--label-tertiary)]"
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                >
+                  {showPw ? <EyeOff className="h-4 w-4" strokeWidth={2} /> : <Eye className="h-4 w-4" strokeWidth={2} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm */}
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Confirm new password</label>
+              <input
+                type={showPw ? "text" : "password"}
+                value={confirmPw}
+                onChange={(e) => setConfirmPw(e.target.value)}
+                placeholder="••••••••"
+                minLength={8}
+                autoComplete="new-password"
+                className="h-12 w-full rounded-2xl bg-[var(--background)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
+              />
+            </div>
+
+            {pwError && (
+              <p className="rounded-xl bg-rose-50 px-4 py-2.5 text-[13px] text-rose-700 ring-1 ring-rose-200">{pwError}</p>
+            )}
+            {pwSaved && !pwError && (
+              <p className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-[12px] text-emerald-700 ring-1 ring-emerald-200">
+                <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} /> Password updated.
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={pwLoading || newPw.length === 0 || confirmPw.length === 0}
+              className="flex h-12 w-full items-center justify-center rounded-2xl bg-[#EE6452] text-[14px] font-semibold text-white disabled:opacity-60"
+            >
+              {pwLoading ? "Saving…" : "Update password"}
+            </button>
+          </form>
+        ) : (
+          // Google-only user — no password to change locally. Same
+          // copy/icon as the old /settings/security empty state.
+          <div className="flex items-start gap-3 rounded-xl bg-[var(--background)] px-3 py-3 ring-1 ring-black/[0.04]">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-[var(--foreground)]">
+              <Lock className="h-4 w-4" strokeWidth={2} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-[var(--foreground)]">
+                You signed in with Google
+              </p>
+              <p className="mt-0.5 text-[12px] text-[var(--label-secondary)]">
+                Your password is managed by Google for {profile.email}. To change it, update your password in your Google Account settings.
+              </p>
+            </div>
           </div>
-        </div>
-
-        {/* Date of birth — native picker, same 13–120 year bounds as
-            signup. Empty string is treated as "no change" by the
-            server (lets users leave their DoB blank). */}
-        <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Date of birth</label>
-          <input
-            type="date"
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
-            min={dobMin}
-            max={dobMax}
-            className="h-12 w-full rounded-2xl bg-[var(--surface)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow [color-scheme:light]"
-          />
-        </div>
-
-        {error && (
-          <p className="rounded-xl bg-rose-50 px-4 py-2.5 text-[13px] text-rose-700 ring-1 ring-rose-200">{error}</p>
         )}
-
-        <button
-          type="submit"
-          disabled={loading || saved}
-          className={cn(
-            "flex h-13 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold text-white transition-all",
-            saved ? "bg-emerald-500" : "bg-[var(--foreground)] disabled:opacity-60"
-          )}
-        >
-          {saved ? <><Check className="h-4 w-4" /> Saved</> : loading ? "Saving…" : "Save Changes"}
-        </button>
-      </form>
+      </section>
     </div>
   );
 }

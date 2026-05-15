@@ -128,4 +128,11 @@ export type DbTransaction = {
   /** Set on transfer rows after deduplication: the OTHER wallet in the pair. */
   peer_wallet?: DbWallet | null;
   photo_url: string | null;
+  /** Synthesised client-side from a queued offline op (v1.36.0). When
+   *  true, the row was added optimistically and is still waiting for
+   *  replay. `transaction-list.tsx` styles it at 60% opacity + adds a
+   *  "Pending" badge; the row vanishes when replay drains it and the
+   *  server-rendered version takes its place. Server-loaded rows
+   *  never carry this flag. */
+  _pending?: boolean;
 };

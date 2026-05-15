@@ -18,6 +18,7 @@ import { cn } from "@/lib/cn";
 import { formatAmount } from "@/lib/format";
 import type { DbTransaction, DbCategory, DbWallet, DbMember, DbHouseholdMembership, DbRecurringItem, DbPendingInvitation } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
+import { usePendingAddTransactionOps } from "@/lib/use-pending-transactions";
 
 type SubTab = "history" | "recurring";
 type DateFilter = "all" | "30d" | "this_month" | "custom";
@@ -158,27 +159,104 @@ export default function TransactionsShell({
 
   const hasActiveFilter = activeCategories.length > 0 || activeWallets.length > 0 || activeDateFilter !== "all";
 
+  // ── Pending (offline-queued) transactions (v1.36.0) ──────────────────
+  // Read the IndexedDB queue and synthesise DbTransaction-shaped rows
+  // for each `addTransaction` op that's still waiting to replay. These
+  // rows carry `_pending: true` so `transaction-list.tsx` can fade
+  // them and render a "Pending" badge. The id of the synthetic row is
+  // the op's client_op_id, which (a) doubles as the React key so the
+  // row doesn't remount, and (b) matches what the server eventually
+  // inserts — so when the replay loop succeeds and the SSR list
+  // refreshes, the server-rendered row supplants the synthetic one
+  // with zero flicker.
+  //
+  // We synthesise BEFORE the transfer-flatten / filter / sort pipeline
+  // so pending rows are subject to the same search + category + date
+  // filters as live rows. Single source of truth.
+  const pendingOps = usePendingAddTransactionOps();
+  const pendingTransactions = useMemo<DbTransaction[]>(() => {
+    return pendingOps.map((op) => {
+      const p = op.payload;
+      const categoryId = p.category_id || null;
+      const walletId = p.wallet_id || null;
+      const category = categoryId
+        ? allCategories.find((c) => c.id === categoryId) ?? null
+        : null;
+      const wallet = walletId
+        ? allWallets.find((w) => w.id === walletId) ?? null
+        : null;
+      const type: "income" | "expense" = p.type === "income" ? "income" : "expense";
+      return {
+        id: op.id,
+        type,
+        amount: Number(p.amount) || 0,
+        name: p.name ?? "",
+        category_id: categoryId,
+        wallet_id: walletId,
+        // Pending rows are always single-leg. Transfers aren't queued
+        // in v1.35.1 — `addTransfer` calls a different action that
+        // isn't wrapped by queuedAddTransaction.
+        transfer_pair_id: null,
+        recurring_item_id: null,
+        date: p.date ?? new Date(op.createdAt).toISOString().slice(0, 10),
+        // Pending rows skip the creator-badge attribution. The
+        // `currentUser` prop here only carries initials+colour (not an
+        // id), and "no creator" is a reasonable visual for a not-yet-
+        // -landed row anyway — the row also has the Pending pill +
+        // 60% opacity making its provenance obvious.
+        created_by: null,
+        // Use the op's enqueue time so the within-day ordering is
+        // "most recently added first", matching server-side rows.
+        created_at: new Date(op.createdAt).toISOString(),
+        categories: category,
+        wallets: wallet,
+        photo_url: null,
+        _pending: true,
+      };
+    });
+  }, [pendingOps, allCategories, allWallets]);
+
+  // Merge pending + server-loaded transactions into a single sorted
+  // array. Server transactions arrive sorted (date desc, then
+  // created_at desc); we re-sort the union with the same comparator
+  // so pending rows land in their correct chronological slot.
+  const mergedTransactions = useMemo<DbTransaction[]>(() => {
+    if (pendingTransactions.length === 0) return transactions;
+    return [...pendingTransactions, ...transactions].sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      if (a.created_at !== b.created_at) return a.created_at < b.created_at ? 1 : -1;
+      return 0;
+    });
+  }, [pendingTransactions, transactions]);
+
   // Transfers come back as TWO rows sharing transfer_pair_id (source +
   // destination). Drop the income half and attach peer_wallet to the source
   // so the list renders one "From → To" row per transfer. Done client-side
   // so it covers both server-rendered and API-fetched batches.
   const transfersFlattened = useMemo(() => {
     const peerByPair = new Map<string, DbTransaction["wallets"]>();
-    for (const t of transactions) {
+    for (const t of mergedTransactions) {
       if (t.transfer_pair_id && t.type === "income") {
         peerByPair.set(t.transfer_pair_id, t.wallets);
       }
     }
-    return transactions
+    return mergedTransactions
       .filter((t) => !(t.transfer_pair_id && t.type === "income"))
       .map((t) =>
         t.transfer_pair_id
           ? { ...t, peer_wallet: peerByPair.get(t.transfer_pair_id) ?? null }
           : t
       );
-  }, [transactions]);
+  }, [mergedTransactions]);
 
   // Filtered transactions
+  // Dep array now lists `transfersFlattened` (not raw `transactions`)
+  // because `transfersFlattened` is downstream of BOTH server data
+  // and the new merged-pending source. Before v1.36.0 this list only
+  // depended on `transactions` which "happened to work" because
+  // transfersFlattened was a pure memo of transactions; with pending
+  // rows in the mix that shortcut would skip recomputation when only
+  // the queue changed.
   const filteredTransactions = useMemo(() => {
     let result = transfersFlattened;
     if (searchQuery.trim()) {
@@ -195,7 +273,7 @@ export default function TransactionsShell({
       result = result.filter((t) => inDateRange(t.date, activeDateFilter, activeCustomStart, activeCustomEnd));
     }
     return result;
-  }, [transactions, searchQuery, activeCategories, activeWallets, activeDateFilter, activeCustomStart, activeCustomEnd]);
+  }, [transfersFlattened, searchQuery, activeCategories, activeWallets, activeDateFilter, activeCustomStart, activeCustomEnd]);
 
   // Recalc balance when filters active. Transfers are excluded from income/
   // expense totals (they net to zero across the ledger).

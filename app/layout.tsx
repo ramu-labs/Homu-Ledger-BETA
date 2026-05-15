@@ -63,10 +63,15 @@ export default function RootLayout({
             Uses next/script with strategy="beforeInteractive" — the
             Next.js 16 way to inject inline scripts that need to run before
             hydration without tripping the bare-<script>-in-React warning. */}
+        {/* v1.36.0 — default to LIGHT mode for new users instead of
+            following prefers-color-scheme. Most of our user research is
+            on light-mode mock-ups; defaulting to dark caused contrast
+            audit churn (see v1.36.0 button fix). Users who want dark
+            can flip Settings → Theme and we honour that.  */}
         <Script id="homu-theme-bootstrap" strategy="beforeInteractive">{`try{
 var t=localStorage.getItem('homu-theme');
 if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}
-var resolved=(t==='light'||t==='dark')?t:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+var resolved=(t==='light'||t==='dark')?t:'light';
 var raw=localStorage.getItem('homu-design-overrides');
 if(raw){var o=JSON.parse(raw);for(var k in o){var parts=k.split(':');if(parts.length===2&&parts[1]===resolved){document.documentElement.style.setProperty(parts[0],o[k]);}}}
 }catch(e){}`}</Script>
