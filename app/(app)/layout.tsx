@@ -5,6 +5,7 @@ import { getServerT } from "@/lib/i18n/server";
 import { requireSession } from "@/lib/auth/session";
 import DevFeedbackNotifier from "@/components/dev-feedback-notifier";
 import SyncStatusPill from "@/components/sync-status-pill";
+import SyncReplay from "@/components/sync-replay";
 import VersionGate from "@/components/version-gate";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -47,6 +48,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </main>
         <BottomNav />
         <SyncStatusPill />
+        <SyncReplay />
         <VersionGate />
         {isDeveloper && <DevFeedbackNotifier />}
       </div>

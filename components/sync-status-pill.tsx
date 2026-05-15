@@ -1,49 +1,65 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { WifiOff } from "lucide-react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { WifiOff, CloudOff } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
+import { count, subscribe } from "@/lib/sync-queue";
 
-/**
- * Tiny pill that appears only when the browser reports it's offline.
- *
- * Phase 1 of the pragmatic-offline rollout: reads now come from the SW
- * navigation cache when the network is down (see public/sw.js). Users
- * need a quiet signal that what they're seeing might be stale, otherwise
- * "the app works on the school wifi" reads as "the app updated me on the
- * school wifi" — which would be a worse, silent lie.
- *
- * Subscribes to navigator.onLine via useSyncExternalStore — the React-19
- * recommended pattern for external state. During SSR `getServerSnapshot`
- * returns `true` (we assume online) so the pill renders nothing on the
- * server and on the client's first paint, avoiding a hydration flash.
- *
- * Sits at z-40 so it's above page content but under modals (z-[60]) and
- * bottom-sheets.
- */
+// Pill that surfaces the two signals a user needs about offline state:
+//   1. Are we currently offline? (navigator.onLine)
+//   2. Are any writes still waiting to land on the server? (queue count)
+//
+// Visible only when at least one of those is true. The four states:
+//   online,  queue 0   → render nothing (hidden)
+//   offline, queue 0   → "Offline"                  (WifiOff)
+//   online,  queue N>0 → "N pending"                (CloudOff)
+//   offline, queue N>0 → "Offline · N pending"      (WifiOff)
+//
+// Sits below the status-bar shield at z-40 — above page content, under
+// modals (z-[60]+) and bottom-sheets.
 
-function subscribe(callback: () => void) {
-  window.addEventListener("online", callback);
-  window.addEventListener("offline", callback);
+function onlineSubscribe(cb: () => void) {
+  window.addEventListener("online", cb);
+  window.addEventListener("offline", cb);
   return () => {
-    window.removeEventListener("online", callback);
-    window.removeEventListener("offline", callback);
+    window.removeEventListener("online", cb);
+    window.removeEventListener("offline", cb);
   };
 }
-
-function getSnapshot() {
-  return navigator.onLine;
-}
-
-function getServerSnapshot() {
-  return true;
-}
+function getOnlineSnapshot() { return navigator.onLine; }
+function getOnlineServerSnapshot() { return true; }
 
 export default function SyncStatusPill() {
   const t = useT();
-  const online = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const online = useSyncExternalStore(onlineSubscribe, getOnlineSnapshot, getOnlineServerSnapshot);
 
-  if (online) return null;
+  // Pending count uses a plain useEffect + subscribe rather than
+  // useSyncExternalStore — count() returns a Promise, which doesn't fit
+  // the snapshot getter contract. The pub/sub pattern keeps the
+  // resubscription cheap and avoids a render every animation frame.
+  const [pending, setPending] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    async function refresh() {
+      const n = await count();
+      if (!cancelled) setPending(n);
+    }
+    refresh();
+    const unsub = subscribe(refresh);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, []);
+
+  if (online && pending === 0) return null;
+
+  const Icon = online ? CloudOff : WifiOff;
+  const label = !online && pending > 0
+    ? `${t("common.offline")} · ${pending} ${t("common.pending")}`
+    : !online
+    ? t("common.offline")
+    : `${pending} ${t("common.pending")}`;
 
   return (
     <div
@@ -53,8 +69,8 @@ export default function SyncStatusPill() {
       style={{ top: "calc(env(safe-area-inset-top) + 8px)" }}
     >
       <div className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-[var(--foreground)] px-3 py-1 text-xs font-medium text-[var(--on-foreground)] shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
-        <WifiOff className="h-3.5 w-3.5" aria-hidden />
-        {t("common.offline")}
+        <Icon className="h-3.5 w-3.5" aria-hidden />
+        {label}
       </div>
     </div>
   );

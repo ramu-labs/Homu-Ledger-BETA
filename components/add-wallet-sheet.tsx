@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { addWallet } from "@/app/actions/wallets";
+import { queuedAddWallet, isQueued } from "@/lib/queue-actions";
 import { cn } from "@/lib/cn";
 import { useT } from "@/lib/i18n/provider";
 import { WALLET_ICONS, makeWalletLucideSymbol } from "@/lib/wallet-icons";
@@ -69,7 +69,14 @@ export default function AddWalletSheet({ open, onClose, onAdded, iconStyle = "3d
     fd.set("symbol", selectedSymbol);
     fd.set("color", selectedColor);
     fd.set("initial_balance", initialBalance || "0");
-    const result = await addWallet(fd);
+    const result = await queuedAddWallet(fd);
+    // Offline / network drop: queued; the replay loop will hit the server
+    // when we're back. Close the sheet; the pill shows pending state.
+    if (isQueued(result)) {
+      reset();
+      onClose();
+      return;
+    }
     if (result.error) {
       setError(result.error);
       setLoading(false);

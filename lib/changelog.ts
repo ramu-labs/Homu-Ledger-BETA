@@ -45,6 +45,47 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.35.1",
+    date: "May 15, 2026",
+    changes: [
+      // ── User-facing ──
+      { type: "new", audience: "user",
+        en: "Add a transaction, wallet, or category while offline — it just works. Your tap is captured locally and quietly sent when you're back online. A small pill at the top shows what's still waiting to sync (e.g. ‘2 pending’).",
+        id: "Tambah transaksi, dompet, atau kategori saat offline — sekarang langsung bisa. Ketukanmu disimpan lokal dan dikirim diam-diam begitu online. Pil kecil di atas menampilkan apa yang masih menunggu sinkron (misal ‘2 pending’)." },
+      { type: "fix", audience: "user",
+        en: "Save no longer hangs on ‘Saving…’ forever when you're in airplane mode or on dead wifi — the app now gives up waiting after about 6 seconds and queues the tap locally instead.",
+        id: "Tombol Save tidak lagi macet di ‘Saving…’ terus-menerus saat mode pesawat atau wifi mati — aplikasi sekarang berhenti menunggu setelah sekitar 6 detik dan menyimpan ketukanmu lokal." },
+      { type: "fix", audience: "user",
+        en: "The AI category sparkle no longer spins forever when you're offline. It just skips and lets you pick a category yourself.",
+        id: "Sparkle AI kategori tidak lagi muter terus saat offline. Sekarang dia langsung skip dan kamu bisa pilih kategori sendiri." },
+      { type: "improvement", audience: "user",
+        en: "Editing and deleting still need an internet connection for now — that's the next phase. We focused on ‘add’ first because it's what you do most when you're out and about.",
+        id: "Mengedit dan menghapus masih perlu koneksi internet untuk saat ini — itu fase berikutnya. Untuk versi ini kami fokus dulu pada operasi ‘tambah’ karena itu yang paling sering kamu lakukan saat di luar rumah." },
+      // ── Developer-facing ──
+      { type: "new", audience: "dev",
+        en: "lib/sync-queue.ts — zero-dep IndexedDB queue (object store `ops` keyed by op id). enqueue / getAll / remove / recordFailure / count / subscribe. SSR-safe (every method no-ops when indexedDB is unavailable).",
+        id: "lib/sync-queue.ts — antrian IndexedDB tanpa dependensi (object store `ops` di-key oleh id op). enqueue / getAll / remove / recordFailure / count / subscribe. Aman SSR (semua method no-op kalau indexedDB tidak tersedia)." },
+      { type: "new", audience: "dev",
+        en: "lib/queue-actions.ts — queuedAddTransaction / queuedAddWallet / queuedAddCategory. Each generates a UUID client_op_id, tries the live server action when online, and falls back to the queue on TypeError / 'network' / 'fetch' errors. Returns the original action's shape OR `{ queued: true }`. Use isQueued() to branch.",
+        id: "lib/queue-actions.ts — queuedAddTransaction / queuedAddWallet / queuedAddCategory. Tiap fungsi menghasilkan UUID client_op_id, mencoba server action live saat online, dan fallback ke queue saat error TypeError / 'network' / 'fetch'. Mengembalikan bentuk action asli ATAU `{ queued: true }`. Gunakan isQueued() untuk branching." },
+      { type: "new", audience: "dev",
+        en: "components/sync-replay.tsx — mounted invisibly in app/(app)/layout.tsx. Drains the queue FIFO on mount, on window 'online', and on document visibilitychange→visible. Single-flight via module-level flag. Per-op MAX_ATTEMPTS=5. Calls router.refresh() after any successful drain so the freshly-landed rows appear in the SSR'd list without a manual reload.",
+        id: "components/sync-replay.tsx — dipasang invisible di app/(app)/layout.tsx. Mengosongkan queue FIFO saat mount, saat event 'online' window, dan saat document visibilitychange→visible. Single-flight via flag level modul. MAX_ATTEMPTS=5 per op. Memanggil router.refresh() setelah drain sukses agar baris yang baru landed tampil di list SSR tanpa reload manual." },
+      { type: "improvement", audience: "dev",
+        en: "SyncStatusPill expanded: four states (online+0 → hidden / offline+0 → ‘Offline’ / online+N → ‘N pending’ / offline+N → ‘Offline · N pending’). Subscribes to sync-queue + listens to online/offline events. WifiOff vs CloudOff icon picks based on which signal is active.",
+        id: "SyncStatusPill diperluas: empat state (online+0 → tersembunyi / offline+0 → ‘Offline’ / online+N → ‘N pending’ / offline+N → ‘Offline · N pending’). Subscribe ke sync-queue + dengarkan event online/offline. Ikon WifiOff vs CloudOff dipilih berdasarkan sinyal yang aktif." },
+      { type: "improvement", audience: "dev",
+        en: "Idempotency contract honored: each replayed op carries the client_op_id it was queued with, so a duplicate INSERT after a partial-network-success surfaces as Postgres 23505 and lib/idempotency.ts (landed in v1.35.0) returns success for the action. Replay is safely at-least-once.",
+        id: "Kontrak idempotensi terjaga: setiap op replay membawa client_op_id yang sama saat di-queue, jadi INSERT duplikat setelah sukses parsial muncul sebagai Postgres 23505 dan lib/idempotency.ts (landed di v1.35.0) mengembalikan sukses untuk action tersebut. Replay aman dengan at-least-once." },
+      { type: "improvement", audience: "dev",
+        en: "Out of scope for Phase 3a: UPDATE/DELETE queuing (needs server-side conflict detection on updated_at — Phase 3b), optimistic UI for queued rows (would require teaching transactions-shell to merge pending state), photo-upload queuing (uploads land in Storage directly, separate problem).",
+        id: "Di luar lingkup Phase 3a: queue UPDATE/DELETE (butuh deteksi konflik server-side di updated_at — Phase 3b), UI optimistic untuk baris queued (perlu mengajari transactions-shell merge state pending), queue upload foto (upload langsung ke Storage, masalah terpisah)." },
+      { type: "fix", audience: "dev",
+        en: "iOS PWA in airplane mode reports navigator.onLine === true and queues the underlying fetch instead of rejecting it — so awaiting a server action hangs forever. New lib/with-timeout.ts wraps every network call: 6s for queue-actions (sheet closes into ‘pending’ on timeout), 4s for the suggestCategory AI effect (also short-circuits when navigator.onLine === false), 8s per op in sync-replay (one stuck request can't block the queue).",
+        id: "iOS PWA di mode pesawat melaporkan navigator.onLine === true dan OS men-queue fetch alih-alih reject — jadi await server action macet selamanya. lib/with-timeout.ts baru membungkus tiap network call: 6 detik untuk queue-actions (sheet tutup ke ‘pending’ saat timeout), 4 detik untuk AI suggestCategory (juga short-circuit kalau navigator.onLine === false), 8 detik per op di sync-replay (satu request macet tidak bisa block queue)." },
+    ],
+  },
+  {
     version: "1.35.0",
     date: "May 15, 2026",
     changes: [

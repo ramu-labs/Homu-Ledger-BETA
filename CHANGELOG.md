@@ -2,6 +2,116 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.35.1 - May 15, 2026
+
+**Pragmatic offline, Phase 3 of 3** — queued writes, plus the timeout fixes that make offline reliable on iOS.
+
+After Phase 1 (cached reads, v1.34.0) and Phase 2 (idempotency foundation, v1.35.0), this release lights the queue on top of those primitives. Tapping "Add" on the train, on a plane, on hostile wifi — the action lands locally, the sheet closes, and the row materialises on the server whenever the network comes back.
+
+Shipped as a patch (1.35.0 → 1.35.1) because most users in good network conditions will never notice the queue exists; it just keeps working when the network drops.
+
+### 0. iOS-PWA offline hang fix (the bug that motivated the patch number)
+
+First in-the-wild test surfaced two related hangs on iPhone in airplane mode:
+
+1. **Save button stuck on "Saving…" forever.** Root cause: iOS Safari in installed-PWA mode reports `navigator.onLine === true` even when the device is fully offline (long-standing iOS quirk), AND the OS queues the underlying fetch instead of rejecting it. So `queuedAddTransaction` skipped its offline branch, fell through to `await addTransaction(fd)`, and hung — neither resolving nor throwing.
+2. **AI sparkle spinner runs forever.** Same root cause: `suggestCategory()` awaits a server action that never returns, so the cleanup `setAiSuggestingFor(null)` never runs.
+
+Fix: new `lib/with-timeout.ts` utility (Promise.race against a timer, typed `TimeoutError`). Wrapped every previously-trusting `await`:
+
+- **lib/queue-actions.ts**: 6s deadline per add\* server action. On timeout, queue the op and return `{ queued: true }` — same path as the offline-detected branch, so the sheet closes immediately.
+- **components/add-transaction-sheet.tsx**: AI effect now (a) skips entirely when `navigator.onLine === false`, and (b) caps `suggestCategory` at 4s.
+- **components/sync-replay.tsx**: 8s per-op deadline so one stuck request can't block the rest of the queue forever.
+
+Numbers tuned so 4G in a bad signal area (typical 2–4s RTT) still completes naturally, while iOS-PWA airplane-mode hangs fall through to the queue in under 6s.
+
+### 1. `lib/sync-queue.ts` — IndexedDB queue
+
+Zero-dep wrapper over the IndexedDB API. Object store `ops` keyed on the op's `id` (which doubles as the `client_op_id` sent to the server). Public surface:
+
+- `enqueue(op)` — persist + emit a change event
+- `getAll()` — read everything, FIFO by insertion
+- `remove(id)` — drop after successful replay
+- `recordFailure(id, error)` — bump attempts + record the last error
+- `count()` — for the pill
+- `subscribe(fn)` — pub/sub for any UI that wants to react to queue changes
+
+SSR-safe: every method short-circuits when `indexedDB` is undefined. The DB opens lazily on first call and the connection is cached for the page lifetime.
+
+### 2. `lib/queue-actions.ts` — client wrappers
+
+`queuedAddTransaction`, `queuedAddWallet`, `queuedAddCategory`. Each:
+
+1. Generates a UUID via `crypto.randomUUID()` and sets it as `client_op_id` in the FormData.
+2. If `navigator.onLine === false`: enqueue immediately, return `{ queued: true }`.
+3. Otherwise: try the real server action. On thrown `TypeError`/network-shape error → enqueue + return `{ queued: true }`. On `{ error: string }` from the server (validation, RLS) → pass through unchanged — those won't get better on retry.
+
+`isQueued()` is a small type guard so callers can branch cleanly without inspecting the discriminator manually.
+
+### 3. `components/sync-replay.tsx` — replay loop
+
+Mounted invisibly in `app/(app)/layout.tsx`. Drains the queue on:
+
+- first mount
+- `window 'online'` event
+- `document visibilitychange → visible` (covers iOS PWA tab-switches that don't fire `online`)
+- any `sync-queue.subscribe` change while online
+
+Single-flight via a module-level `running` flag so multiple triggers landing in quick succession (online + visibility on the same reconnection) collapse to one pass.
+
+Per-op `MAX_ATTEMPTS = 5`: an op that fails repeatedly stays in the queue but is skipped this pass; future Phase 3b will add a diagnostics surface so users can see and clear stuck ops.
+
+After any successful drain → `router.refresh()` so the SSR'd transactions list re-fetches and the freshly-landed rows appear without a manual reload.
+
+### 4. `components/sync-status-pill.tsx` — four states
+
+Expanded from "online/offline binary" to four states based on `navigator.onLine` × `queue.count()`:
+
+| `online` | queue | display |
+|---|---|---|
+| true | 0 | hidden |
+| false | 0 | `Offline` (WifiOff) |
+| true | N>0 | `N pending` (CloudOff) |
+| false | N>0 | `Offline · N pending` (WifiOff) |
+
+`useSyncExternalStore` for online/offline (SSR-safe). The queue count uses `useState + subscribe` because `count()` returns a Promise and doesn't fit the snapshot getter shape.
+
+i18n: `common.pending` ("pending" / "menunggu").
+
+### 5. Sheet wiring
+
+[components/add-transaction-sheet.tsx](Homu-Ledger-BETA/components/add-transaction-sheet.tsx), [components/add-wallet-sheet.tsx](Homu-Ledger-BETA/components/add-wallet-sheet.tsx), [components/add-category-sheet.tsx](Homu-Ledger-BETA/components/add-category-sheet.tsx) — each switches from the direct `add*` server action import to the matching `queuedAdd*` wrapper. The submit handler gets one new branch:
+
+```ts
+const result = await queuedAddTransaction(fd);
+if (isQueued(result)) {
+  // Op is in IndexedDB. Pill shows "1 pending". Close the sheet.
+  onClose();
+  return;
+}
+// ... existing online-success / error paths unchanged
+```
+
+Update/delete on `add-transaction-sheet.tsx` remain on the live server actions — Phase 3a does not queue them.
+
+### 6. Idempotency contract end-to-end
+
+Every replayed op carries the same `client_op_id` it was queued with. The partial unique index `(household_id, client_op_id) WHERE client_op_id IS NOT NULL` from migration 0028 makes a duplicate INSERT surface as Postgres `23505`. The server action catches that via `lib/idempotency.ts` (landed v1.35.0) and returns success. So a queued op that "actually succeeded on the server but the network died before the client got the OK" is safe to retry — the second attempt is a no-op.
+
+### 7. What's deliberately NOT in this PR (Phase 3b candidates)
+
+- **UPDATE / DELETE queuing** — needs server-side conflict detection on `updated_at`, plus the 409 + toast + refresh dance on the client. Material complexity; the column landed in v1.35.0 ready for it.
+- **Optimistic UI for queued rows** — would require teaching `transactions-shell.tsx` (and the wallets/categories lists) to merge pending state into their server-data lists. Distinct rendering for "transient" rows. Real work.
+- **Photo-upload queuing** — uploads go directly to Storage, separate problem; needs blob storage in IDB and a different retry shape.
+- **Settings → Sync diagnostics panel** — the queue has `recordFailure`-tracked errors and per-op attempts ready, but no UI surfaces them yet. Useful for support when something gets stuck.
+
+### 8. Verification notes
+
+Service workers are disabled in dev, so the full offline flow only exercises on a Vercel preview deploy. Test plan in the PR description.
+
+- `npm run build` clean.
+- `npm run lint` baseline unchanged.
+
 ## v1.35.0 - May 15, 2026
 
 **Pragmatic offline, Phase 2 of 3** — idempotency foundation. The plumbing that makes Phase 3's offline write-queue safe.
