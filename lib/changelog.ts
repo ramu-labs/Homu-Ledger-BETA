@@ -45,6 +45,30 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.38.0",
+    date: "May 15, 2026",
+    changes: [
+      { type: "new", audience: "user",
+        en: "Onboarding asks what you'll use the ledger for. Pick from Family / Personal / Couple / Business / Side hustle / Travel — we pre-select the categories that fit, then you fine-tune.",
+        id: "Onboarding sekarang menanyakan ledger ini untuk apa. Pilih dari Family / Personal / Couple / Business / Side hustle / Travel — kami pre-pilih kategori yang cocok, kamu tinggal menyesuaikan." },
+      { type: "new", audience: "user",
+        en: "Every new ledger now comes with 3 wallets (Cash, Bank Card, Credit Card) and 3 income categories (Salary, Bonus, Refund). You can still rename, delete, or add more from Settings.",
+        id: "Setiap ledger baru sekarang dilengkapi 3 dompet (Cash, Bank Card, Credit Card) dan 3 kategori pemasukan (Gaji, Bonus, Refund). Tetap bisa diubah, dihapus, atau ditambah dari Settings." },
+      { type: "improvement", audience: "dev",
+        en: "lib/onboarding-presets.ts is the single source of truth: USE_CASES (6 ids), EXPENSE_CATEGORY_MASTER (29 categories with stable ids), USE_CASE_PRESELECTED_CATS (case → category-id[] mapping), DEFAULT_INCOME_CATEGORIES + DEFAULT_WALLETS (always-applied seeds).",
+        id: "lib/onboarding-presets.ts adalah satu sumber kebenaran: USE_CASES (6 id), EXPENSE_CATEGORY_MASTER (29 kategori dengan id stabil), USE_CASE_PRESELECTED_CATS (mapping case → category-id[]), DEFAULT_INCOME_CATEGORIES + DEFAULT_WALLETS (selalu diterapkan)." },
+      { type: "improvement", audience: "dev",
+        en: "createHousehold action now accepts `use_case` + `selected_categories` form fields. When present, runs applyHouseholdPresets to DELETE the trigger-seeded is_default=true categories and replace with the user's pick + the income/wallet defaults. Backwards-compatible: callers that don't send the fields keep the legacy behaviour.",
+        id: "Aksi createHousehold sekarang menerima field form `use_case` + `selected_categories`. Bila ada, jalankan applyHouseholdPresets untuk DELETE kategori is_default=true bawaan trigger dan diganti dengan pilihan user + default income/wallet. Kompatibel mundur: caller yang tidak kirim field tetap pakai perilaku lama." },
+      { type: "improvement", audience: "dev",
+        en: "Onboarding 'create' branch is now a 3-step state machine (name → use_case → categories) with a step-dot indicator + step-aware back button. Existing 'join a ledger' branch unchanged.",
+        id: "Cabang 'create' onboarding sekarang state machine 3-langkah (name → use_case → categories) dengan indikator titik + tombol back yang menyesuaikan langkah. Cabang 'join a ledger' tidak berubah." },
+      { type: "fix", audience: "dev",
+        en: "Note: applied only to first-time onboarding in this PR. The 'create new ledger from settings' path (app/actions/households.ts → createNewLedger) still uses the old single-step flow. Queued for v1.38.1 — same presets module, just a different entry surface.",
+        id: "Catatan: hanya diterapkan ke onboarding awal di PR ini. Jalur 'buat ledger baru dari settings' (app/actions/households.ts → createNewLedger) masih pakai flow lama satu langkah. Antri untuk v1.38.1 — modul presets sama, hanya beda entry surface." },
+    ],
+  },
+  {
     version: "1.37.0",
     date: "May 15, 2026",
     changes: [

@@ -450,6 +450,24 @@ export async function createHousehold(formData: FormData) {
   const openingBalanceRaw = formData.get("opening_balance") as string;
   const openingBalance = parseFloat(openingBalanceRaw.replace(/\./g, "").replace(",", ".")) || 0;
 
+  // v1.38.0 — the new flow passes "use_case" + "selected_categories"
+  // (JSON-encoded array of CategoryPreset ids from
+  // EXPENSE_CATEGORY_MASTER). When present we replace the trigger-
+  // seeded defaults with the user's selection; when absent we keep
+  // the legacy behaviour (defaults untouched) for backwards-compat
+  // with any caller that hasn't been updated to the multi-step page.
+  const useCase = (formData.get("use_case") as string | null)?.trim() || null;
+  const selectedCategoriesRaw = (formData.get("selected_categories") as string | null) ?? "";
+  let selectedCategoryIds: string[] = [];
+  if (selectedCategoriesRaw) {
+    try {
+      const parsed = JSON.parse(selectedCategoriesRaw);
+      if (Array.isArray(parsed)) selectedCategoryIds = parsed.filter((x): x is string => typeof x === "string");
+    } catch {
+      // Malformed JSON — fall through to legacy behaviour.
+    }
+  }
+
   // Generate a unique invite code via the DB function
   const { data: codeData, error: codeError } = await supabase.rpc("generate_invite_code");
   if (codeError) return { error: codeError.message };
@@ -475,7 +493,85 @@ export async function createHousehold(formData: FormData) {
     .eq("id", user.id);
 
   if (profileError) return { error: profileError.message };
+
+  // v1.38.0 — apply the use-case-driven setup if the page sent it.
+  // Best-effort: failures here don't block the redirect (the user
+  // still has the household + the trigger-seeded categories to fall
+  // back on).
+  if (useCase && selectedCategoryIds.length > 0) {
+    await applyHouseholdPresets(supabase, household.id, selectedCategoryIds);
+  }
+
   redirect("/transactions");
+}
+
+/**
+ * Replace the trigger-seeded default categories with the user-picked
+ * set, AND seed the default wallets. Called only from the new
+ * onboarding flow — old callers skip this.
+ */
+async function applyHouseholdPresets(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  householdId: string,
+  selectedCategoryIds: string[]
+): Promise<void> {
+  const {
+    EXPENSE_CATEGORY_MASTER,
+    DEFAULT_INCOME_CATEGORIES,
+    DEFAULT_WALLETS,
+  } = await import("@/lib/onboarding-presets");
+
+  // 1. Wipe whatever the seed_default_categories trigger created.
+  //    is_default=true is the trigger's marker; user-added categories
+  //    have is_default=false so they're safe.
+  await supabase
+    .from("categories")
+    .delete()
+    .eq("household_id", householdId)
+    .eq("is_default", true);
+
+  // 2. Insert chosen expense categories (filtered against the master).
+  const chosenExpense = EXPENSE_CATEGORY_MASTER.filter((c) =>
+    selectedCategoryIds.includes(c.id)
+  );
+  if (chosenExpense.length > 0) {
+    await supabase.from("categories").insert(
+      chosenExpense.map((c) => ({
+        household_id: householdId,
+        name: c.name,
+        symbol: c.symbol,
+        color: c.color,
+        is_default: true, // still treat them as the "starter" set
+        type: "expense" as const,
+      }))
+    );
+  }
+
+  // 3. Insert the 3 default income categories (always, no picker).
+  await supabase.from("categories").insert(
+    DEFAULT_INCOME_CATEGORIES.map((c) => ({
+      household_id: householdId,
+      name: c.name,
+      symbol: c.symbol,
+      color: c.color,
+      is_default: true,
+      type: "income" as const,
+    }))
+  );
+
+  // 4. Insert the 3 default wallets — the existing trigger doesn't
+  //    seed wallets, so this is a fresh insert. One is_default=true
+  //    so the Add Transaction sheet preselects it.
+  await supabase.from("wallets").insert(
+    DEFAULT_WALLETS.map((w) => ({
+      household_id: householdId,
+      name: w.name,
+      symbol: w.symbol,
+      color: w.color,
+      initial_balance: 0,
+      is_default: w.is_default ?? false,
+    }))
+  );
 }
 
 export async function updateProfile(formData: FormData): Promise<{ error?: string }> {
