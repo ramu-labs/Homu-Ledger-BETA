@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Trash2, Camera, ImagePlus, ChevronRight, ArrowRightLeft, Check, Calendar, Repeat, Wallet, Sparkles, Loader2 } from "lucide-react";
 import { updateTransaction, deleteTransaction, moveTransaction, addTransfer } from "@/app/actions/transactions";
-import { queuedAddTransaction, isQueued } from "@/lib/queue-actions";
+import { queuedAddTransaction, isQueued, updateQueuedTransaction, deleteQueuedTransaction } from "@/lib/queue-actions";
 import { withTimeout } from "@/lib/with-timeout";
 import { signTransactionPhoto } from "@/app/actions/photos";
 import { addRecurringItem } from "@/app/actions/recurring";
@@ -468,8 +468,14 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     fd.set("date", date);
     if (photoPath) fd.set("photo_url", photoPath);
 
+    // v1.36.1 — editing a pending (queue-only) transaction routes
+    // to `updateQueuedTransaction` instead of the live server action.
+    // The id of a pending row IS its client_op_id, so we keep the
+    // same key all the way through replay.
     const result = editing
-      ? await updateTransaction(editing.id, fd)
+      ? editing._pending
+        ? await updateQueuedTransaction(editing.id, fd)
+        : await updateTransaction(editing.id, fd)
       : await queuedAddTransaction(fd);
 
     // Offline / network drop on an add: the op is queued and the replay
@@ -500,7 +506,14 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
     if (!editing) return;
     if (!confirmDelete) { setConfirmDelete(true); return; }
     setLoading(true);
-    await deleteTransaction(editing.id);
+    // v1.36.1 — deleting a pending row removes the op from the queue
+    // rather than calling deleteTransaction (which would hit the
+    // server expecting a real row that doesn't exist yet).
+    if (editing._pending) {
+      await deleteQueuedTransaction(editing.id);
+    } else {
+      await deleteTransaction(editing.id);
+    }
     onClose();
   }
 
@@ -946,11 +959,16 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
               </>
             )}
 
-            {/* Photo — hidden for transfers AND when in recurring mode.
+            {/* Photo — hidden for transfers, recurring mode, AND
+                when editing a queue-only pending row (v1.36.1).
+                Photo uploads need to land in Supabase Storage right
+                now, which we don't queue. Keeping the picker visible
+                for pending rows would mean it could silently fail
+                offline; hide it instead.
                 Recurring items don't carry a single photo (each future
                 materialised transaction would need its own anyway), so
                 showing the picker here would be confusing. */}
-            {!isTransfer && !recurringMode && (
+            {!isTransfer && !recurringMode && !editing?._pending && (
             <div>
               {photoPreview ? (
                 <div className="relative">
@@ -1041,16 +1059,24 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
                   <Trash2 className="h-4 w-4" strokeWidth={2} />
                   {tr("common.delete")}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowRecurringPicker(true)}
-                  disabled={loading || moving || creatingRecurring}
-                  className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-2xl text-[13px] font-medium text-[var(--label-secondary)] disabled:opacity-60"
-                >
-                  <Repeat className="h-4 w-4" strokeWidth={2} />
-                  Recurring
-                </button>
-                {otherLedgers.length > 0 && (
+                {/* v1.36.1 — Recurring / Move buttons hidden when
+                    editing a queue-only (pending) row. Both operations
+                    need a real server-side transaction to act on, and
+                    we don't want to give the user a button that just
+                    errors when tapped. They re-appear once the op
+                    replays and the row becomes server-canonical. */}
+                {!editing._pending && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRecurringPicker(true)}
+                    disabled={loading || moving || creatingRecurring}
+                    className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-2xl text-[13px] font-medium text-[var(--label-secondary)] disabled:opacity-60"
+                  >
+                    <Repeat className="h-4 w-4" strokeWidth={2} />
+                    Recurring
+                  </button>
+                )}
+                {!editing._pending && otherLedgers.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setShowMovePicker(true)}

@@ -45,6 +45,18 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.36.1",
+    date: "May 15, 2026",
+    changes: [
+      { type: "new", audience: "user",
+        en: "You can now tap a pending (offline-queued) transaction to edit it or remove it from the queue — without waiting to reconnect.",
+        id: "Sekarang kamu bisa mengetuk transaksi pending (yang diantri offline) untuk diubah atau dihapus dari antrian — tanpa menunggu online kembali." },
+      { type: "improvement", audience: "dev",
+        en: "Added `updateQueuedTransaction(id, fd)` + `deleteQueuedTransaction(id)` to lib/queue-actions.ts. Re-enabled tap on `_pending` rows; the edit sheet routes save/delete to the queue helpers instead of the live server actions when `editing._pending`. Recurring / Move / Photo controls hidden for pending edits since each needs a server-canonical row.",
+        id: "Menambahkan `updateQueuedTransaction(id, fd)` + `deleteQueuedTransaction(id)` ke lib/queue-actions.ts. Ketukan diaktifkan kembali untuk row `_pending`; sheet edit menyalurkan save/delete ke helper queue, bukan aksi server saat `editing._pending`. Kontrol Recurring / Move / Photo disembunyikan untuk edit pending karena masing-masing butuh row server-canonical." },
+    ],
+  },
+  {
     version: "1.36.0",
     date: "May 15, 2026",
     changes: [

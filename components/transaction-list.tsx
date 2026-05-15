@@ -96,24 +96,21 @@ export default function TransactionList({ transactions, members, currency = "IDR
           ? { animation: `row-in 0.22s ${staggerMs}ms ease both, tx-flash 0.9s ${staggerMs}ms ease both` }
           : { animationDelay: `${staggerMs}ms` };
 
-        // v1.36.0 — pending rows render at 60% opacity so the user
-        // can see they exist but they read as "not landed yet".
-        // We also disable the tap target (no edit sheet) until the
-        // server has the canonical row, so they don't try to mutate
-        // a transient client-side object.
+        // v1.36.0 — pending rows render at 60% opacity so they read
+        // as "not landed yet". v1.36.1 — tap is ENABLED for pending
+        // rows: the edit sheet detects `editing._pending` and routes
+        // save/delete to `updateQueuedTransaction` /
+        // `deleteQueuedTransaction` instead of the live server
+        // actions. We still show `aria-busy` for assistive tech so
+        // screen readers know the row isn't fully synced.
         const isPending = !!t._pending;
 
         return (
           <li
             key={t.id}
-            onClick={() => {
-              if (isPending) return;
-              onTap?.(t);
-            }}
-            className={`flex items-center gap-3 px-4 py-3.5 min-h-[60px] transition-colors animate-row-in ${
-              isPending
-                ? "opacity-60 cursor-default"
-                : "active:bg-black/[0.02] cursor-pointer"
+            onClick={() => onTap?.(t)}
+            className={`flex items-center gap-3 px-4 py-3.5 min-h-[60px] transition-colors animate-row-in cursor-pointer active:bg-black/[0.02] ${
+              isPending ? "opacity-60" : ""
             }`}
             style={rowStyle}
             aria-busy={isPending || undefined}

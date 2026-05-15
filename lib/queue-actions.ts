@@ -160,3 +160,67 @@ export function isQueued<T extends object>(
 ): r is QueuedResult {
   return (r as QueuedResult).queued === true;
 }
+
+// ── Editing queued (not-yet-replayed) ops (v1.36.1) ──────────────────
+//
+// The pending row in the transactions list IS editable now. Tapping it
+// opens the same Add Transaction sheet in "editing" mode, but the save
+// & delete handlers route HERE instead of through the live server
+// actions — because there is no server row yet.
+
+import { getAll, remove as removeFromQueue } from "@/lib/sync-queue";
+
+/**
+ * Replace the payload of a queued addTransaction op. Keeps the same
+ * op id (= client_op_id), so when this eventually replays, the
+ * server sees ONE row landing — not a "old version then update".
+ *
+ * Idempotent: if the op already replayed (no longer in the queue)
+ * we no-op rather than throw. Cheap race: the user could tap save on
+ * a pending row at the exact moment replay drained it. Returning
+ * silently lets the SSR refresh take over.
+ */
+export async function updateQueuedTransaction(
+  id: string,
+  formData: FormData
+): Promise<{ error?: string }> {
+  // Strip the client_op_id from the form — we already have it (the
+  // id arg) and we don't want to accidentally create a NEW op with a
+  // fresh uuid here.
+  formData.delete("client_op_id");
+  const payload = formDataToPayload(formData);
+
+  const all = await getAll();
+  const existing = all.find((op) => op.id === id);
+  if (!existing) {
+    // Op already replayed → silently ignore. The SSR list refresh
+    // will reconcile to whatever the server has.
+    return {};
+  }
+
+  // Same enqueue path replaces by id (IDB put is upsert). Reuses the
+  // existing createdAt + action; attempts reset to 0 (a fresh edit
+  // deserves the full retry budget).
+  await enqueue({
+    id,
+    action: existing.action,
+    payload: { ...existing.payload, ...payload, client_op_id: id },
+    createdAt: existing.createdAt,
+  });
+  return {};
+}
+
+/**
+ * Remove a queued addTransaction op outright. Used by the delete
+ * button on a pending row.
+ */
+export async function deleteQueuedTransaction(
+  id: string
+): Promise<{ error?: string }> {
+  try {
+    await removeFromQueue(id);
+    return {};
+  } catch (err) {
+    return { error: (err as Error).message ?? "Failed to remove queued op" };
+  }
+}
