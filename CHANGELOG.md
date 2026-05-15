@@ -2,6 +2,102 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.32.0 - May 15, 2026
+
+Sign-up flow redesigned end-to-end. Four parts.
+
+### 1. Email-only signup, locked header, logo gone
+
+- `/signup` now lives in a `min-h-dvh` flex column with a `sticky top-[env(safe-area-inset-top)]` header carrying just a back chevron (top-left, matching the rest of the app's Settings sub-pages) and the page title. Header doesn't scroll with the form.
+- Homu logo removed — the form is long enough now that the logo was forcing the user to scroll just to see the first input.
+- The "Continue with Google" button at the top of the form is gone. Google sign-up lives on `/login` (the landing page); `/signup` is the email path only. Keeps the two paths separate and avoids the "wait, why is there Google here too?" decision tax.
+- "Already have an account? Sign in" link now routes to `/login/password` (the actual email/password form), not `/login` (the landing).
+
+### 2. New fields: Gender, Date of birth, Password confirmation
+
+Migration `0027_profile_gender_dob.sql`:
+
+```sql
+alter table public.profiles
+  add column if not exists gender text
+    check (gender is null or gender in ('male','female','other','prefer_not_to_say'));
+
+alter table public.profiles
+  add column if not exists birth_date date;
+```
+
+Both nullable so existing rows don't break. Gender stored as a small fixed set (4 options) so reports / nudges can rely on it later without freeform-string normalisation. `prefer_not_to_say` is explicit (not NULL) so we can tell "opted out" from "predates this column".
+
+Server-side validation in `app/actions/auth.ts`:
+- Password ≥ 8 chars, must match the confirmation field
+- DoB must parse, must be 13–120 years ago (refuses future dates and obviously-bogus values)
+- Username regex `[a-z0-9_]{3,20}` (unchanged from before)
+- Promo code still required
+
+Client uses the native `<input type="date">` picker for DoB with `min`/`max` set to 13/120 years ago — much better UX than three-dropdown month/day/year on mobile.
+
+### 3. Email OTP step (6-digit code)
+
+`signUp` server action split into three actions:
+
+```ts
+signUpStartEmailOtp(formData)  // validates + supabase.auth.signUp
+verifySignUpOtp(email, token)  // supabase.auth.verifyOtp + finalise
+resendSignUpOtp(email)         // supabase.auth.resend
+```
+
+Why split: in the old single-action flow, the promo code was redeemed and the profile fields were written immediately after `supabase.auth.signUp`. With email confirmation on, that timing is wrong — the user could abandon at the OTP step and we'd have already burned their promo code. Now:
+
+```
+[ form submit ]
+        ↓
+signUpStartEmailOtp
+  → validate everything
+  → supabase.auth.signUp({ email, password, options.data: {
+       name, username, gender, birth_date, promo_code
+    }})
+  → DID return a session?
+      ├── yes  → email confirmation is OFF → finalize + redirect
+      └── no   → return { needsOtp: true, email }
+                          ↓
+                  [ OTP step renders ]
+                          ↓
+                  verifySignUpOtp
+                    → supabase.auth.verifyOtp({ type:'signup', email, token })
+                    → finalise (write profile fields, redeem promo)
+                    → redirect /onboarding?welcome=1
+```
+
+`finalizeSignUp` is a shared helper that does the profile UPDATE + `redeem_promo_code` RPC call. Used by both the OTP-verified branch and the email-confirmation-off branch so the post-signup state is identical.
+
+Client side (`app/(auth)/signup/page.tsx`) is a two-step state machine with `step: "form" | "otp"`. Back button on OTP step returns to the form (preserving entered data… well, except the password fields, browser-native behaviour). OTP input is `inputMode="numeric"` + `autocomplete="one-time-code"` so iOS / Android auto-fill from the SMS-style code panel.
+
+### 4. Required after deploy
+
+Email confirmation must be **enabled** in the Supabase dashboard for the OTP step to actually fire:
+
+```
+Supabase Dashboard
+  → Authentication
+    → Sign in / providers
+      → Email
+        → Confirm email = ON
+```
+
+Until then `signUp` returns a session immediately and we just redirect — the OTP screen never appears, and the user is signed up the moment they hit Create. The code handles both states (the `if (data.session)` branch in `signUpStartEmailOtp`), so this is a soft switch — no broken state either way.
+
+### Files touched
+
+- `supabase/migrations/0027_profile_gender_dob.sql` (new)
+- `app/actions/auth.ts` — `signUp` → three actions + shared `finalizeSignUp` helper; legacy `signUp` re-export for any stale call-sites
+- `app/(auth)/signup/page.tsx` (rewritten — two-step state machine + locked header + new fields)
+- `lib/supabase/database.types.ts` — `gender` + `birth_date` columns on `profiles`
+- `lib/i18n/dictionaries.ts` — gender/DoB/OTP/password-confirm strings
+- `lib/changelog.ts` — v1.32.0 entry
+- Version bumps in `package.json`, `public/sw.js`, settings footer
+
+---
+
 ## v1.31.0 - May 15, 2026
 
 Three things: the redirect-loop fix from yesterday's bug report, device nicknames, and instant Settings navigation.

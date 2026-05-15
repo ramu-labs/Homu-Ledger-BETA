@@ -388,8 +388,10 @@ export type Database = {
       profiles: {
         Row: {
           avatar_color: string
+          birth_date: string | null
           created_at: string
           email: string
+          gender: string | null
           household_id: string | null
           icon_style: string
           id: string
@@ -403,8 +405,10 @@ export type Database = {
         }
         Insert: {
           avatar_color?: string
+          birth_date?: string | null
           created_at?: string
           email: string
+          gender?: string | null
           household_id?: string | null
           icon_style?: string
           id: string
@@ -418,8 +422,10 @@ export type Database = {
         }
         Update: {
           avatar_color?: string
+          birth_date?: string | null
           created_at?: string
           email?: string
+          gender?: string | null
           household_id?: string | null
           icon_style?: string
           id?: string

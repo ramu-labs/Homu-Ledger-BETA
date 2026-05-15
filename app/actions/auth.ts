@@ -5,32 +5,74 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 
-export async function signUp(formData: FormData) {
+// Valid gender values — kept in lock-step with the CHECK on
+// profiles.gender (migration 0027). Re-validated client-side too so we
+// can give a friendly error before round-tripping.
+const VALID_GENDERS = ["male", "female", "other", "prefer_not_to_say"] as const;
+type Gender = (typeof VALID_GENDERS)[number];
+
+/**
+ * v1.32.0 signup START — validates the form, creates the auth.user, and
+ * (if email-confirmation is enabled in the Supabase dashboard) triggers
+ * the OTP email. Returns `needsOtp: true` so the client switches to the
+ * OTP step; the OTP step then calls `verifySignUpOtp` to finalise.
+ *
+ * Why split: if we wrote the profile fields + redeemed the promo code
+ * here, an unverified account would leave a redeemed code dangling.
+ * Doing it post-verification keeps the promo redemption tied to a
+ * confirmed user.
+ *
+ * Backwards-compat: if email confirmation is OFF in the project,
+ * supabase.auth.signUp returns a live session immediately. In that
+ * case we skip the OTP detour, finalise here, and redirect — the old
+ * behaviour.
+ */
+export async function signUpStartEmailOtp(
+  formData: FormData
+): Promise<{ ok: true; needsOtp: boolean; email: string } | { error: string }> {
   const supabase = await createClient();
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const name = formData.get("name") as string;
-  const username = (formData.get("username") as string).trim().toLowerCase();
+  const email = ((formData.get("email") as string) ?? "").trim();
+  const password = (formData.get("password") as string) ?? "";
+  const passwordConfirm = (formData.get("password_confirm") as string) ?? "";
+  const name = ((formData.get("name") as string) ?? "").trim();
+  const username = ((formData.get("username") as string) ?? "").trim().toLowerCase();
+  const genderRaw = ((formData.get("gender") as string) ?? "").trim();
+  const birthDate = ((formData.get("birth_date") as string) ?? "").trim();
   const promoCodeRaw = (formData.get("promo_code") as string | null)?.trim();
   const promoCode = promoCodeRaw ? promoCodeRaw.toUpperCase() : "";
 
-  if (!promoCode) {
-    return { error: "Promo code is required to create an account." };
-  }
+  // ── Validation (client also checks, but server-side is the source of truth) ──
+  if (!email || !email.includes("@")) return { error: "A valid email is required." };
+  if (!name) return { error: "Name is required." };
+  if (!password || password.length < 8) return { error: "Password must be at least 8 characters." };
+  if (password !== passwordConfirm) return { error: "Passwords don't match." };
   if (!/^[a-z0-9_]{3,20}$/.test(username)) {
     return { error: "Username must be 3–20 characters: letters, numbers, underscores only." };
   }
+  if (!VALID_GENDERS.includes(genderRaw as Gender)) {
+    return { error: "Pick a gender option." };
+  }
+  if (!birthDate || Number.isNaN(new Date(birthDate).getTime())) {
+    return { error: "Date of birth is required." };
+  }
+  // Refuse obviously-bogus DoBs — child under 13 (most jurisdictions
+  // require parental consent for under-13 sign-ups) or a future date.
+  const birth = new Date(birthDate);
+  const now = new Date();
+  const minBirth = new Date(now.getFullYear() - 120, now.getMonth(), now.getDate());
+  const maxBirth = new Date(now.getFullYear() - 13, now.getMonth(), now.getDate());
+  if (birth < minBirth || birth > maxBirth) {
+    return { error: "You must be 13 or older to sign up." };
+  }
+  if (!promoCode) return { error: "Promo code is required to create an account." };
 
-  // Pre-check: confirm the code is valid and unredeemed before we create
-  // the auth account. Avoids creating an orphan account if the code is bad.
-  // Use the admin client so this RPC is no longer reachable by anon REST
-  // callers (see migration 0012).
+  // Promo code validity check via admin client (the RPC is gated to
+  // service_role since migration 0012).
   const admin = getAdminClient();
   const { data: codeIsValid } = await admin.rpc("is_promo_code_valid", { p_code: promoCode });
-  if (!codeIsValid) {
-    return { error: "Invalid or already-redeemed promo code." };
-  }
+  if (!codeIsValid) return { error: "Invalid or already-redeemed promo code." };
 
+  // Username uniqueness check. Case-insensitive.
   const { data: existing } = await supabase
     .from("profiles")
     .select("id")
@@ -38,30 +80,167 @@ export async function signUp(formData: FormData) {
     .maybeSingle();
   if (existing) return { error: "Username already taken." };
 
-  const { error } = await supabase.auth.signUp({
+  // Create auth account. Stash the post-OTP fields in user_metadata so
+  // `verifySignUpOtp` can read them back without a separate side-table.
+  // The handle_new_user trigger creates the profiles row from `name`;
+  // the other fields are applied after OTP verification.
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name, username } },
+    options: {
+      data: {
+        name,
+        username,
+        gender: genderRaw,
+        birth_date: birthDate,
+        promo_code: promoCode,
+      },
+    },
   });
 
   if (error) return { error: error.message };
 
-  // Persist username + email to profile (trigger may have already created the row)
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    await supabase.from("profiles").update({ username, email }).eq("id", user.id);
-
-    // Atomic redeem: marks code used + writes subscription_tier on the profile.
-    // Race-condition window is tiny; if it does fail here we surface the error
-    // but the auth account already exists (user can sign in but won't have PRO).
-    const { error: redeemError } = await supabase.rpc("redeem_promo_code", { p_code: promoCode });
-    if (redeemError) {
-      return { error: `Account created but code redemption failed: ${redeemError.message}` };
-    }
+  // If Supabase returns a session, email-confirmation is OFF in the
+  // project — finalise inline like the pre-v1.32.0 flow.
+  if (data.session) {
+    const finishErr = await finalizeSignUp(supabase, {
+      username, email, gender: genderRaw as Gender, birthDate, promoCode,
+    });
+    if (finishErr) return { error: finishErr };
+    redirect("/onboarding?welcome=1");
   }
+
+  // No session = confirmation required. Tell the client to swap into
+  // the OTP step.
+  return { ok: true, needsOtp: true, email };
+}
+
+/**
+ * v1.32.0 signup FINISH — called from the OTP step. Verifies the
+ * 6-digit code, then writes the username / gender / birth_date and
+ * redeems the promo code that was stashed in user_metadata at
+ * signUpStartEmailOtp time.
+ */
+export async function verifySignUpOtp(
+  email: string,
+  token: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const trimmedEmail = (email ?? "").trim();
+  const trimmedToken = (token ?? "").trim();
+
+  if (!trimmedEmail || !trimmedToken) {
+    return { error: "Enter the 6-digit code from your email." };
+  }
+  if (!/^\d{4,8}$/.test(trimmedToken)) {
+    return { error: "Code should be all digits (usually 6)." };
+  }
+
+  // `type: 'signup'` matches the OTP sent by signUp(). 'email' would
+  // be the type for re-confirmation / passwordless flows.
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: trimmedEmail,
+    token: trimmedToken,
+    type: "signup",
+  });
+  if (error) return { error: error.message };
+  if (!data.user) return { error: "Verification failed — try again." };
+
+  // Pull the metadata we stashed at signUpStart and finalise the
+  // profile + promo redemption. The handle_new_user trigger has
+  // already created the profile row (with `name` from metadata); we
+  // just need to fill in the rest and run the redemption.
+  const meta = (data.user.user_metadata ?? {}) as {
+    username?: string;
+    gender?: string;
+    birth_date?: string;
+    promo_code?: string;
+  };
+
+  const finishErr = await finalizeSignUp(supabase, {
+    username: (meta.username ?? "").toLowerCase(),
+    email: data.user.email ?? trimmedEmail,
+    gender: (meta.gender as Gender) ?? null,
+    birthDate: meta.birth_date ?? null,
+    promoCode: (meta.promo_code ?? "").toUpperCase(),
+  });
+  if (finishErr) return { error: finishErr };
 
   redirect("/onboarding?welcome=1");
 }
+
+/**
+ * Re-send the OTP if the user didn't get the first email. Supabase
+ * rate-limits this server-side; we surface the rate-limit error to
+ * the user so they know to wait.
+ */
+export async function resendSignUpOtp(
+  email: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const trimmed = (email ?? "").trim();
+  if (!trimmed) return { error: "Email is missing — start over." };
+  const { error } = await supabase.auth.resend({ type: "signup", email: trimmed });
+  if (error) return { error: error.message };
+  return {};
+}
+
+/**
+ * Shared finalisation: write the post-signup profile fields and redeem
+ * the promo code. Returns an error string on failure, null on success.
+ * Used by BOTH the "email confirmation off" branch in
+ * `signUpStartEmailOtp` and the OTP-verified branch in `verifySignUpOtp`.
+ */
+async function finalizeSignUp(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  args: {
+    username: string;
+    email: string;
+    gender: Gender | null;
+    birthDate: string | null;
+    promoCode: string;
+  }
+): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return "Session missing — sign in and try again.";
+
+  // The trigger has created the row; UPDATE to add the rest. Typed
+  // explicitly (not Record<string, unknown>) so the generated
+  // database.types.ts can validate column names + value types.
+  const updates: {
+    email: string;
+    username: string;
+    gender?: string;
+    birth_date?: string;
+  } = {
+    email: args.email,
+    username: args.username,
+  };
+  if (args.gender) updates.gender = args.gender;
+  if (args.birthDate) updates.birth_date = args.birthDate;
+
+  const { error: profileErr } = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("id", user.id);
+  if (profileErr) return profileErr.message;
+
+  if (args.promoCode) {
+    const { error: redeemError } = await supabase.rpc("redeem_promo_code", { p_code: args.promoCode });
+    if (redeemError) {
+      // Account created but redemption failed — surface but don't
+      // block. The user has an account, just no PRO tier.
+      return `Account created but promo redemption failed: ${redeemError.message}`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Legacy export so any existing call-sites that still import `signUp`
+ * keep compiling — they just route through the new flow.
+ */
+export const signUp = signUpStartEmailOtp;
 
 /**
  * Completes onboarding for a user that signed in via OAuth (Google).
