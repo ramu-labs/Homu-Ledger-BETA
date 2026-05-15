@@ -65,9 +65,11 @@ export type CategoryPreset = {
 };
 
 // ── Per-use-case category lists ─────────────────────────────────────
-// Each list is intentionally extensive (15–22 items) so the user
-// rarely needs to add a custom category in the first session. Items
-// are ordered roughly by frequency-of-use within the case so the
+// v1.40.1: every case has EXACTLY 16 categories and EXACTLY 8
+// preselected. 16 fits comfortably in a two-column 8-row picker grid
+// on mobile without scrolling, and 8 preselected feels "set up for
+// me" without overwhelming the empty-state ledger with rows the user
+// has to delete. Items are ordered roughly by frequency-of-use so the
 // most-needed sit at the top of the picker.
 //
 // NOTE on stable ids: ids are case-specific where the SAME concept
@@ -84,18 +86,13 @@ const FAMILY_CATEGORIES: CategoryPreset[] = [
   { id: "housing",           name: "Housing",           symbol: "🏠", color: "#8b5cf6" },
   { id: "utilities",         name: "Utilities",         symbol: "💡", color: "#8b5cf6" },
   { id: "internet",          name: "Internet",          symbol: "📶", color: "#8b5cf6" },
-  { id: "insurance",         name: "Insurance",         symbol: "🛡️", color: "#6b7280" },
   { id: "healthcare",        name: "Healthcare",        symbol: "💊", color: "#ef4444" },
-  { id: "pharmacy",          name: "Pharmacy",          symbol: "💉", color: "#ef4444" },
   { id: "kids",              name: "Kids",              symbol: "🧸", color: "#ec4899" },
   { id: "baby",              name: "Baby",              symbol: "👶", color: "#ec4899" },
   { id: "daycare",           name: "Daycare",           symbol: "🏫", color: "#14b8a6" },
   { id: "school_fees",       name: "School fees",       symbol: "🎒", color: "#14b8a6" },
-  { id: "household_supplies",name: "Household supplies",symbol: "🧻", color: "#6b7280" },
-  { id: "pets",              name: "Pets",              symbol: "🐾", color: "#f59e0b" },
   { id: "entertainment",     name: "Entertainment",     symbol: "🎬", color: "#eab308" },
   { id: "subscriptions",     name: "Subscriptions",     symbol: "📺", color: "#eab308" },
-  { id: "gifts",             name: "Gifts",             symbol: "🎁", color: "#ec4899" },
   { id: "other",             name: "Other",             symbol: "📋", color: "#6b7280" },
 ];
 
@@ -104,7 +101,8 @@ const PERSONAL_CATEGORIES: CategoryPreset[] = [
   { id: "dining",          name: "Dining out",     symbol: "🍽️", color: "#f97316" },
   { id: "coffee",          name: "Coffee & tea",   symbol: "☕", color: "#f59e0b" },
   { id: "transport",       name: "Transport",      symbol: "🚗", color: "#3b82f6" },
-  { id: "fuel",             name: "Fuel",          symbol: "⛽", color: "#3b82f6" },
+  { id: "fuel",            name: "Fuel",           symbol: "⛽", color: "#3b82f6" },
+  { id: "housing",         name: "Housing",        symbol: "🏠", color: "#8b5cf6" },
   { id: "healthcare",      name: "Healthcare",     symbol: "💊", color: "#ef4444" },
   { id: "fitness",         name: "Fitness",        symbol: "🏋️", color: "#14b8a6" },
   { id: "personal_care",   name: "Personal care",  symbol: "🧴", color: "#ec4899" },
@@ -131,10 +129,8 @@ const COUPLE_CATEGORIES: CategoryPreset[] = [
   { id: "entertainment",   name: "Entertainment",  symbol: "🎬", color: "#eab308" },
   { id: "travel",          name: "Travel",         symbol: "✈️", color: "#14b8a6" },
   { id: "healthcare",      name: "Healthcare",     symbol: "💊", color: "#ef4444" },
-  { id: "fitness",         name: "Fitness",        symbol: "🏋️", color: "#14b8a6" },
   { id: "shopping",        name: "Shopping",       symbol: "🛍️", color: "#ec4899" },
   { id: "gifts",           name: "Gifts",          symbol: "🎁", color: "#ec4899" },
-  { id: "anniversaries",   name: "Anniversaries",  symbol: "💝", color: "#ec4899" },
   { id: "other",           name: "Other",          symbol: "📋", color: "#6b7280" },
 ];
 
@@ -154,9 +150,6 @@ const BUSINESS_CATEGORIES: CategoryPreset[] = [
   { id: "accounting",      name: "Accounting",      symbol: "🧾", color: "#6b7280" },
   { id: "taxes",           name: "Taxes",           symbol: "📊", color: "#ef4444" },
   { id: "bank_fees",       name: "Bank fees",       symbol: "🏦", color: "#6b7280" },
-  { id: "insurance",       name: "Insurance",       symbol: "🛡️", color: "#6b7280" },
-  { id: "training",        name: "Training",        symbol: "📚", color: "#14b8a6" },
-  { id: "office_utilities",name: "Office utilities",symbol: "💡", color: "#8b5cf6" },
   { id: "other",           name: "Other",           symbol: "📋", color: "#6b7280" },
 ];
 
@@ -166,12 +159,16 @@ const SIDE_HUSTLE_CATEGORIES: CategoryPreset[] = [
   { id: "hosting",         name: "Hosting & domains",symbol: "🌐", color: "#3b82f6" },
   { id: "equipment",       name: "Equipment",        symbol: "🛠️", color: "#6b7280" },
   { id: "marketing",       name: "Marketing",        symbol: "📣", color: "#ec4899" },
+  { id: "advertising",     name: "Advertising",      symbol: "📰", color: "#ec4899" },
   { id: "biz_meals",       name: "Meals (work)",     symbol: "🍱", color: "#f97316" },
   { id: "biz_travel",      name: "Travel (work)",    symbol: "✈️", color: "#14b8a6" },
   { id: "training",        name: "Courses & training",symbol: "📚", color: "#14b8a6" },
   { id: "home_office",     name: "Home office",      symbol: "🪑", color: "#8b5cf6" },
+  { id: "contractors",     name: "Contractors",      symbol: "👷", color: "#6b7280" },
+  { id: "accounting",      name: "Accounting",       symbol: "🧾", color: "#6b7280" },
   { id: "payment_fees",    name: "Payment fees",     symbol: "💳", color: "#6b7280" },
   { id: "bank_fees",       name: "Bank fees",        symbol: "🏦", color: "#6b7280" },
+  { id: "taxes",           name: "Taxes",            symbol: "📊", color: "#ef4444" },
   { id: "other",           name: "Other",            symbol: "📋", color: "#6b7280" },
 ];
 
@@ -186,6 +183,8 @@ const TRAVEL_CATEGORIES: CategoryPreset[] = [
   { id: "activities",      name: "Activities",       symbol: "🎢", color: "#eab308" },
   { id: "tours",           name: "Tours",            symbol: "🗺️", color: "#eab308" },
   { id: "souvenirs",       name: "Souvenirs",        symbol: "🛍️", color: "#ec4899" },
+  { id: "shopping",        name: "Shopping",         symbol: "🛒", color: "#ec4899" },
+  { id: "gifts",           name: "Gifts",            symbol: "🎁", color: "#ec4899" },
   { id: "tips",            name: "Tips",             symbol: "💵", color: "#22c55e" },
   { id: "travel_insurance",name: "Travel insurance", symbol: "🛡️", color: "#6b7280" },
   { id: "visas",           name: "Visas & permits",  symbol: "🛂", color: "#6b7280" },
@@ -203,14 +202,16 @@ export const USE_CASE_CATEGORIES: Record<UseCaseId, CategoryPreset[]> = {
 };
 
 /** Which category ids are PRESELECTED in the picker for each case.
- *  Always a subset of the case's USE_CASE_CATEGORIES list. */
+ *  v1.40.1: exactly 8 per case. Always a subset of the case's
+ *  USE_CASE_CATEGORIES list. "other" is always included as the
+ *  catch-all so the user has a safe bucket from minute one. */
 export const USE_CASE_PRESELECTED_CATS: Record<UseCaseId, string[]> = {
-  family: ["groceries","dining","transport","utilities","internet","healthcare","kids","subscriptions","other"],
-  personal: ["groceries","dining","coffee","transport","healthcare","subscriptions","other"],
+  family: ["groceries","dining","transport","utilities","healthcare","kids","subscriptions","other"],
+  personal: ["groceries","dining","coffee","transport","healthcare","shopping","subscriptions","other"],
   couple: ["groceries","dining","transport","utilities","subscriptions","date_nights","entertainment","other"],
   business: ["office_supplies","software","subscriptions","biz_meals","biz_travel","contractors","accounting","other"],
-  side_hustle: ["software","subscriptions","hosting","equipment","biz_meals","training","other"],
-  travel: ["lodging","flights","food_dining","ride_share","activities","other"],
+  side_hustle: ["software","subscriptions","hosting","equipment","marketing","training","payment_fees","other"],
+  travel: ["lodging","flights","ground_transport","ride_share","food_dining","activities","tours","other"],
 };
 
 /** Deduplicated union of every category id that COULD be picked

@@ -45,6 +45,18 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.40.1",
+    date: "May 15, 2026",
+    changes: [
+      { type: "improvement", audience: "user",
+        en: "Onboarding category picker is now uniform: every use case (Family, Personal, Couple, Business, Side hustle, Travel) shows exactly 16 categories with 8 preselected. Less scrolling, same coverage.",
+        id: "Pilihan kategori di onboarding sekarang seragam: tiap use case (Family, Personal, Couple, Business, Side hustle, Travel) menampilkan tepat 16 kategori dengan 8 terpilih awal. Lebih sedikit scroll, cakupan tetap." },
+      { type: "improvement", audience: "dev",
+        en: "lib/onboarding-presets.ts: per-case lists trimmed/padded to exactly 16 entries; USE_CASE_PRESELECTED_CATS holds exactly 8 ids per case with 'other' always included. EXPENSE_CATEGORY_MASTER auto-derived union still backs applyHouseholdPresets's id filter unchanged.",
+        id: "lib/onboarding-presets.ts: list per-case diratakan ke tepat 16 entri; USE_CASE_PRESELECTED_CATS berisi tepat 8 id per case dengan 'other' selalu disertakan. Union EXPENSE_CATEGORY_MASTER otomatis tetap menjadi sumber filter id di applyHouseholdPresets tanpa perubahan." },
+    ],
+  },
+  {
     version: "1.40.0",
     date: "May 15, 2026",
     changes: [
