@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { LIMITS, validateAmount, validateCurrency, validateName, validateSymbol } from "@/lib/validation";
+import { applyHouseholdPresets } from "@/lib/household-presets-server";
 
 export async function switchHousehold(householdId: string): Promise<{ error?: string }> {
   const supabase = await createClient();
@@ -193,6 +194,23 @@ export async function createNewLedger(formData: FormData): Promise<{ error?: str
   const openingBalanceRaw = (formData.get("opening_balance") as string) || "0";
   const openingBalance = parseFloat(openingBalanceRaw.replace(/\./g, "").replace(",", ".")) || 0;
 
+  // v1.38.1 — accept the same use_case + selected_categories fields
+  // as createHousehold so the "create new ledger from Settings" flow
+  // mirrors the initial onboarding flow exactly. Same JSON-encoded
+  // array convention; missing or malformed = legacy behaviour
+  // (default trigger-seeded categories, no wallet seed).
+  const useCase = (formData.get("use_case") as string | null)?.trim() || null;
+  const selectedCategoriesRaw = (formData.get("selected_categories") as string | null) ?? "";
+  let selectedCategoryIds: string[] = [];
+  if (selectedCategoriesRaw) {
+    try {
+      const parsed = JSON.parse(selectedCategoriesRaw);
+      if (Array.isArray(parsed)) selectedCategoryIds = parsed.filter((x): x is string => typeof x === "string");
+    } catch {
+      /* malformed → fall through to legacy */
+    }
+  }
+
   const nameErr = validateName(name, LIMITS.HOUSEHOLD_NAME);
   if (nameErr) return { error: nameErr };
   const currencyErr = validateCurrency(currency);
@@ -221,6 +239,14 @@ export async function createNewLedger(formData: FormData): Promise<{ error?: str
     .from("profiles")
     .update({ household_id: household.id })
     .eq("id", user.id);
+
+  // Apply the use-case-driven preset wipe-and-replace if the page
+  // sent the new fields. Best-effort: a preset failure doesn't undo
+  // the household — the user still has the trigger defaults to fall
+  // back on.
+  if (useCase && selectedCategoryIds.length > 0) {
+    await applyHouseholdPresets(supabase, household.id, selectedCategoryIds);
+  }
 
   revalidatePath("/transactions");
   revalidatePath("/reports");

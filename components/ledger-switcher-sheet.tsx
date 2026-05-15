@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, Plus, Check, LogIn, Mail, Loader2 } from "lucide-react";
-import { switchHousehold, createNewLedger } from "@/app/actions/households";
+import { switchHousehold } from "@/app/actions/households";
 import { acceptInvitation, declineInvitation, joinLedgerByCode } from "@/app/actions/invitations";
-import { CURRENCIES } from "@/lib/currencies";
 import type { DbHouseholdMembership, DbPendingInvitation } from "@/lib/types";
 
 type Props = {
@@ -15,7 +14,11 @@ type Props = {
   onClose: () => void;
 };
 
-type Mode = "list" | "create" | "join";
+// v1.38.1 — the inline "create" form is gone; tapping Create now
+// closes the sheet and navigates to /settings/new-ledger, which uses
+// the same 3-step flow as initial onboarding. Kept the Mode type as a
+// 2-way switch (list / join) so the rest of the file reads cleanly.
+type Mode = "list" | "join";
 
 export default function LedgerSwitcherSheet({
   memberships,
@@ -26,12 +29,6 @@ export default function LedgerSwitcherSheet({
   const router = useRouter();
   const [switching, setSwitching] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("list");
-
-  // Create form
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [newName, setNewName] = useState("");
-  const [newCurrency, setNewCurrency] = useState("IDR");
 
   // Join form
   const [joining, setJoining] = useState(false);
@@ -54,23 +51,6 @@ export default function LedgerSwitcherSheet({
     }
     router.refresh();
     onClose();
-  }
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setCreateError(null);
-    setCreating(true);
-    const fd = new FormData();
-    fd.set("name", newName);
-    fd.set("currency", newCurrency);
-    const result = await createNewLedger(fd);
-    if (result.error) {
-      setCreateError(result.error);
-      setCreating(false);
-    } else {
-      router.refresh();
-      onClose();
-    }
   }
 
   async function handleJoin(e: React.FormEvent) {
@@ -229,7 +209,14 @@ export default function LedgerSwitcherSheet({
                 Join Ledger
               </button>
               <button
-                onClick={() => setMode("create")}
+                onClick={() => {
+                  // v1.38.1 — close the sheet first so the navigation
+                  // stack stays clean, then route to /settings/new-ledger
+                  // which renders the same 3-step LedgerSetupFlow used
+                  // by initial onboarding.
+                  onClose();
+                  router.push("/settings/new-ledger");
+                }}
                 className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--foreground)] py-3.5 text-[14px] font-semibold text-[var(--on-foreground)] transition-colors active:opacity-90"
               >
                 <Plus className="h-4 w-4" strokeWidth={2.25} />
@@ -238,51 +225,10 @@ export default function LedgerSwitcherSheet({
             </div>
           )}
 
-          {mode === "create" && (
-            <form onSubmit={handleCreate} className="space-y-3">
-              <p className="text-[13px] font-medium text-[var(--label-secondary)]">New ledger</p>
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="e.g. Vacation Fund"
-                required
-                autoFocus
-                className="h-12 w-full rounded-xl bg-[var(--background)] px-3 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20"
-              />
-              <select
-                value={newCurrency}
-                onChange={(e) => setNewCurrency(e.target.value)}
-                className="h-12 w-full rounded-xl bg-[var(--background)] px-3 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20"
-              >
-                {CURRENCIES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code} — {c.name}
-                  </option>
-                ))}
-              </select>
-              {createError && <p className="text-[12px] text-rose-600">{createError}</p>}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("list");
-                    setCreateError(null);
-                  }}
-                  className="flex h-12 flex-1 items-center justify-center rounded-xl bg-[var(--background)] text-[14px] font-medium text-[var(--label-secondary)] ring-1 ring-black/[0.06]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="flex h-12 flex-1 items-center justify-center rounded-xl bg-[var(--foreground)] text-[14px] font-semibold text-[var(--on-foreground)] transition-opacity disabled:opacity-60"
-                >
-                  {creating ? "Creating…" : "Create"}
-                </button>
-              </div>
-            </form>
-          )}
+          {/* mode === "create" inline form removed in v1.38.1 — see
+              the Create button above; tapping it now routes to
+              /settings/new-ledger which renders the shared 3-step
+              LedgerSetupFlow. */}
 
           {mode === "join" && (
             <form onSubmit={handleJoin} className="space-y-3">

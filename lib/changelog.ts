@@ -45,6 +45,24 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.38.1",
+    date: "May 15, 2026",
+    changes: [
+      { type: "improvement", audience: "user",
+        en: "Creating a new ledger from Settings now uses the same 3-step flow as the first-time signup — name → use case → category picker. Same defaults (3 wallets + 3 income categories) are applied to every new ledger.",
+        id: "Membuat ledger baru dari Settings sekarang pakai flow 3-langkah yang sama dengan signup pertama kali — name → use case → pilih kategori. Default sama (3 dompet + 3 kategori pemasukan) diterapkan untuk setiap ledger baru." },
+      { type: "improvement", audience: "dev",
+        en: "Extracted the 3-step ledger setup into components/ledger-setup-flow.tsx so /onboarding (createHousehold) and /settings/new-ledger (createNewLedger) share one implementation. applyHouseholdPresets moved to lib/household-presets-server.ts so it can be imported from both server-action files without tripping the 'use server' export rules.",
+        id: "Setup ledger 3-langkah diekstrak ke components/ledger-setup-flow.tsx supaya /onboarding (createHousehold) dan /settings/new-ledger (createNewLedger) berbagi satu implementasi. applyHouseholdPresets dipindah ke lib/household-presets-server.ts supaya bisa di-import dari kedua file aksi tanpa konflik aturan 'use server'." },
+      { type: "improvement", audience: "dev",
+        en: "createNewLedger now accepts use_case + selected_categories form fields (same shape as createHousehold). When present, runs applyHouseholdPresets after household insert. Backwards-compatible — callers that don't send the fields keep the legacy behaviour.",
+        id: "createNewLedger sekarang menerima field form use_case + selected_categories (bentuk sama dengan createHousehold). Kalau ada, jalankan applyHouseholdPresets setelah household di-insert. Kompatibel mundur — caller lama yang tidak kirim field tetap pakai perilaku lama." },
+      { type: "improvement", audience: "dev",
+        en: "Ledger switcher sheet's inline 'create' form removed; the Create button now closes the sheet + router.pushes to /settings/new-ledger. Dropped ~50 lines of duplicated form code from the sheet.",
+        id: "Form 'create' inline di ledger switcher sheet dihapus; tombol Create sekarang menutup sheet + router.push ke /settings/new-ledger. Menghapus ~50 baris kode form duplikat dari sheet." },
+    ],
+  },
+  {
     version: "1.39.0",
     date: "May 15, 2026",
     changes: [
