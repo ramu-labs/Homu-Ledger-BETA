@@ -1,8 +1,15 @@
 "use client";
 
+// Edit Profile (v1.33.0).
+//
+// Password change moved to /settings/security — Edit Profile is now
+// purely identity (name, username, avatar, gender, DoB, read-only
+// email). Keeps the surface focused: changes here can never lock you
+// out of your account, so we can keep them friction-light.
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Check, Eye, EyeOff } from "lucide-react";
+import { ChevronLeft, Check } from "lucide-react";
 import { updateProfile } from "@/app/actions/auth";
 import { cn } from "@/lib/cn";
 
@@ -30,6 +37,14 @@ const FACE_EMOJIS = [
 ];
 
 type AvatarMode = "initial" | "emoji";
+type Gender = "male" | "female" | "other" | "prefer_not_to_say";
+
+const GENDER_OPTIONS: { value: Gender; label: string }[] = [
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+  { value: "other", label: "Other" },
+  { value: "prefer_not_to_say", label: "Prefer not to say" },
+];
 
 type Props = {
   profile: {
@@ -38,6 +53,8 @@ type Props = {
     initials: string;
     avatar_color: string;
     email: string;
+    gender: Gender | null;
+    birth_date: string | null;
   };
 };
 
@@ -55,8 +72,11 @@ export default function EditProfileShell({ profile }: Props) {
   const [selectedEmoji, setSelectedEmoji] = useState(
     FACE_EMOJIS.includes(profile.initials) ? profile.initials : FACE_EMOJIS[0]
   );
-  const [newPassword, setNewPassword] = useState("");
-  const [showPw, setShowPw] = useState(false);
+  // v1.33.0 — gender + birth_date now live on this form. Both
+  // optional, so users who pre-date the v1.32.0 signup flow can leave
+  // them blank.
+  const [gender, setGender] = useState<Gender | null>(profile.gender);
+  const [birthDate, setBirthDate] = useState<string>(profile.birth_date ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -72,7 +92,11 @@ export default function EditProfileShell({ profile }: Props) {
     fd.set("username", username);
     fd.set("avatar_color", avatarColor);
     fd.set("initials", displayInitials);
-    if (newPassword) fd.set("new_password", newPassword);
+    // Send gender + birth_date through. Empty strings tell the server
+    // action to leave the existing value untouched (for opted-out
+    // users who don't want to fill them in).
+    if (gender) fd.set("gender", gender);
+    if (birthDate) fd.set("birth_date", birthDate);
     const result = await updateProfile(fd);
     if (result.error) {
       setError(result.error);
@@ -82,6 +106,11 @@ export default function EditProfileShell({ profile }: Props) {
       setTimeout(() => router.back(), 600);
     }
   }
+
+  // Date picker bounds — match the signup form's 13–120 years range.
+  const today = new Date();
+  const dobMin = isoDate(new Date(today.getFullYear() - 120, today.getMonth(), today.getDate()));
+  const dobMax = isoDate(new Date(today.getFullYear() - 13, today.getMonth(), today.getDate()));
 
   return (
     <div className="pb-10">
@@ -222,24 +251,43 @@ export default function EditProfileShell({ profile }: Props) {
           />
         </div>
 
-        {/* New password */}
+        {/* Gender — same 4-option pill layout as the signup form so
+            users recognise it. Skipping the field leaves the existing
+            value untouched on save. */}
         <div>
-          <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">New password <span className="text-[var(--label-tertiary)] font-normal">(leave blank to keep current)</span></label>
-          <div className="relative">
-            <input
-              type={showPw ? "text" : "password"}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="New password"
-              autoComplete="new-password"
-              className="h-12 w-full rounded-2xl bg-[var(--surface)] px-4 pr-12 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
-            />
-            <button type="button" onClick={() => setShowPw((v) => !v)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--label-tertiary)]"
-            >
-              {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
+          <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Gender</label>
+          <div className="grid grid-cols-2 gap-2">
+            {GENDER_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setGender(opt.value)}
+                className={cn(
+                  "h-11 rounded-2xl text-[13px] font-medium transition-colors [touch-action:manipulation]",
+                  gender === opt.value
+                    ? "bg-[var(--foreground)] text-[var(--on-foreground)]"
+                    : "bg-[var(--surface)] text-[var(--foreground)] ring-1 ring-black/[0.08]"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
+        </div>
+
+        {/* Date of birth — native picker, same 13–120 year bounds as
+            signup. Empty string is treated as "no change" by the
+            server (lets users leave their DoB blank). */}
+        <div>
+          <label className="mb-1.5 block text-[13px] font-medium text-[var(--label-secondary)]">Date of birth</label>
+          <input
+            type="date"
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            min={dobMin}
+            max={dobMax}
+            className="h-12 w-full rounded-2xl bg-[var(--surface)] px-4 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow [color-scheme:light]"
+          />
         </div>
 
         {error && (
@@ -259,4 +307,11 @@ export default function EditProfileShell({ profile }: Props) {
       </form>
     </div>
   );
+}
+
+function isoDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }

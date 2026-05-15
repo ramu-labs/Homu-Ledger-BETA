@@ -2,6 +2,62 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.33.0 - May 15, 2026
+
+Edit Profile picks up the new fields from v1.32.0, plus a real password-reset story (forgot-password OTP flow + signed-in change).
+
+### 1. Gender + Date of birth on Edit Profile
+
+Loads `gender` + `birth_date` from the profile, renders them with the same UI as the signup form (4-option pill row + native date picker). Server-side validation re-uses the existing `VALID_GENDERS` enum and 13–120-year DoB bound. Empty form values mean "don't change" — users who pre-date v1.32.0 can leave them blank or fill them in.
+
+The old "New password" field is **removed** from Edit Profile and migrated to `/settings/security`.
+
+### 2. /settings/security (signed-in password change)
+
+New page under Settings → Account → **Security**. Single form right now: New password + Confirm new password. No "current password" field per the design call (lower friction; trade-off doc'd in the changelog).
+
+**Google-only users** (no email/password identity) see an informational hint instead of the form. Detection happens server-side via `user.identities.some(i => i.provider === "email")` so there's no flicker on hydration.
+
+Server action `updatePassword(newPassword)` wraps `supabase.auth.updateUser({ password })`. Minimum 8 chars enforced both client + server.
+
+Structured so 2FA / connected-accounts sections can slot in later without restructuring.
+
+### 3. Forgot-password flow
+
+New route `/login/forgot` — three-step state machine, no separate sub-routes:
+
+```
+email  →  otp  →  new password  →  /transactions
+```
+
+`sendPasswordResetOtp(email)` calls `supabase.auth.resetPasswordForEmail` — we deliberately do NOT pass `redirectTo` because we want the user to type the code into our flow, not click the magic link to a separate landing page. (Supabase emails contain both; the magic link still works if they click it, but it lands them on `/auth/callback` which is wired for OAuth not password recovery — minor follow-up.)
+
+`verifyPasswordResetOtp(email, token)` uses `type: 'recovery'`, which creates a fresh recovery-scoped session on success. Cookies are written automatically by our SSR client. The final step then calls `updatePassword` against that session and routes to `/transactions` — no extra sign-in needed.
+
+"Forgot your password?" link added to `/login/password` (under the primary Sign in button).
+
+### 4. Files touched
+
+- `app/actions/auth.ts` — `updateProfile` now accepts gender + birth_date; new `updatePassword`, `sendPasswordResetOtp`, `verifyPasswordResetOtp` actions
+- `app/(app)/settings/edit-profile/page.tsx` — extra SELECT for gender/birth_date
+- `components/edit-profile-shell.tsx` — stripped password field, added gender pills + DoB picker
+- `app/(app)/settings/security/page.tsx` (new — server wrapper with provider detection)
+- `components/security-shell.tsx` (new — change-password form with Google-only fallback)
+- `app/(auth)/login/forgot/page.tsx` (new — three-step state machine)
+- `app/(auth)/login/password/page.tsx` — "Forgot your password?" link
+- `app/(app)/settings/page.tsx` — Security RowLink in Account group + Lock icon
+- `lib/i18n/dictionaries.ts` — security + forgot strings
+- `lib/changelog.ts` — v1.33.0 entry
+- Version bumps in `package.json`, `public/sw.js`, settings footer
+
+### 5. Not in scope
+
+- "Add a password to my Google account" — Google-only users currently see a read-only hint. Cross-linking auth methods is a separate feature with its own verification flow.
+- Current-password confirmation on the signed-in change — design call was low-friction. Adding it later is a one-field change.
+- Password-strength meter — basic length check only. Easy to bolt on with `zxcvbn` if requested.
+
+---
+
 ## v1.32.0 - May 15, 2026
 
 Sign-up flow redesigned end-to-end. Four parts.

@@ -110,6 +110,15 @@ function PasswordLoginInner() {
         >
           {loading ? t("auth.signingIn") : t("auth.signIn")}
         </button>
+
+        {/* Forgot password — routes to the three-step recovery flow
+            (email → OTP → new password). Kept inside the form so its
+            visual weight is below the primary CTA. */}
+        <p className="text-center text-[13px]">
+          <Link href="/login/forgot" className="font-medium text-[var(--label-secondary)]">
+            {t("auth.forgotPassword")}
+          </Link>
+        </p>
       </form>
 
       <p className="mt-6 text-center text-[13px] text-[var(--label-secondary)]">

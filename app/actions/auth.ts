@@ -487,11 +487,28 @@ export async function updateProfile(formData: FormData): Promise<{ error?: strin
   const username = (formData.get("username") as string).trim().toLowerCase();
   const avatar_color = formData.get("avatar_color") as string;
   const initials = (formData.get("initials") as string).trim().slice(0, 2);
-  const newPassword = (formData.get("new_password") as string | null)?.trim();
+  // gender + birth_date are optional in Edit Profile (added v1.33.0).
+  // Missing form fields = "don't change" (we omit from the UPDATE
+  // payload entirely so the column keeps its current value).
+  const genderRaw = (formData.get("gender") as string | null)?.trim() ?? "";
+  const birthDate = (formData.get("birth_date") as string | null)?.trim() ?? "";
 
   if (!name) return { error: "Name is required." };
   if (username && !/^[a-z0-9_]{3,20}$/.test(username)) {
     return { error: "Username must be 3–20 characters: letters, numbers, underscores only." };
+  }
+  if (genderRaw && !VALID_GENDERS.includes(genderRaw as (typeof VALID_GENDERS)[number])) {
+    return { error: "Invalid gender option." };
+  }
+  if (birthDate) {
+    const d = new Date(birthDate);
+    if (Number.isNaN(d.getTime())) return { error: "Invalid date of birth." };
+    const now = new Date();
+    const minBirth = new Date(now.getFullYear() - 120, now.getMonth(), now.getDate());
+    const maxBirth = new Date(now.getFullYear() - 13, now.getMonth(), now.getDate());
+    if (d < minBirth || d > maxBirth) {
+      return { error: "You must be 13 or older." };
+    }
   }
 
   if (username) {
@@ -504,20 +521,104 @@ export async function updateProfile(formData: FormData): Promise<{ error?: strin
     if (existing) return { error: "Username already taken." };
   }
 
+  // Build the UPDATE payload conditionally so unset optional fields
+  // don't overwrite existing values with empty strings / null.
+  const updates: {
+    name: string;
+    username: string | null;
+    avatar_color: string;
+    initials: string;
+    gender?: string;
+    birth_date?: string;
+  } = { name, username: username || null, avatar_color, initials };
+  if (genderRaw) updates.gender = genderRaw;
+  if (birthDate) updates.birth_date = birthDate;
+
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({ name, username: username || null, avatar_color, initials })
+    .update(updates)
     .eq("id", user.id);
 
   if (profileError) return { error: profileError.message };
 
-  if (newPassword) {
-    const { error: pwError } = await supabase.auth.updateUser({ password: newPassword });
-    if (pwError) return { error: pwError.message };
-  }
-
   revalidatePath("/settings");
   revalidatePath("/transactions");
+  return {};
+}
+
+/**
+ * Update the password while the user is already signed in. Lives at
+ * /settings/security in the UI (v1.33.0). No "current password"
+ * confirmation per the design decision — we accept the friction
+ * trade-off in exchange for a cleaner form.
+ *
+ * Supabase rejects updateUser({ password }) for users whose only auth
+ * identity is OAuth (no email/password set up). The /settings/security
+ * page hides the form for those users so we never reach this branch.
+ */
+export async function updatePassword(
+  newPassword: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const next = (newPassword ?? "").trim();
+  if (next.length < 8) return { error: "Password must be at least 8 characters." };
+
+  const { error } = await supabase.auth.updateUser({ password: next });
+  if (error) return { error: error.message };
+  return {};
+}
+
+/**
+ * Step 1 of the forgot-password flow on /login/forgot (v1.33.0).
+ * Sends a Supabase password-recovery email. The email contains both
+ * a magic link AND a 6-digit token; the next step in our flow uses
+ * the token via `verifyPasswordResetOtp`.
+ *
+ * Supabase rate-limits this server-side — surface the error verbatim.
+ * We always say "if the email exists, we sent a code" to avoid
+ * enumerating registered emails.
+ */
+export async function sendPasswordResetOtp(
+  email: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const trimmed = (email ?? "").trim();
+  if (!trimmed || !trimmed.includes("@")) return { error: "Enter a valid email." };
+  // We don't pass redirectTo — the user will type the code into our
+  // /login/forgot OTP step instead of clicking the link.
+  const { error } = await supabase.auth.resetPasswordForEmail(trimmed);
+  if (error) return { error: error.message };
+  return {};
+}
+
+/**
+ * Step 2 of the forgot-password flow — verify the 6-digit code the
+ * user just typed. On success Supabase returns a fresh session
+ * (cookies are written automatically by the SSR client), so step 3
+ * can call `supabase.auth.updateUser({ password })` against that
+ * session.
+ */
+export async function verifyPasswordResetOtp(
+  email: string,
+  token: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const trimmedEmail = (email ?? "").trim();
+  const trimmedToken = (token ?? "").trim();
+  if (!trimmedEmail || !trimmedToken) return { error: "Enter the code from your email." };
+  if (!/^\d{4,8}$/.test(trimmedToken)) return { error: "Code should be all digits." };
+
+  // `type: 'recovery'` is the recovery-email branch of verifyOtp,
+  // distinct from the 'signup' type used in the signup OTP flow.
+  const { error } = await supabase.auth.verifyOtp({
+    email: trimmedEmail,
+    token: trimmedToken,
+    type: "recovery",
+  });
+  if (error) return { error: error.message };
   return {};
 }
 
