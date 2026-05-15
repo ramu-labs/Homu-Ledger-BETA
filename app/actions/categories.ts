@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { DbCategory, TransactionType } from "@/lib/types";
+import { getClientOpId, isClientOpDuplicate } from "@/lib/idempotency";
 
 const COLOR_PALETTE = [
   "#f97316", "#3b82f6", "#8b5cf6", "#ef4444",
@@ -38,13 +39,37 @@ export async function addCategory(
   if (!name) return { error: "Name required" };
   if (!symbol) return { error: "Emoji required" };
 
+  const client_op_id = getClientOpId(formData);
+
   const { data, error } = await supabase
     .from("categories")
-    .insert({ household_id: profile.household_id, name, symbol, color, type })
+    .insert({
+      household_id: profile.household_id,
+      name,
+      symbol,
+      color,
+      type,
+      ...(client_op_id ? { client_op_id } : {}),
+    })
     .select("id, name, symbol, color, type, is_default")
     .single();
 
-  if (error || !data) return { error: error?.message ?? "Failed to add" };
+  if (error || !data) {
+    if (error && isClientOpDuplicate(error) && client_op_id) {
+      const { data: existing } = await supabase
+        .from("categories")
+        .select("id, name, symbol, color, type, is_default")
+        .eq("household_id", profile.household_id)
+        .eq("client_op_id", client_op_id)
+        .single();
+      if (existing) {
+        revalidatePath("/transactions");
+        revalidatePath("/settings/categories");
+        return { category: existing as DbCategory };
+      }
+    }
+    return { error: error?.message ?? "Failed to add" };
+  }
 
   revalidatePath("/transactions");
   revalidatePath("/settings/categories");

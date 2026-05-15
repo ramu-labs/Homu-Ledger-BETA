@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { DbWallet } from "@/lib/types";
+import { getClientOpId, isClientOpDuplicate } from "@/lib/idempotency";
 
 const COLOR_PALETTE = [
   "#22c55e", "#3b82f6", "#8b5cf6", "#f97316",
@@ -41,6 +42,8 @@ export async function addWallet(
   if (!name) return { error: "Name required" };
   if (!symbol) return { error: "Icon required" };
 
+  const client_op_id = getClientOpId(formData);
+
   const { data, error } = await supabase
     .from("wallets")
     .insert({
@@ -50,11 +53,31 @@ export async function addWallet(
       color,
       initial_balance: initialBalance,
       is_default: false,
+      ...(client_op_id ? { client_op_id } : {}),
     })
     .select("id, name, symbol, color, initial_balance, is_default")
     .single();
 
-  if (error || !data) return { error: error?.message ?? "Failed to add" };
+  if (error || !data) {
+    // Idempotent retry: refetch the previously-inserted row by its
+    // client_op_id (scoped to household) so the caller still gets back a
+    // wallet object — they'd expect a successful add to return one.
+    if (error && isClientOpDuplicate(error) && client_op_id) {
+      const { data: existing } = await supabase
+        .from("wallets")
+        .select("id, name, symbol, color, initial_balance, is_default")
+        .eq("household_id", householdId)
+        .eq("client_op_id", client_op_id)
+        .single();
+      if (existing) {
+        revalidatePath("/transactions");
+        revalidatePath("/reports");
+        revalidatePath("/settings/wallets");
+        return { wallet: { ...existing, initial_balance: Number(existing.initial_balance) } };
+      }
+    }
+    return { error: error?.message ?? "Failed to add" };
+  }
 
   revalidatePath("/transactions");
   revalidatePath("/reports");

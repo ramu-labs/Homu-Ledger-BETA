@@ -23,6 +23,9 @@ export const en = {
   "common.clearAll": "Clear all",
   "common.required": "Required",
   "common.offline": "Offline",
+  "version.required.title": "Update required",
+  "version.required.body": "A newer version of Homu is required to continue. Refresh to load it.",
+  "version.required.cta": "Refresh now",
 
   // Navigation
   "nav.transactions": "Transactions",
@@ -386,6 +389,9 @@ export const id: Record<TKey, string> = {
   "common.clearAll": "Hapus semua",
   "common.required": "Wajib diisi",
   "common.offline": "Offline",
+  "version.required.title": "Perlu diperbarui",
+  "version.required.body": "Versi Homu yang lebih baru diperlukan untuk melanjutkan. Muat ulang untuk memuatnya.",
+  "version.required.cta": "Muat ulang sekarang",
 
   // Navigation
   "nav.transactions": "Transaksi",

@@ -45,6 +45,26 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.35.0",
+    date: "May 15, 2026",
+    changes: [
+      // ── User-facing ──
+      { type: "improvement", audience: "user",
+        en: "Nothing visible changes this release — this is the plumbing for the offline-write feature shipping in v1.36.0. If your phone has been online lately you won’t notice anything.",
+        id: "Tidak ada perubahan terlihat di rilis ini — ini adalah fondasi untuk fitur edit offline yang akan datang di v1.36.0. Kalau HP-mu online belakangan, kamu tidak akan merasakan apa-apa." },
+      // ── Developer-facing ──
+      { type: "new", audience: "dev",
+        en: "Migration 0028 adds nullable `client_op_id UUID` + `updated_at TIMESTAMPTZ` to transactions, wallets, and categories. Partial unique index `(household_id, client_op_id) WHERE client_op_id IS NOT NULL` on each — repeat inserts with the same op id surface as Postgres 23505 unique-violation, which the server actions catch and return as success. Plus a shared `set_updated_at()` BEFORE-UPDATE trigger. Purely additive — v1.34.0 keeps working unchanged.",
+        id: "Migrasi 0028 menambahkan `client_op_id UUID` + `updated_at TIMESTAMPTZ` (nullable) di transactions, wallets, dan categories. Index unique parsial `(household_id, client_op_id) WHERE client_op_id IS NOT NULL` di setiap tabel — insert berulang dengan op id sama muncul sebagai 23505 unique-violation Postgres, yang server action tangkap dan kembalikan sebagai sukses. Plus trigger `set_updated_at()` BEFORE-UPDATE bersama. Murni aditif — v1.34.0 tetap berjalan tanpa perubahan." },
+      { type: "new", audience: "dev",
+        en: "lib/idempotency.ts — `getClientOpId(formData)` extracts the op id from a server-action FormData; `isClientOpDuplicate(error)` detects the unique-violation. Used in addTransaction / addWallet / addCategory: on a dedupe the server refetches the previously-inserted row (where the caller expects one back) and returns it as if the insert just succeeded.",
+        id: "lib/idempotency.ts — `getClientOpId(formData)` mengekstrak op id dari FormData server action; `isClientOpDuplicate(error)` mendeteksi unique-violation. Dipakai di addTransaction / addWallet / addCategory: saat dedupe, server memuat ulang baris yang sudah ada (dimana caller mengharapkan baris kembali) dan mengembalikannya seolah insert baru sukses." },
+      { type: "new", audience: "dev",
+        en: "lib/version.ts — APP_VERSION + MIN_CLIENT_VERSION constants and compareVersions(). GET /api/version returns { current, min } with Cache-Control: no-store. New components/version-gate.tsx checks on mount + online + visibilitychange; if APP_VERSION < server min, blocks the app with a hard-refresh modal. Dormant in 1.35.0 (min still 1.34.0) — primed for Phase 3 to start enforcing.",
+        id: "lib/version.ts — konstanta APP_VERSION + MIN_CLIENT_VERSION dan compareVersions(). GET /api/version mengembalikan { current, min } dengan Cache-Control: no-store. components/version-gate.tsx baru memeriksa saat mount + online + visibilitychange; kalau APP_VERSION < server min, memblokir app dengan modal hard-refresh. Dorman di 1.35.0 (min masih 1.34.0) — disiapkan untuk Phase 3 mulai mengaktifkannya." },
+    ],
+  },
+  {
     version: "1.34.0",
     date: "May 15, 2026",
     changes: [

@@ -108,6 +108,7 @@ export type Database = {
       }
       categories: {
         Row: {
+          client_op_id: string | null
           color: string
           created_at: string
           household_id: string
@@ -116,8 +117,10 @@ export type Database = {
           name: string
           symbol: string
           type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string
         }
         Insert: {
+          client_op_id?: string | null
           color: string
           created_at?: string
           household_id: string
@@ -126,8 +129,10 @@ export type Database = {
           name: string
           symbol: string
           type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
         }
         Update: {
+          client_op_id?: string | null
           color?: string
           created_at?: string
           household_id?: string
@@ -136,6 +141,7 @@ export type Database = {
           name?: string
           symbol?: string
           type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
         }
         Relationships: [
           {
@@ -573,6 +579,7 @@ export type Database = {
         Row: {
           amount: number
           category_id: string | null
+          client_op_id: string | null
           created_at: string
           created_by: string | null
           date: string
@@ -584,11 +591,13 @@ export type Database = {
           recurring_item_id: string | null
           transfer_pair_id: string | null
           type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string
           wallet_id: string | null
         }
         Insert: {
           amount: number
           category_id?: string | null
+          client_op_id?: string | null
           created_at?: string
           created_by?: string | null
           date?: string
@@ -600,11 +609,13 @@ export type Database = {
           recurring_item_id?: string | null
           transfer_pair_id?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
           wallet_id?: string | null
         }
         Update: {
           amount?: number
           category_id?: string | null
+          client_op_id?: string | null
           created_at?: string
           created_by?: string | null
           date?: string
@@ -616,6 +627,7 @@ export type Database = {
           recurring_item_id?: string | null
           transfer_pair_id?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
           wallet_id?: string | null
         }
         Relationships: [
@@ -658,6 +670,7 @@ export type Database = {
       }
       wallets: {
         Row: {
+          client_op_id: string | null
           color: string
           created_at: string
           household_id: string
@@ -666,8 +679,10 @@ export type Database = {
           is_default: boolean
           name: string
           symbol: string
+          updated_at: string
         }
         Insert: {
+          client_op_id?: string | null
           color: string
           created_at?: string
           household_id: string
@@ -676,8 +691,10 @@ export type Database = {
           is_default?: boolean
           name: string
           symbol: string
+          updated_at?: string
         }
         Update: {
+          client_op_id?: string | null
           color?: string
           created_at?: string
           household_id?: string
@@ -686,6 +703,7 @@ export type Database = {
           is_default?: boolean
           name?: string
           symbol?: string
+          updated_at?: string
         }
         Relationships: [
           {
