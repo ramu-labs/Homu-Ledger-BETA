@@ -45,6 +45,35 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.33.0",
+    date: "May 15, 2026",
+    changes: [
+      // ── User-facing ──
+      { type: "new", audience: "user",
+        en: "You can now edit Gender and Date of birth from Edit Profile (existing accounts can leave them blank or add them now).",
+        id: "Sekarang kamu bisa mengedit Jenis kelamin dan Tanggal lahir di Edit Profile (akun lama boleh kosongkan atau isi sekarang)." },
+      { type: "new", audience: "user",
+        en: "Forgot your password? On the sign-in screen tap 'Forgot your password?' — we'll send a 6-digit code to your email. Enter the code, set a new password, and you're back in.",
+        id: "Lupa password? Di layar sign-in, ketuk 'Lupa password?' — kami akan kirim kode 6 digit ke emailmu. Masukkan kodenya, atur password baru, dan kamu masuk lagi." },
+      { type: "new", audience: "user",
+        en: "Settings → Security: change your password while signed in. (Google-only accounts: your password is managed by Google, so the form is hidden — change it in your Google Account.)",
+        id: "Pengaturan → Keamanan: ganti passwordmu sambil sudah masuk. (Akun Google-only: password dikelola Google, jadi form-nya disembunyikan — ganti di pengaturan Akun Google.)" },
+      // ── Developer-facing ──
+      { type: "improvement", audience: "dev",
+        en: "Edit Profile shell stripped of the 'New password' field — security operations live on /settings/security now. updateProfile action accepts gender + birth_date (re-uses the same 13–120-year DoB bound + VALID_GENDERS enum as signup).",
+        id: "Shell Edit Profile dipangkas dari field 'New password' — operasi security pindah ke /settings/security. Aksi updateProfile menerima gender + birth_date (pakai bound DoB 13–120 tahun + enum VALID_GENDERS yang sama seperti signup)." },
+      { type: "new", audience: "dev",
+        en: "New SecurityShell at /settings/security. Detects email/password identity vs Google-only via user.identities[].provider on the server; Google-only users see a hint instead of the form. Calls updatePassword server action which wraps supabase.auth.updateUser({ password }).",
+        id: "SecurityShell baru di /settings/security. Mendeteksi identitas email/password vs Google-only via user.identities[].provider di server; pengguna Google-only melihat hint, bukan form. Memanggil aksi updatePassword yang membungkus supabase.auth.updateUser({ password })." },
+      { type: "new", audience: "dev",
+        en: "Forgot-password flow at /login/forgot — three-step state machine (email → otp → new password). Uses supabase.auth.resetPasswordForEmail for the send, verifyOtp({type:'recovery'}) for the code, then updateUser({password}) on the resulting recovery session. Lands the user on /transactions — no extra sign-in step needed.",
+        id: "Alur lupa-password di /login/forgot — state machine tiga langkah (email → otp → password baru). Memakai supabase.auth.resetPasswordForEmail untuk kirim, verifyOtp({type:'recovery'}) untuk kode, lalu updateUser({password}) di session recovery yang dihasilkan. Pengguna langsung ke /transactions — tanpa langkah sign-in tambahan." },
+      { type: "improvement", audience: "dev",
+        en: "Design choice — no current-password confirmation on the signed-in change (user picked low-friction over the stolen-session protection). Documented as a trade-off; can be added later behind a Settings toggle if needed.",
+        id: "Pilihan desain — tidak ada konfirmasi password lama di perubahan saat sudah masuk (user memilih low-friction daripada proteksi sesi tercuri). Didokumentasikan sebagai trade-off; bisa ditambah belakangan di balik toggle Settings kalau perlu." },
+    ],
+  },
+  {
     version: "1.32.0",
     date: "May 15, 2026",
     changes: [
