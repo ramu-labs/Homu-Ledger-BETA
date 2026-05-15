@@ -399,3 +399,34 @@ input[type="date"]::-webkit-clear-button {
   [style*="aurora-drift"] { animation-play-state: paused !important; }
   [style*="ai-sparkle-blink"] { animation: none !important; }
 }
+
+/* v1.42.0 — Magical save fly-out.
+   Each voice row rises with a coral glow and fades up + out. Parent
+   shell applies the class with a staggered animation-delay so rows
+   leave in sequence (50ms apart) — reads as them being "absorbed"
+   into the bottom of the screen on their way to the list. */
+@keyframes voice-row-fly {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    box-shadow: var(--shadow-card);
+  }
+  35% {
+    transform: translateY(-6px) scale(1.015);
+    opacity: 1;
+    box-shadow: 0 6px 28px rgba(238,100,82,0.45),
+                0 0 0 2px rgba(238,100,82,0.30);
+  }
+  100% {
+    transform: translateY(-40px) scale(0.94);
+    opacity: 0;
+    box-shadow: 0 0 0 0 rgba(238,100,82,0);
+  }
+}
+.voice-row-fly {
+  animation: voice-row-fly 620ms cubic-bezier(.22,1,.36,1) both;
+  /* parent overrides animation-delay inline for stagger */
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice-row-fly { animation: none !important; opacity: 0 !important; }
+}

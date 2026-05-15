@@ -17,30 +17,44 @@
 // reliable enough that real-time partials weren't earning their
 // complexity).
 
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { transcribeAudio } from "@/lib/llm/groq";
 import { GEMINI_DEFAULT_MODEL, GEMINI_PROVIDER } from "@/lib/llm/gemini";
 import { estimateCostUsd } from "@/lib/llm/pricing";
+import { canonicalKey, candidateKeys } from "@/lib/llm/normalize";
 import type { VoiceAction, VoiceContext } from "@/lib/voice/types";
 
 // ── Auth + flag check ────────────────────────────────────────────────
 
-async function requireVoiceAccess(): Promise<
-  | { ok: true; supabase: Awaited<ReturnType<typeof createClient>> }
+// v1.42.0: cache the dev-check + flag-read for the lifetime of one
+// server request. Each utterance fires both transcribeVoiceAudio AND
+// parseVoiceUtterance — without this, that's 4 extra Supabase reads
+// per phrase. With React.cache(), the second action call in the SAME
+// request reuses the first call's resolved Promise. Free latency win.
+//
+// Note: server actions are SEPARATE requests, so this cache only helps
+// when one action internally calls another (not our pattern today).
+// We keep it anyway because the cache invariant is correct and the
+// pattern composes well if future actions chain calls.
+const getVoiceAccess = cache(async (): Promise<
+  | { ok: true; supabase: Awaited<ReturnType<typeof createClient>>; householdId: string | null }
   | { ok: false; error: string }
-> {
+> => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
-  // v1.41.1: dev-only gate as defense-in-depth. The UI hides the FAB
-  // for non-devs already, but a stale tab or replayed request could
-  // otherwise still hit these actions. Fetched in parallel with the
-  // flag below so this adds one column, not one round-trip.
+  // One round-trip for both profile fields (developer + household).
+  // Used by recordCategoryUsage downstream; saves a separate read.
   const [{ data: profileRow }, { data: flagRow }] = await Promise.all([
-    supabase.from("profiles").select("is_developer").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("is_developer, household_id")
+      .eq("id", user.id)
+      .maybeSingle(),
     supabase
       .from("app_settings")
       .select("value")
@@ -50,15 +64,17 @@ async function requireVoiceAccess(): Promise<
   if (!profileRow?.is_developer) {
     return { ok: false, error: "Voice transactions are limited to developers right now." };
   }
-  // voice_input_enabled is a soft kill-switch — flip it off in the AI
-  // admin if a regression or cost spike shows up. Default off when the
-  // row hasn't been created yet (so a fresh install doesn't accidentally
-  // start charging Groq before the dev configures it).
   if (flagRow?.value !== "true") {
     return { ok: false, error: "Voice transactions are disabled for this environment." };
   }
+  return { ok: true, supabase, householdId: profileRow.household_id ?? null };
+});
 
-  return { ok: true, supabase };
+async function requireVoiceAccess(): Promise<
+  | { ok: true; supabase: Awaited<ReturnType<typeof createClient>>; householdId: string | null }
+  | { ok: false; error: string }
+> {
+  return getVoiceAccess();
 }
 
 // ── Transcribe ───────────────────────────────────────────────────────
@@ -143,14 +159,18 @@ export async function parseVoiceUtterance(
     .select("value")
     .eq("key", "gemini_api_key")
     .maybeSingle();
-  const apiKey = keyRow?.value?.trim();
-  if (!apiKey) {
+  const rawKey = keyRow?.value?.trim();
+  if (!rawKey) {
     return {
       ok: false,
       error: "Voice parsing requires a Gemini API key. Configure it in Settings → AI admin.",
       unconfigured: true,
     };
   }
+  // Bind to a non-optional const so the closure below preserves the
+  // narrowing across the nested async-function declaration. (TS gives
+  // up narrowing on `apiKey?.trim()` when re-read inside the closure.)
+  const apiKey: string = rawKey;
 
   // Build the parse prompt. We embed the household categories + wallets
   // verbatim so Gemini can pick by name. The "Output JSON only" line is
@@ -189,34 +209,54 @@ export async function parseVoiceUtterance(
     `Utterance: "${cleaned.slice(0, 400)}"\n\n` +
     `Output JSON only. No commentary, no code fences.`;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6_000);
+  // v1.42.0: retry-once on transient Gemini errors (5xx / 429) and
+  // network failures. Same pattern as Groq retry — 250ms backoff,
+  // one attempt only, no retry on 4xx auth errors.
+  async function callGemini(): Promise<Response | { networkErr: Error }> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6_000);
+    try {
+      return await fetch(
+        `${GEMINI_API_BASE}/models/${encodeURIComponent(GEMINI_DEFAULT_MODEL)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.0,
+              responseMimeType: "application/json",
+              maxOutputTokens: VOICE_MAX_OUTPUT_TOKENS,
+            },
+          }),
+          signal: controller.signal,
+        }
+      );
+    } catch (err) {
+      return { networkErr: err as Error };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
 
   let res: Response;
-  try {
-    res = await fetch(
-      `${GEMINI_API_BASE}/models/${encodeURIComponent(GEMINI_DEFAULT_MODEL)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.0,
-            // Force JSON-only output — Gemini 1.5+/2.5 honours this and
-            // it sidesteps the "wrapped in ```json fences" failure mode.
-            responseMimeType: "application/json",
-            maxOutputTokens: VOICE_MAX_OUTPUT_TOKENS,
-          },
-        }),
-        signal: controller.signal,
-      }
-    );
-  } catch (err) {
-    clearTimeout(timeout);
-    return { ok: false, error: `Gemini call failed: ${(err as Error).message}` };
-  } finally {
-    clearTimeout(timeout);
+  const first = await callGemini();
+  if ("networkErr" in first) {
+    await new Promise((r) => setTimeout(r, 250));
+    const second = await callGemini();
+    if ("networkErr" in second) {
+      return { ok: false, error: `Gemini call failed: ${second.networkErr.message}` };
+    }
+    res = second;
+  } else if (first.status === 429 || first.status >= 500) {
+    await new Promise((r) => setTimeout(r, 250));
+    const second = await callGemini();
+    if ("networkErr" in second) {
+      return { ok: false, error: `Gemini call failed: ${second.networkErr.message}` };
+    }
+    res = second;
+  } else {
+    res = first;
   }
 
   if (!res.ok) {
@@ -256,7 +296,104 @@ export async function parseVoiceUtterance(
   }
 
   const action = safeParseAction(text, context);
-  return { ok: true, action, tokensIn, tokensOut };
+
+  // v1.42.0: cross-feature integration with the category_hints cache
+  // (originally built for the typed Add Transaction sheet in v1.25.0).
+  //
+  // If the user has previously trained the cache for this description
+  // — by saving a typed transaction with a manually-chosen category —
+  // that's a STRONGER signal than Gemini's guess. We override.
+  //
+  // This makes the two AI surfaces share a single source of truth: the
+  // user trains once, voice + typing both benefit. And it's free —
+  // category_hints is a single indexed Postgres lookup.
+  const enriched = await applyCachedCategory(action, access.householdId);
+  return { ok: true, action: enriched, tokensIn, tokensOut };
+}
+
+/**
+ * If the parsed action carries a description (add or update with a
+ * name patch), look it up in category_hints. On hit, override the
+ * action's category_id with the cached one — user-confirmed mappings
+ * trump model guesses.
+ */
+async function applyCachedCategory(
+  action: VoiceAction,
+  householdId: string | null
+): Promise<VoiceAction> {
+  if (!householdId) return action;
+  // Only meaningful for the "add" path. For "update" we'd need to
+  // know the row's name BEFORE this server call, which we don't have
+  // (the target resolves client-side). Voice updates that change
+  // category by voice already pass category_id explicitly.
+  if (action.kind !== "add") return action;
+  const name = action.tx.name;
+  if (!name) return action;
+
+  const candidates = candidateKeys(name);
+  if (candidates.length === 0) return action;
+
+  // Single indexed query against the cache. The .in() with the small
+  // candidate list (typically 3–6 entries) is ~1ms on a warm DB.
+  const supabase = await createClient();
+  const { data: hints } = await supabase
+    .from("category_hints")
+    .select("keyword, category_id")
+    .eq("household_id", householdId)
+    .in("keyword", candidates);
+  if (!hints || hints.length === 0) return action;
+
+  // Iterate candidates in order (longest/most-specific first) so a
+  // trained "kopi di kaldi" hint beats a generic "kopi" hint when both
+  // exist.
+  const byKey = new Map(hints.map((h) => [h.keyword, h.category_id]));
+  for (const key of candidates) {
+    const cid = byKey.get(key);
+    if (cid && cid !== action.tx.category_id) {
+      return { ...action, tx: { ...action.tx, category_id: cid } };
+    }
+  }
+  return action;
+}
+
+/** Public so the client-side save can mirror voice picks into the
+ *  shared cache. Mirrors recordCategoryUsage from app/actions/ai.ts
+ *  but reuses the voice access check we already paid for. */
+export async function recordVoiceCategoryUsage(
+  description: string,
+  categoryId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const access = await requireVoiceAccess();
+  if (!access.ok) return { ok: false, error: access.error };
+  if (!access.householdId) return { ok: false, error: "No household" };
+
+  const key = canonicalKey(description);
+  if (!key) return { ok: false, error: "Empty description" };
+
+  // Verify the category belongs to this household — same guard as
+  // recordCategoryUsage. Cheap and avoids cross-household poisoning.
+  const { data: cat } = await access.supabase
+    .from("categories")
+    .select("id")
+    .eq("id", categoryId)
+    .eq("household_id", access.householdId)
+    .maybeSingle();
+  if (!cat) return { ok: false, error: "Category not in household" };
+
+  await access.supabase.from("category_hints").upsert(
+    {
+      household_id: access.householdId,
+      keyword: key,
+      category_id: categoryId,
+      // 'user' source — voice picks where the user said the category
+      // out loud are effectively user-confirmed. Treating them as 'ai'
+      // would let a future cleanup job evict them more easily than the
+      // user expects.
+      source: "user",
+    },
+    { onConflict: "household_id,keyword" }
+  );
+  return { ok: true };
 }
 
 // ── JSON parsing + validation ────────────────────────────────────────

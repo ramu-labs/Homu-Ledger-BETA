@@ -34,6 +34,11 @@ export type ParsedTransaction = {
   /** True from the moment "remove" lands until the exit animation
    *  finishes (260ms). Filtered out of the save batch. */
   exiting?: boolean;
+  /** v1.42.0 — true while Whisper has returned a transcript but
+   *  Gemini parse hasn't completed yet. Renders as a skeleton row
+   *  with the raw transcript as a placeholder; filtered out of the
+   *  save batch. Replaced in-place when parse completes. */
+  ghost?: boolean;
 };
 
 /** A transfer row — visually distinct (coral arrow icon), saves via
@@ -48,6 +53,7 @@ export type ParsedTransfer = {
   version: number;
   changed: "amount" | "wallet" | "name" | null;
   exiting?: boolean;
+  ghost?: boolean;
 };
 
 /** Union of all drafts the voice screen can hold. */

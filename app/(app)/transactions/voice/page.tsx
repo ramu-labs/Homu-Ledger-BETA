@@ -68,6 +68,7 @@ export default async function VoiceTransactionsPage() {
       categories={categories}
       wallets={wallets}
       currency={household.currency ?? "IDR"}
+      iconStyle={profile.icon_style ?? "3d"}
       languageHint={
         // Household-level Bahasa/English preference (from v1.27.0).
         // 'auto' means let Whisper detect — usually what bilingual
