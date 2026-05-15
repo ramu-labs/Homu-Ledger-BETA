@@ -45,6 +45,33 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.41.0",
+    date: "May 15, 2026",
+    changes: [
+      { type: "new", audience: "user",
+        en: "AI Voice Transactions — tap the coral mic FAB on the Transactions screen, then dictate in Indonesian or English. Multiple transactions in one breath, mid-sentence corrections ('actually the kopi should be 35k'), wallet swaps, transfers, deletes — all parsed live. Review the rows, tap Save, done.",
+        id: "AI Voice Transactions — ketuk tombol mikrofon karang di layar Transactions, lalu bicara dalam Bahasa Indonesia atau Inggris. Beberapa transaksi sekaligus, koreksi di tengah kalimat ('eh, kopi-nya jadi 35rb'), ganti wallet, transfer, hapus — semua diuraikan langsung. Cek baris, ketuk Simpan, selesai." },
+      { type: "new", audience: "user",
+        en: "Mic FAB is gated behind a developer feature flag for safe rollout — flip it on in Settings → AI admin → Voice transactions once the Groq API key is configured. Hidden for everyone else.",
+        id: "Tombol mikrofon dikunci di balik feature flag developer untuk peluncuran aman — nyalakan di Settings → AI admin → Voice transactions setelah API key Groq diatur. Tersembunyi untuk semua yang lain." },
+      { type: "improvement", audience: "user",
+        en: "Voice screen respects 'reduced motion' — aurora pauses, sparkle stops, row enter/exit cuts to instant.",
+        id: "Layar voice menghormati 'reduced motion' — aurora berhenti, sparkle mati, animasi masuk/keluar baris jadi instan." },
+      { type: "improvement", audience: "dev",
+        en: "STT via Groq Whisper-large-v3 (free tier, ~28,800 audio-seconds/day, ~10× faster than OpenAI's Whisper API). NLU via existing Gemini 2.5-flash-lite — single JSON-mode call returns a discriminated VoiceAction. Per-utterance batching with client-side silence detection (900ms RMS hold) — no streaming SSE, no AudioWorklet PCM chunker, ~300 fewer LOC than the PRD's literal design.",
+        id: "STT lewat Groq Whisper-large-v3 (free tier, ~28.800 detik audio/hari, ~10× lebih cepat dari API Whisper OpenAI). NLU lewat Gemini 2.5-flash-lite yang sudah ada — satu panggilan JSON-mode mengembalikan VoiceAction discriminated union. Batch per-ucapan dengan deteksi senyap di sisi klien (RMS hold 900ms) — tidak ada streaming SSE, tidak ada AudioWorklet PCM chunker, ~300 LOC lebih hemat dari desain literal PRD." },
+      { type: "improvement", audience: "dev",
+        en: "groq_api_key + voice_input_enabled live in app_settings, mirroring the gemini_api_key pattern. The same save_app_setting SECURITY DEFINER RPC handles writes; reads are a regular SELECT from server actions. No DB migration needed.",
+        id: "groq_api_key + voice_input_enabled disimpan di app_settings, mengikuti pola gemini_api_key. RPC save_app_setting (SECURITY DEFINER) yang sama menangani write; read adalah SELECT biasa dari server action. Tidak butuh migrasi DB." },
+      { type: "improvement", audience: "dev",
+        en: "Save flow reuses queuedAddTransaction so a mid-save offline drop still lands in the IDB queue — no separate /api/voice/commit RPC needed. Transfers go through addTransfer directly (transfers don't have offline-queue support today). Drafts stay in client state until Save; close drops them silently.",
+        id: "Alur Simpan memakai queuedAddTransaction yang sudah ada, jadi koneksi putus di tengah simpan masih masuk ke antrian IDB — tidak perlu /api/voice/commit RPC terpisah. Transfer lewat addTransfer langsung (transfer belum punya dukungan offline-queue). Draf tetap di state klien sampai Save; tutup membuangnya diam-diam." },
+      { type: "improvement", audience: "dev",
+        en: "Per-utterance pipeline: MediaRecorder (webm/opus or mp4/aac depending on UA) → silence-detect flush → POST blob → Whisper → Gemini parseVoiceUtterance → client reducer. iOS PWA AudioContext-resume-inside-gesture handled in lib/voice/mic-capture.ts.",
+        id: "Pipeline per-ucapan: MediaRecorder (webm/opus atau mp4/aac tergantung UA) → flush deteksi senyap → POST blob → Whisper → Gemini parseVoiceUtterance → reducer klien. iOS PWA AudioContext-resume-di-dalam-gesture ditangani di lib/voice/mic-capture.ts." },
+    ],
+  },
+  {
     version: "1.40.1",
     date: "May 15, 2026",
     changes: [

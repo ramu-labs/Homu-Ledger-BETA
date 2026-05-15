@@ -300,3 +300,102 @@ input[type="date"]::-webkit-clear-button {
 .animate-chip-pop {
   animation: chip-pop 0.22s ease both;
 }
+
+/* ─── AI Voice Transactions (v1.41.0) ──────────────────────────────────────
+   Surface-level: aurora colour tokens for light + dark. Used by
+   components/voice-aurora.tsx via var(--voice-aurora-N). */
+:root {
+  --voice-aurora-1: oklch(0.93 0.07 75);
+  --voice-aurora-2: oklch(0.91 0.10 35);
+  --voice-aurora-3: oklch(0.94 0.06 90);
+  --voice-success: #10b981;
+  --voice-listening: #ee6452;
+}
+[data-theme="dark"] {
+  --voice-aurora-1: oklch(0.38 0.10 30);
+  --voice-aurora-2: oklch(0.34 0.08 320);
+  --voice-aurora-3: oklch(0.36 0.06 70);
+  --voice-success: #34d399;
+  --voice-listening: #ff8a78;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --voice-aurora-1: oklch(0.38 0.10 30);
+    --voice-aurora-2: oklch(0.34 0.08 320);
+    --voice-aurora-3: oklch(0.36 0.06 70);
+    --voice-success: #34d399;
+    --voice-listening: #ff8a78;
+  }
+}
+
+/* FAB mount — 360ms fade + translateY + scale.
+   Sparkle blink — 2.8s slow ease loop. */
+@keyframes speak-fab-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.85); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes ai-sparkle-blink {
+  0%,100% { opacity: 0.25; transform: scale(0.85) rotate(0deg); }
+  50%     { opacity: 1;    transform: scale(1.05) rotate(12deg); }
+}
+
+/* Aurora drift — three staggered orbits. */
+@keyframes aurora-drift-0 {
+  0%,100% { transform: translate(0,0) scale(1); }
+  50%     { transform: translate(8%, 12%) scale(1.08); }
+}
+@keyframes aurora-drift-1 {
+  0%,100% { transform: translate(0,0) scale(0.95); }
+  50%     { transform: translate(-10%, -8%) scale(1.10); }
+}
+@keyframes aurora-drift-2 {
+  0%,100% { transform: translate(0,0) scale(1); }
+  50%     { transform: translate(6%, -10%) scale(1.06); }
+}
+
+/* Row mount / exit. Mount: rise + fade. Exit: slide-left + collapse. */
+@keyframes voice-row-enter {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes voice-row-exit {
+  from { opacity: 1; transform: translateX(0);     max-height: 80px; margin-bottom: 8px; padding-top: 12px; padding-bottom: 12px; }
+  to   { opacity: 0; transform: translateX(-20px); max-height: 0;    margin-bottom: 0;   padding-top: 0;    padding-bottom: 0; }
+}
+.voice-row-enter { animation: voice-row-enter 320ms cubic-bezier(.22,1,.36,1) both; }
+.voice-row-exit  { animation: voice-row-exit  260ms ease both; overflow: hidden; }
+
+/* Row tint flash — emerald wash that fades back to surface. */
+@keyframes voice-row-flash {
+  0%   { background: var(--surface); }
+  35%  { background: color-mix(in oklab, var(--voice-success, #10b981) 14%, var(--surface)); }
+  100% { background: var(--surface); }
+}
+.voice-row-flash { animation: voice-row-flash 700ms ease both; }
+
+/* Cell pop — scale + emerald halo on the changed field only. */
+@keyframes voice-cell-pop {
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+  40%  { transform: scale(1.12); box-shadow: 0 0 0 6px rgba(16,185,129,0.35); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+}
+.voice-cell-pop { animation: voice-cell-pop 760ms cubic-bezier(.22,1,.36,1) both; }
+
+/* Caption mount — gentle slide. */
+@keyframes voice-caption-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.voice-caption { animation: voice-caption-in 240ms ease both; }
+
+/* Reduced motion: skip the long drifts + pulses; keep enter/exit as
+   instant cuts. */
+@media (prefers-reduced-motion: reduce) {
+  .voice-row-enter,
+  .voice-row-exit,
+  .voice-row-flash,
+  .voice-cell-pop,
+  .voice-caption { animation: none !important; }
+  [style*="aurora-drift"] { animation-play-state: paused !important; }
+  [style*="ai-sparkle-blink"] { animation: none !important; }
+}

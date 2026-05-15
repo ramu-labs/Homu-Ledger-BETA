@@ -19,6 +19,7 @@ import { formatAmount } from "@/lib/format";
 import type { DbTransaction, DbCategory, DbWallet, DbMember, DbHouseholdMembership, DbRecurringItem, DbPendingInvitation } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 import { usePendingAddTransactionOps } from "@/lib/use-pending-transactions";
+import SpeakToAddFab from "@/components/speak-to-add-fab";
 
 type SubTab = "history" | "recurring";
 type DateFilter = "all" | "30d" | "this_month" | "custom";
@@ -69,6 +70,10 @@ type Props = {
   pendingInvitations?: DbPendingInvitation[];
   recurringItems: DbRecurringItem[];
   iconStyle?: IconStyle;
+  /** v1.41.0: render the AI voice FAB? Server-rendered gate from
+   *  app_settings.voice_input_enabled; the FAB component itself also
+   *  greys out when navigator.onLine is false. */
+  voiceEnabled?: boolean;
 };
 
 export default function TransactionsShell({
@@ -88,6 +93,7 @@ export default function TransactionsShell({
   pendingInvitations = [],
   recurringItems,
   iconStyle = "3d",
+  voiceEnabled = false,
 }: Props) {
   const t = useT();
   const [tab, setTab] = useState<SubTab>("history");
@@ -615,6 +621,11 @@ export default function TransactionsShell({
           </div>
         </>
       )}
+
+      {/* v1.41.0 — AI voice FAB. Server-gated by app_settings.voice_input_enabled,
+          which TransactionsShell receives as `voiceEnabled`. The FAB itself
+          handles the offline-disabled visual. */}
+      {voiceEnabled && <SpeakToAddFab />}
     </>
   );
 }

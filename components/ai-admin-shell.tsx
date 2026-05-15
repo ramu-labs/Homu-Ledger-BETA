@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Sparkles, Check, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, Check, AlertCircle, Mic } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
@@ -131,6 +131,24 @@ export default function AiAdminShell({ keyConfigured, range, stats, live, limits
           >
             {keyConfigured ? t("ai.admin.statusConfigured") : t("ai.admin.statusUnconfigured")}
           </span>
+          <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
+        </TapLink>
+      </section>
+
+      {/* v1.41.0 — Voice transactions admin. Separate page since the Groq
+          key + voice_input_enabled flag live in their own namespace and
+          shouldn't get tangled with Gemini's stats. */}
+      <section className="mx-5 mt-3 overflow-hidden rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04]">
+        <TapLink
+          href="/settings/ai-admin/voice"
+          className="flex items-center gap-3 px-4 py-3.5 min-h-[52px] active:bg-black/[0.02] transition-colors [touch-action:manipulation]"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-[var(--foreground)]">
+            <Mic className="h-[18px] w-[18px]" strokeWidth={2} />
+          </span>
+          <p className="flex-1 text-[15px] font-medium text-[var(--foreground)]">
+            Voice transactions
+          </p>
           <ChevronRight className="h-[18px] w-[18px] text-[var(--label-tertiary)]" strokeWidth={2} />
         </TapLink>
       </section>
