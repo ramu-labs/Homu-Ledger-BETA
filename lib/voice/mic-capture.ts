@@ -31,13 +31,31 @@
 // Volume is normalised to 0..1 and pushed every animation frame.
 
 const SILENCE_RMS = 0.012;          // below this for SILENCE_HOLD_MS → flush
+// v1.42.1: a higher threshold to detect REAL voice (vs background
+// noise / breath / keyboard taps that nudge above SILENCE_RMS).
+// Crossing this at least once per chunk gates whether the chunk gets
+// shipped to Whisper. Tuned with a quiet office room as the floor.
+const VOICE_RMS = 0.04;
 const SILENCE_HOLD_MS = 900;        // user pauses this long → utterance done
 const MIN_UTTERANCE_MS = 350;       // don't flush a sub-half-second blob
 const MAX_UTTERANCE_MS = 12_000;    // hard cap so a long monologue still flushes
 
 export type MicCaptureHandlers = {
   /** Fired when one utterance worth of audio has been captured. */
-  onUtterance: (blob: Blob, meta: { ms: number; mime: string }) => void;
+  onUtterance: (
+    blob: Blob,
+    meta: {
+      ms: number;
+      mime: string;
+      /** v1.42.1 — true if at least one frame during the chunk
+       *  crossed the VOICE_RMS threshold. Lets the consumer skip
+       *  Whisper for chunks that were always-silent (which is what
+       *  triggered the "Terima Kasih sudah menonton" hallucinations
+       *  — Whisper-large-v3 was trained on YouTube data and confidently
+       *  emits common outros when given silent audio). */
+      hadVoice: boolean;
+    }
+  ) => void;
   /** Continuous RMS volume in 0..1. Throttled to rAF. */
   onVolume: (vol: number) => void;
   /** Fatal error — permission denied, no mic, etc. */
@@ -71,6 +89,12 @@ export function createMicCapture(handlers: MicCaptureHandlers): MicCaptureHandle
   let rafId: number | null = null;
   let paused = false;
   let active = false;
+  // v1.42.1: tracks whether the CURRENT chunk had any voice-level
+  // RMS spike. Read by onstop to decide whether to ship the blob.
+  // Reset every startNewChunk(). Captured in a separate variable
+  // because the recorder's onstop runs *after* startNewChunk resets,
+  // so we snapshot at flush time.
+  let chunkHadVoice = false;
 
   function pickMime(): string {
     const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4;codecs=mp4a.40.2", "audio/mp4"];
@@ -109,6 +133,7 @@ export function createMicCapture(handlers: MicCaptureHandlers): MicCaptureHandle
     chunks = [];
     chunkStartedAt = performance.now();
     lastVoiceAt = performance.now();
+    chunkHadVoice = false; // reset voice-detection for new chunk
     try {
       recorder.start();
     } catch {
@@ -137,13 +162,29 @@ export function createMicCapture(handlers: MicCaptureHandlers): MicCaptureHandle
       const now = performance.now();
       if (!paused) {
         if (rms > SILENCE_RMS) lastVoiceAt = now;
+        // v1.42.1: latch the voice-detected flag if real voice came
+        // through this chunk. Goes false → true and stays true; never
+        // reset within a chunk (a brief mid-word silence shouldn't
+        // un-arm a chunk that already had clear voice).
+        if (rms > VOICE_RMS) chunkHadVoice = true;
         const sinceVoice = now - lastVoiceAt;
         const sinceStart = now - chunkStartedAt;
-        if (sinceVoice > SILENCE_HOLD_MS && sinceStart > MIN_UTTERANCE_MS) {
+        // Only flush after silence-hold IF this chunk actually had
+        // voice. Otherwise the chunk is rolling silence — let it keep
+        // running until either real voice arrives or MAX_UTTERANCE_MS
+        // bumps. This kills the YouTube-hallucination path completely
+        // because silent chunks never reach Whisper.
+        if (
+          chunkHadVoice &&
+          sinceVoice > SILENCE_HOLD_MS &&
+          sinceStart > MIN_UTTERANCE_MS
+        ) {
           handlers.onSilenceFlush?.();
           flushUtterance("silence");
         } else if (sinceStart > MAX_UTTERANCE_MS) {
-          handlers.onSilenceFlush?.();
+          // Hard cap reached. If we never heard voice, just rotate
+          // the chunk silently (don't send to Whisper) — that's what
+          // flushUtterance("max") + the onstop check below handle.
           flushUtterance("max");
         }
       }
@@ -207,8 +248,14 @@ export function createMicCapture(handlers: MicCaptureHandlers): MicCaptureHandle
       const ms = performance.now() - chunkStartedAt;
       const type = chunks[0].type || mimeType || "audio/webm";
       const blob = new Blob(chunks, { type });
+      const hadVoice = chunkHadVoice;
       chunks = [];
-      handlers.onUtterance(blob, { ms, mime: type });
+      // v1.42.1: if this chunk never had real voice, don't even ship
+      // it to the consumer — the only thing Whisper would do with
+      // silent audio is hallucinate. Saves a token-spending API call
+      // every time the user keeps the screen open without speaking.
+      if (!hadVoice) return;
+      handlers.onUtterance(blob, { ms, mime: type, hadVoice });
     };
 
     active = true;

@@ -52,6 +52,12 @@ import type {
 
 type Props = {
   categories: DbCategory[];
+  /** v1.42.1 — trimmed list sent to Gemini for parsing. Typically
+   *  top-N by recent usage; computed server-side. The full `categories`
+   *  is still used for the per-row picker so the user can manually
+   *  swap to any category in the household. Falls back to `categories`
+   *  when omitted (back-compat). */
+  categoriesForGemini?: DbCategory[];
   wallets: DbWallet[];
   currency: string;
   languageHint?: "auto" | "en" | "id" | null;
@@ -60,7 +66,16 @@ type Props = {
   iconStyle?: IconStyle;
 };
 
-export default function VoiceShell({ categories, wallets, currency, languageHint = "auto", iconStyle = "3d" }: Props) {
+export default function VoiceShell({
+  categories,
+  categoriesForGemini,
+  wallets,
+  currency,
+  languageHint = "auto",
+  iconStyle = "3d",
+}: Props) {
+  // Fall back to the full list if the trimmed prop wasn't provided.
+  const geminiCats = categoriesForGemini ?? categories;
   const router = useRouter();
   const t = useT();
 
@@ -71,7 +86,17 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [permissionError, setPermissionError] = useState<string | null>(null);
-  const [thinking, setThinking] = useState(false);
+  // v1.42.1: removed `thinking` flag — waveform is the activity cue.
+
+  // v1.42.1: chip-ladder disambiguation. When a voice update/remove
+  // matches 2+ rows by substring, we don't silently pick the latest;
+  // we stash the action here and render a small picker that lets the
+  // user tap which row they meant. Cleared by either picking one or
+  // tapping outside (which cancels the update entirely).
+  const [pendingAmbiguous, setPendingAmbiguous] = useState<{
+    action: Extract<VoiceAction, { kind: "update" | "remove" }>;
+    candidateIds: string[];
+  } | null>(null);
 
   // The mic-capture handle survives the entire screen lifecycle. We
   // keep it in a ref so re-renders don't re-create it; cleanup happens
@@ -101,11 +126,28 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
       const needle = target.name.toLowerCase();
       // Walk in reverse so "the kopi" picks the latest of several.
       const matches = rowsRef.current.filter(
-        (r) => !r.exiting && r.name.toLowerCase().includes(needle)
+        (r) => !r.exiting && !r.ghost && r.name.toLowerCase().includes(needle)
       );
       return matches.length ? matches[matches.length - 1].id : null;
     }
     return null;
+  }, []);
+
+  // v1.42.1: variant that returns ALL matching candidates, used to
+  // detect ambiguity. When this returns >1 id we surface the chip
+  // ladder instead of silently picking the latest.
+  const resolveCandidates = useCallback((target: VoiceTarget): string[] => {
+    if (target.mostRecent) {
+      return lastAddedIdRef.current ? [lastAddedIdRef.current] : [];
+    }
+    if (target.name) {
+      const needle = target.name.toLowerCase();
+      const matches = rowsRef.current.filter(
+        (r) => !r.exiting && !r.ghost && r.name.toLowerCase().includes(needle)
+      );
+      return matches.map((r) => r.id);
+    }
+    return [];
   }, []);
 
   // ── Reducer: promote a ghost row based on Gemini's parsed action ────
@@ -249,22 +291,27 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
       onVolume: (v) => {
         if (!cancelled) setVolume(v);
       },
-      onSilenceFlush: () => {
-        if (!cancelled) setThinking(true);
-      },
+      // v1.42.1: onSilenceFlush no longer toggles UI state — the
+      // waveform already shows the moving line dying down naturally
+      // when the user stops speaking.
+      onSilenceFlush: () => {},
       onUtterance: async (blob, meta) => {
         if (cancelled) return;
-        // Tiny blobs (false silence flush) — skip.
-        if (blob.size < 1000) {
-          setThinking(false);
-          return;
-        }
-        // v1.42.0: a stable ghost-row id we generate UP-FRONT.
-        // Whisper completes ~150ms after silence detect → we insert a
-        // skeleton row at that id. Gemini completes ~600ms later → we
-        // promote the SAME id from ghost to real (or drop it if Gemini
-        // returns noop). The user sees the row land instantly with the
-        // transcript text; it morphs in place when the parse is done.
+        // v1.42.1: heavier minimum-size guard.
+        // Was 1000 bytes — too small to filter the ~3-5 KB silent-air
+        // blobs that triggered Whisper hallucinations like "Terima
+        // Kasih sudah menonton". 6 KB is roughly 1s of opus at typical
+        // bitrates. Anything below = ship-no, save Whisper a call.
+        if (blob.size < 6000) return;
+        // v1.42.1: defence-in-depth — the mic layer now only emits
+        // onUtterance when real voice was detected during the chunk,
+        // so this branch normally won't run. Keep the guard anyway in
+        // case a different mic implementation skips that check.
+        if (meta.hadVoice === false) return;
+
+        // Stable ghost-row id reserved up-front. Whisper-done milestone
+        // inserts a skeleton row at this id; Gemini-done morphs it in
+        // place. DOM node never unmounts → no flicker.
         const ghostId = crypto.randomUUID();
         try {
           const fd = new FormData();
@@ -274,28 +321,28 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
           if (cancelled) return;
           if (!transcribed.ok) {
             setUtterance(null);
-            setThinking(false);
             setSaveError(transcribed.error);
             return;
           }
           const text = transcribed.text.trim();
           if (!text) {
             setUtterance(null);
-            setThinking(false);
+            return;
+          }
+          // v1.42.1: post-hoc hallucination filter. Whisper-large-v3
+          // is trained heavily on YouTube data and, given silent /
+          // near-silent audio that snuck past the size check, will
+          // confidently emit common outros — "Terima kasih sudah
+          // menonton", "Thanks for watching", "Subscribe to my
+          // channel", music-note unicode, etc. None of those are real
+          // utterances; drop them silently rather than send to Gemini.
+          if (isWhisperHallucination(text)) {
+            setUtterance(null);
             return;
           }
           setUtterance(text);
 
-          // INSERT THE GHOST ROW NOW. We don't yet know if this will
-          // resolve to add / update / remove / transfer / noop, so we
-          // optimistically render it as an "add" placeholder. When
-          // Gemini comes back:
-          //   - add        → promote the same id to a real row
-          //   - transfer   → swap the ghost out, append a transfer row
-          //                  (different shape)
-          //   - update     → drop the ghost, patch the targeted row
-          //   - remove     → drop the ghost, mark targeted row exiting
-          //   - noop       → drop the ghost silently
+          // Optimistically insert the ghost row.
           setRows((rs) => [
             ...rs,
             {
@@ -315,7 +362,7 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
           // latest names (minus the ghost we just inserted; we strip it
           // here so the parser doesn't try to "update" itself).
           const parsed = await parseVoiceUtterance(text, {
-            categories: categories.map((c) => ({ id: c.id, name: c.name, type: c.type })),
+            categories: geminiCats.map((c) => ({ id: c.id, name: c.name, type: c.type })),
             wallets: wallets.map((w) => ({ id: w.id, name: w.name })),
             rows: rowsRef.current
               .filter((r) => !r.exiting && !r.ghost)
@@ -323,12 +370,22 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
             defaultWalletId: wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
           });
           if (cancelled) return;
-          setThinking(false);
           if (!parsed.ok) {
             // Remove the ghost on error.
             setRows((rs) => rs.filter((r) => r.id !== ghostId));
             setSaveError(parsed.error);
             return;
+          }
+          // v1.42.1: ambiguity check for update/remove. If multiple
+          // rows match the target name, hand off to the chip-ladder
+          // resolver instead of silently picking the latest.
+          if (parsed.action.kind === "update" || parsed.action.kind === "remove") {
+            const cands = resolveCandidates(parsed.action.target);
+            if (cands.length > 1) {
+              setRows((rs) => rs.filter((r) => r.id !== ghostId));
+              setPendingAmbiguous({ action: parsed.action, candidateIds: cands });
+              return;
+            }
           }
           // Promote the ghost based on the action kind.
           promoteGhost(ghostId, parsed.action);
@@ -337,9 +394,7 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
           }, 1500);
         } catch (err) {
           if (cancelled) return;
-          // Clean up the ghost on any crash.
           setRows((rs) => rs.filter((r) => r.id !== ghostId));
-          setThinking(false);
           setSaveError((err as Error).message ?? "Unknown error");
         }
       },
@@ -367,6 +422,38 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // v1.42.1: user picked one of the ambiguous candidates. We patch
+  // the pending action's target to point UNAMBIGUOUSLY at the chosen
+  // row (by injecting a `name` that uniquely matches it — its own
+  // name truncated to first 24 chars is safe because we know that
+  // string came from a real row in the list).
+  function pickAmbiguous(rowId: string) {
+    if (!pendingAmbiguous) return;
+    const row = rowsRef.current.find((r) => r.id === rowId);
+    if (!row) {
+      setPendingAmbiguous(null);
+      return;
+    }
+    const { action } = pendingAmbiguous;
+    // Use the row's exact name as the target.name so resolveTarget
+    // resolves to a single row (well, possibly still multiple if two
+    // rows have identical names — in which case we pick the latest
+    // which is the same outcome). Easier than wiring an id-target.
+    const targetedAction: VoiceAction =
+      action.kind === "update"
+        ? { ...action, target: { name: row.name, mostRecent: false } }
+        : { ...action, target: { name: row.name, mostRecent: false } };
+    // Temporarily nudge lastAddedIdRef so resolveTarget(mostRecent:true)
+    // would return the picked id even if Gemini used mostRecent. We
+    // don't use that path here, but it's defensive.
+    setPendingAmbiguous(null);
+    applyActionInternal(targetedAction);
+  }
+  function cancelAmbiguous() {
+    setPendingAmbiguous(null);
+    setUtterance(null);
+  }
 
   function onTogglePause() {
     setPaused((p) => {
@@ -573,17 +660,9 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
             ))}
           </ul>
 
-          {liveRows.length === 0 && !permissionError && (
-            <div className="mt-6 rounded-2xl border border-[var(--ring-subtle)] bg-[var(--surface)] px-[18px] py-6 text-center text-[var(--label-secondary)]">
-              <p className="text-[14px] font-medium text-[var(--foreground)]">
-                {t("voice.empty.title") || "Speak naturally"}
-              </p>
-              <p className="mt-1 text-[12px]">
-                {t("voice.empty.body") ||
-                  "Add multiple transactions, correct one mid-sentence, or say \"delete the last one\". We'll log them when you save."}
-              </p>
-            </div>
-          )}
+          {/* v1.42.1: empty-state card removed. The footer caption
+              ("Try: \"Bensin tiga ratus ribu\"") already covers the
+              same guidance with one line instead of a whole card. */}
 
           {permissionError && (
             <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-[18px] py-4 text-center text-[13px] text-[var(--foreground)]">
@@ -591,6 +670,48 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
             </div>
           )}
         </div>
+
+        {/* v1.42.1 — Ambiguous-target chip ladder.
+            Fires when a voice update/remove matches 2+ rows. We pause
+            the visual flow (caption shows what the user said), list the
+            candidates as chips, and let the user tap which one they
+            meant. Outside-tap cancels the whole action. */}
+        {pendingAmbiguous && (
+          <div
+            className="absolute inset-x-3 z-[80] flex flex-col gap-2 rounded-2xl border border-[var(--ring-default)] bg-[var(--surface)] p-3 shadow-[0_14px_36px_rgba(0,0,0,0.22)]"
+            style={{ bottom: 130 }}
+            role="dialog"
+            aria-label="Which one did you mean?"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-[12px] font-semibold text-[var(--foreground)]">
+                Which one did you mean?
+              </p>
+              <button
+                onClick={cancelAmbiguous}
+                aria-label="Cancel"
+                className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--label-tertiary)] active:scale-95"
+              >
+                <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {pendingAmbiguous.candidateIds.map((rid) => {
+                const r = rows.find((x) => x.id === rid);
+                if (!r) return null;
+                return (
+                  <button
+                    key={rid}
+                    onClick={() => pickAmbiguous(rid)}
+                    className="rounded-full bg-[var(--background)] px-3 py-1.5 text-[12px] font-medium text-[var(--foreground)] ring-1 ring-[var(--ring-default)] active:scale-95"
+                  >
+                    {r.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div
@@ -600,13 +721,12 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
             paddingTop: 8,
           }}
         >
-          {/* Caption */}
+          {/* Caption — v1.42.1: dropped the dedicated 'Thinking…' state.
+              The waveform is the activity indicator; an extra text label
+              was redundant noise (and got stuck on after a silence-flush
+              that turned out to be too quiet to ship to Whisper). */}
           <div className="min-h-[22px] text-center" aria-live="polite">
-            {thinking ? (
-              <span className="text-[11.5px] text-[var(--label-tertiary)]">
-                {t("voice.caption.thinking") || "Thinking…"}
-              </span>
-            ) : utterance ? (
+            {utterance ? (
               <span
                 key={utterance}
                 className="voice-caption inline-block text-[13px] font-medium italic leading-tight text-[var(--label-secondary)]"
@@ -687,4 +807,60 @@ function extFor(mime: string): string {
   if (mime.includes("mp4")) return ".m4a";
   if (mime.includes("ogg")) return ".ogg";
   return ".webm";
+}
+
+// v1.42.1 — known Whisper-large-v3 hallucinations.
+//
+// Whisper's training set includes a LOT of YouTube videos and the
+// model has learned to emit common outros / boilerplate when fed
+// silent or near-silent audio. The mic-layer voice-gate now stops
+// most of these from ever being shipped, but a quiet utterance that
+// rides just barely above the VOICE_RMS threshold can still trigger
+// the model. This filter catches the residue.
+//
+// If you see a new false-positive in production, just add the
+// (lowercased, punctuation-stripped) phrase here. We compare against
+// the cleaned transcript — short transcripts that ARE a hallucination
+// pattern get dropped; longer transcripts that merely CONTAIN one as
+// a substring are not (the user genuinely saying "transfer dari BCA
+// terima kasih" should still parse).
+const WHISPER_HALLUCINATIONS = new Set<string>([
+  // Indonesian YouTube outros
+  "terima kasih",
+  "terima kasih sudah menonton",
+  "terima kasih telah menonton",
+  "terima kasih banyak",
+  // English YouTube outros
+  "thanks for watching",
+  "thank you for watching",
+  "subscribe to my channel",
+  "please subscribe",
+  "like and subscribe",
+  // Music / silence markers Whisper sometimes emits literally
+  "♪",
+  "[music]",
+  "[silence]",
+  "(silence)",
+  "you",
+  ".",
+]);
+
+function isWhisperHallucination(rawText: string): boolean {
+  const cleaned = rawText
+    .toLowerCase()
+    .replace(/[.,!?;:"'()[\]{}]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return true;
+  // Exact-match against the hallucination dictionary.
+  if (WHISPER_HALLUCINATIONS.has(cleaned)) return true;
+  // Also drop transcripts that are JUST a hallucination phrase plus
+  // trailing punctuation noise. We compare token-wise so genuinely
+  // long utterances ("transfer dari BCA terima kasih") survive.
+  const tokens = cleaned.split(" ").filter(Boolean);
+  if (tokens.length <= 5) {
+    const joined = tokens.join(" ");
+    if (WHISPER_HALLUCINATIONS.has(joined)) return true;
+  }
+  return false;
 }

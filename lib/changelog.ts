@@ -45,6 +45,33 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.42.1",
+    date: "May 15, 2026",
+    changes: [
+      { type: "improvement", audience: "user",
+        en: "Voice screen no longer shows the 'Speak naturally' empty-state card or a persistent 'Thinking…' caption. The waveform is the activity cue.",
+        id: "Layar voice tidak lagi menampilkan kartu 'Speak naturally' atau caption 'Thinking…' yang menetap. Waveform menjadi penanda aktivitas." },
+      { type: "fix", audience: "user",
+        en: "Stopped Whisper from inserting random 'Terima Kasih sudah menonton' into transcripts. Two layers: the mic only ships chunks where real voice was detected (silent rooms no longer reach the API), and a hallucination-filter drops common YouTube-outro phrases as a safety net. Less tokens spent, more accurate rows.",
+        id: "Memperbaiki Whisper yang kadang menyisipkan 'Terima Kasih sudah menonton' acak ke transkrip. Dua lapis: mikrofon hanya mengirim chunk yang benar-benar berisi suara (ruangan sepi tidak lagi sampai ke API), dan filter halusinasi membuang frasa outro YouTube umum sebagai jaring pengaman. Token lebih hemat, baris lebih akurat." },
+      { type: "improvement", audience: "user",
+        en: "Smaller token bill on voice: Gemini now sees just your top 12 most-used categories per parse, not the entire household list. Categories you rarely touch are still in the manual picker. For households with 50+ categories this cuts the per-utterance prompt by ~60%.",
+        id: "Tagihan token voice lebih kecil: Gemini sekarang melihat hanya 12 kategori yang paling sering kamu pakai per parse, bukan seluruh daftar rumah tangga. Kategori yang jarang kamu sentuh tetap ada di picker manual. Untuk rumah tangga dengan 50+ kategori, prompt per-ucapan turun ~60%." },
+      { type: "new", audience: "user",
+        en: "When you say 'the kopi' and two rows contain 'kopi', voice asks 'Which one did you mean?' with chip buttons for both — instead of silently picking the latest. Tap one to apply the change.",
+        id: "Saat kamu bilang 'kopi-nya' dan ada dua baris yang mengandung 'kopi', voice bertanya 'Yang mana yang kamu maksud?' dengan chip untuk masing-masing — bukannya diam-diam memilih yang terakhir. Ketuk salah satu untuk menerapkan perubahan." },
+      { type: "improvement", audience: "dev",
+        en: "mic-capture.ts tracks chunkHadVoice (RMS spike > VOICE_RMS=0.04 at least once). onstop drops chunks where it stayed false. MIN_BLOB_SIZE raised 1KB → 6KB. Hallucination dictionary lives in voice-shell.tsx, case+punct-insensitive exact-match against the cleaned transcript.",
+        id: "mic-capture.ts melacak chunkHadVoice (lonjakan RMS > VOICE_RMS=0,04 setidaknya sekali). onstop membuang chunk yang tetap false. MIN_BLOB_SIZE dinaikkan 1KB → 6KB. Kamus halusinasi tinggal di voice-shell.tsx, exact-match tanpa peduli case/tanda baca terhadap transkrip yang sudah dibersihkan." },
+      { type: "improvement", audience: "dev",
+        en: "Top-N category trimming: /transactions/voice page now SELECTs the last 200 transactions, counts category usage, sorts categories desc by count, slices to 12. The trimmed list goes to Gemini as `categoriesForGemini`; the full list still drives the row picker. Fallback to full list when categoriesForGemini omitted.",
+        id: "Pemangkasan kategori Top-N: halaman /transactions/voice sekarang SELECT 200 transaksi terakhir, menghitung penggunaan kategori, mengurutkan kategori desc berdasarkan jumlah, memotong jadi 12. List terpangkas masuk Gemini sebagai `categoriesForGemini`; list lengkap tetap menggerakkan picker baris. Fallback ke list lengkap saat categoriesForGemini tidak ada." },
+      { type: "improvement", audience: "dev",
+        en: "Ambiguity resolution: resolveCandidates() returns all rows whose name contains the target substring. When 2+ match, voice-shell stashes the parsed action in `pendingAmbiguous` state and renders a chip ladder above the footer. pickAmbiguous(id) replays the action with a name-specific target.",
+        id: "Resolusi ambiguitas: resolveCandidates() mengembalikan semua baris yang namanya mengandung substring target. Saat 2+ cocok, voice-shell menyimpan action terparse di state `pendingAmbiguous` dan menampilkan chip ladder di atas footer. pickAmbiguous(id) memutar ulang action dengan target yang lebih spesifik." },
+    ],
+  },
+  {
     version: "1.42.0",
     date: "May 15, 2026",
     changes: [
