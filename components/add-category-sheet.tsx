@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
-import { addCategory } from "@/app/actions/categories";
+import { queuedAddCategory, isQueued } from "@/lib/queue-actions";
 import { cn } from "@/lib/cn";
 import { CATEGORY_LUCIDE_ICONS, makeLucideSymbol } from "@/lib/category-icons";
 import { CategoryIcon } from "@/components/category-icon";
@@ -66,7 +66,15 @@ export default function AddCategorySheet({ open, type = "expense", onClose, onAd
     fd.set("symbol", currentSymbol);
     fd.set("color", selectedColor);
     fd.set("type", type);
-    const result = await addCategory(fd);
+    const result = await queuedAddCategory(fd);
+    // Offline / network drop: the op is now in IndexedDB and will replay when
+    // we're back online. Close the sheet — the SyncStatusPill shows the
+    // "N pending" signal so the user knows their tap was captured.
+    if (isQueued(result)) {
+      reset();
+      onClose();
+      return;
+    }
     if (result.error) {
       setError(result.error);
       setLoading(false);

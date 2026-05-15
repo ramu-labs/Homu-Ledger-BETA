@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X, Trash2, Camera, ImagePlus, ChevronRight, ArrowRightLeft, Check, Calendar, Repeat, Wallet, Sparkles, Loader2 } from "lucide-react";
-import { addTransaction, updateTransaction, deleteTransaction, moveTransaction, addTransfer } from "@/app/actions/transactions";
+import { updateTransaction, deleteTransaction, moveTransaction, addTransfer } from "@/app/actions/transactions";
+import { queuedAddTransaction, isQueued } from "@/lib/queue-actions";
 import { signTransactionPhoto } from "@/app/actions/photos";
 import { addRecurringItem } from "@/app/actions/recurring";
 import { suggestCategory, recordCategoryUsage } from "@/app/actions/ai";
@@ -455,7 +456,18 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
 
     const result = editing
       ? await updateTransaction(editing.id, fd)
-      : await addTransaction(fd);
+      : await queuedAddTransaction(fd);
+
+    // Offline / network drop on an add: the op is queued and the replay
+    // loop will hit the server when we're back. Updates / deletes still
+    // require a live connection in v1.36.0 (Phase 3a) — that's deferred
+    // to a later phase because UPDATE needs server-side conflict
+    // detection against updated_at, which v1.36.0 doesn't ship.
+    if (result && isQueued(result)) {
+      void recordCategoryUsage(name, categoryId);
+      onClose();
+      return;
+    }
 
     if (result?.error) {
       setError(result.error);
