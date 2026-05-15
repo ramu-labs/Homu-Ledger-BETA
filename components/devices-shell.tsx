@@ -43,6 +43,8 @@ import {
   Trash2,
   LogOut,
   AlertTriangle,
+  Pencil,
+  X,
 } from "lucide-react";
 import { useT } from "@/lib/i18n/provider";
 import { cn } from "@/lib/cn";
@@ -50,6 +52,7 @@ import {
   signOutDeviceSession,
   deleteDeviceSession,
   signOutOtherDevices,
+  renameDeviceSession,
 } from "@/app/actions/auth";
 import type { DeviceRow } from "@/app/(app)/settings/devices/page";
 
@@ -76,6 +79,13 @@ export default function DevicesShell({ devices: initialDevices }: Props) {
   // button has its own arming.
   const [bulkArmed, setBulkArmed] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+
+  // Per-row rename state (v1.31.0). Only one row at a time can be in
+  // edit mode — keeps the UI focused. `renameInput` mirrors the input
+  // value so optimistic updates don't fight the controlled input.
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameInput, setRenameInput] = useState("");
+  const [renamingBusy, setRenamingBusy] = useState(false);
 
   const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bulkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -152,6 +162,43 @@ export default function DevicesShell({ devices: initialDevices }: Props) {
     setDevices((prev) => prev.filter((row) => row.id !== d.id));
   }
 
+  function startRename(d: DeviceRow) {
+    // Disarm any in-progress sign-out/delete confirmation so the user
+    // doesn't accidentally trigger a destructive action while typing.
+    disarmAll();
+    setRenamingId(d.id);
+    setRenameInput(d.nickname);
+    setError(null);
+  }
+
+  function cancelRename() {
+    setRenamingId(null);
+    setRenameInput("");
+  }
+
+  async function commitRename(d: DeviceRow) {
+    if (renamingBusy) return;
+    const next = renameInput.trim();
+    // No-op if unchanged. Saves a needless round-trip when the user
+    // hits enter without editing.
+    if (next === d.nickname) {
+      cancelRename();
+      return;
+    }
+    setRenamingBusy(true);
+    setError(null);
+    const res = await renameDeviceSession(d.id, next);
+    setRenamingBusy(false);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    setDevices((prev) =>
+      prev.map((row) => (row.id === d.id ? { ...row, nickname: next } : row))
+    );
+    cancelRename();
+  }
+
   async function onBulkSignOutTap() {
     if (bulkBusy) return;
     if (!bulkArmed) {
@@ -219,30 +266,103 @@ export default function DevicesShell({ devices: initialDevices }: Props) {
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 text-[22px] leading-none">{d.glyph}</span>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="truncate text-[15px] font-semibold text-[var(--foreground)]">
-                      {d.label}
-                    </p>
-                    {d.isCurrent && (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-                        {t("devices.thisDevice")}
-                      </span>
-                    )}
-                    {!d.isCurrent && d.isSignedOut && (
-                      <span className="rounded-full bg-[var(--label-tertiary)]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--label-secondary)]">
-                        {t("devices.signedOut")}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-[12px] text-[var(--label-secondary)]">
-                    {formatRelative(d.refreshedAt ?? d.createdAt, {
-                      justNow: t("devices.justNow"),
-                      minutesAgo: t("devices.minutesAgo"),
-                      hoursAgo: t("devices.hoursAgo"),
-                      daysAgo: t("devices.daysAgo"),
-                      monthsAgo: t("devices.monthsAgo"),
-                    })}
-                  </p>
+                  {renamingId === d.id ? (
+                    /* Inline rename: input replaces the label row.
+                       Submit on Enter / blur, cancel on Escape /
+                       cancel-button. Save button writes via the
+                       renameDeviceSession action. */
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void commitRename(d);
+                      }}
+                      className="flex items-center gap-1.5"
+                    >
+                      <input
+                        type="text"
+                        value={renameInput}
+                        onChange={(e) => setRenameInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") cancelRename();
+                        }}
+                        autoFocus
+                        maxLength={50}
+                        placeholder={t("devices.nicknamePlaceholder")}
+                        aria-label={t("devices.rename")}
+                        className="h-9 flex-1 rounded-xl bg-[var(--background)] px-3 text-[14px] font-medium text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] focus:ring-2 focus:ring-[var(--foreground)]/20"
+                      />
+                      <button
+                        type="submit"
+                        disabled={renamingBusy}
+                        aria-label={t("common.save")}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EE6452] text-white disabled:opacity-60"
+                      >
+                        <Check className="h-4 w-4" strokeWidth={2.5} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelRename}
+                        disabled={renamingBusy}
+                        aria-label={t("common.cancel")}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--background)] text-[var(--label-secondary)] ring-1 ring-black/[0.08] disabled:opacity-60"
+                      >
+                        <X className="h-4 w-4" strokeWidth={2.5} />
+                      </button>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="truncate text-[15px] font-semibold text-[var(--foreground)]">
+                          {d.nickname || d.label}
+                        </p>
+                        {d.isCurrent && (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                            {t("devices.thisDevice")}
+                          </span>
+                        )}
+                        {!d.isCurrent && d.isSignedOut && (
+                          <span className="rounded-full bg-[var(--label-tertiary)]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--label-secondary)]">
+                            {t("devices.signedOut")}
+                          </span>
+                        )}
+                        {/* Pencil — opens the rename form. Sized as
+                            the badges so it sits on the same line
+                            without breaking flow. */}
+                        <button
+                          onClick={() => startRename(d)}
+                          aria-label={t("devices.rename")}
+                          className="flex h-6 w-6 items-center justify-center rounded-full text-[var(--label-tertiary)] active:bg-black/[0.05] transition-colors [touch-action:manipulation]"
+                        >
+                          <Pencil className="h-3 w-3" strokeWidth={2.25} />
+                        </button>
+                      </div>
+                      {/* When a nickname is set, surface the parsed
+                          UA label as the subtitle so the user still
+                          knows which physical device they renamed. */}
+                      <p className="mt-0.5 truncate text-[12px] text-[var(--label-secondary)]">
+                        {d.nickname ? (
+                          <>
+                            {d.label} ·{" "}
+                            {formatRelative(d.refreshedAt ?? d.createdAt, {
+                              justNow: t("devices.justNow"),
+                              minutesAgo: t("devices.minutesAgo"),
+                              hoursAgo: t("devices.hoursAgo"),
+                              daysAgo: t("devices.daysAgo"),
+                              monthsAgo: t("devices.monthsAgo"),
+                            })}
+                          </>
+                        ) : (
+                          formatRelative(d.refreshedAt ?? d.createdAt, {
+                            justNow: t("devices.justNow"),
+                            minutesAgo: t("devices.minutesAgo"),
+                            hoursAgo: t("devices.hoursAgo"),
+                            daysAgo: t("devices.daysAgo"),
+                            monthsAgo: t("devices.monthsAgo"),
+                          })
+                        )}
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 
