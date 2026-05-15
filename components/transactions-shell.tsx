@@ -448,12 +448,6 @@ export default function TransactionsShell({
             </button>
 
             <div className="flex items-center gap-2">
-              {/* v1.43.0 — voice transactions moved here from the
-                  bottom-right floating FAB. Sits alongside Search /
-                  Filter as a peer chip, coral-tinted so it still reads
-                  as the AI / experimental surface. Server-gated by
-                  voiceEnabled (dev-only). */}
-              {voiceEnabled && <SpeakToAddFab />}
               <IconButton ariaLabel="Search" active={searchOpen} onClick={toggleSearchOpen}>
                 <Search className="h-[18px] w-[18px]" strokeWidth={2} />
               </IconButton>
@@ -628,6 +622,9 @@ export default function TransactionsShell({
         </>
       )}
 
+      {/* v1.43.1 — sparkle FAB restored to bottom-right floating
+          position above the bottom-nav. Server-gated by `voiceEnabled`. */}
+      {voiceEnabled && <SpeakToAddFab />}
     </>
   );
 }

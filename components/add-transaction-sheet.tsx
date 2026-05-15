@@ -658,16 +658,30 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
                     }
                     setType(t);
                   }}
+                  // v1.43.1 — tab colours pulled from the same CSS vars
+                  // the rest of the app uses for income/expense. Was
+                  // bg-rose-500 / bg-emerald-500 — close to but not
+                  // matching the negative-balance red on the home page
+                  // and the income text colour on the transactions list.
+                  // Inline style lets us reference the CSS variable.
                   className={cn(
                     "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
-                    type === t && t === "expense"
-                      ? "bg-rose-500 text-white shadow-sm"
-                      : type === t && t === "income"
-                      ? "bg-emerald-500 text-white shadow-sm"
-                      : type === t && t === "transfer"
-                      ? "bg-[#EE6452] text-white shadow-sm"
+                    type === t && t === "transfer" ? "text-white shadow-sm"
+                      : type === t ? "text-white shadow-sm"
                       : "text-[var(--label-secondary)]"
                   )}
+                  style={
+                    type === t
+                      ? {
+                          background:
+                            t === "expense"
+                              ? "var(--color-expense)"
+                              : t === "income"
+                              ? "var(--color-income)"
+                              : "#EE6452",
+                        }
+                      : undefined
+                  }
                 >
                   {t === "expense" ? tr("tx.expense") : t === "income" ? tr("tx.incomeShort") : tr("tx.transfer")}
                 </button>

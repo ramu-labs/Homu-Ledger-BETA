@@ -405,6 +405,10 @@ input[type="date"]::-webkit-clear-button {
    shell applies the class with a staggered animation-delay so rows
    leave in sequence (50ms apart) — reads as them being "absorbed"
    into the bottom of the screen on their way to the list. */
+/* v1.43.1 — fly-out glow is EMERALD now, not coral. Emerald is the
+   "success / committed" colour used elsewhere in the app (income text,
+   voice edit pulse). Save is a successful commit — coral was reserved
+   for AI / experimental affordances and was the wrong signal here. */
 @keyframes voice-row-fly {
   0% {
     transform: translateY(0) scale(1);
@@ -414,13 +418,13 @@ input[type="date"]::-webkit-clear-button {
   35% {
     transform: translateY(-6px) scale(1.015);
     opacity: 1;
-    box-shadow: 0 6px 28px rgba(238,100,82,0.45),
-                0 0 0 2px rgba(238,100,82,0.30);
+    box-shadow: 0 6px 28px rgba(16,185,129,0.45),
+                0 0 0 2px rgba(16,185,129,0.30);
   }
   100% {
     transform: translateY(-40px) scale(0.94);
     opacity: 0;
-    box-shadow: 0 0 0 0 rgba(238,100,82,0);
+    box-shadow: 0 0 0 0 rgba(16,185,129,0);
   }
 }
 .voice-row-fly {

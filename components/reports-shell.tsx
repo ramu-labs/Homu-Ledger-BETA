@@ -757,9 +757,10 @@ function CategoryDrilldownSheet({
                       {t.wallets ? ` · ${t.wallets.name}` : ""}
                     </p>
                   </div>
+                  {/* v1.43.1 — income colour aligned with transaction-list. */}
                   <p
                     className={`shrink-0 text-[15px] font-semibold tabular-nums ${
-                      t.type === "income" ? "text-emerald-600" : "text-[var(--foreground)]"
+                      t.type === "income" ? "text-[var(--color-income)]" : "text-[var(--foreground)]"
                     }`}
                   >
                     {t.type === "income" ? "+" : "-"}

@@ -272,14 +272,22 @@ export default function AddRecurringSheet({
                     }
                     setType(opt);
                   }}
+                  // v1.43.1 — colour parity with add-transaction-sheet
+                  // and the rest of the app's income/expense tokens.
                   className={cn(
                     "flex-1 rounded-full py-1.5 text-[13px] font-medium transition-all min-h-[32px]",
-                    type === opt && opt === "expense"
-                      ? "bg-rose-500 text-white shadow-sm"
-                      : type === opt && opt === "income"
-                      ? "bg-emerald-500 text-white shadow-sm"
-                      : "text-[var(--label-secondary)]"
+                    type === opt ? "text-white shadow-sm" : "text-[var(--label-secondary)]"
                   )}
+                  style={
+                    type === opt
+                      ? {
+                          background:
+                            opt === "expense"
+                              ? "var(--color-expense)"
+                              : "var(--color-income)",
+                        }
+                      : undefined
+                  }
                 >
                   {opt === "expense" ? t("tx.expense") : t("tx.incomeShort")}
                 </button>

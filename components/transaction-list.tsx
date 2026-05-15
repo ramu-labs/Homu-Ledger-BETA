@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, ArrowRightLeft } from "lucide-react";
+import { Camera, ArrowRightLeft, Repeat } from "lucide-react";
 import { formatAmount, formatAmountSigned, formatDayGroup } from "@/lib/format";
 import { CategoryIcon } from "@/components/category-icon";
 import { useT } from "@/lib/i18n/provider";
@@ -166,11 +166,6 @@ export default function TransactionList({ transactions, members, currency = "IDR
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 truncate text-[15px] font-medium text-[var(--foreground)]">
                 <span className="truncate">{isTransfer ? tr("tx.transfer") : t.name}</span>
-                {t.recurring_item_id && (
-                  <span className="shrink-0 rounded-full bg-violet-100/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700">
-                    Recurring
-                  </span>
-                )}
               </p>
               <p className="flex items-center gap-1 text-[12px] text-[var(--label-secondary)] truncate">
                 {isTransfer ? (
@@ -183,19 +178,31 @@ export default function TransactionList({ transactions, members, currency = "IDR
                   <>
                     {cat.name}
                     {t.wallets && <> · {t.wallets.name}</>}
+                    {/* v1.43.1 — recurring + photo markers rendered as
+                        small icons inline at the end of the sub-line.
+                        Previously recurring was a colourful uppercase
+                        pill on the first line which read as visually
+                        loud; matching it to the photo-camera pattern
+                        keeps the row calmer. */}
+                    {t.recurring_item_id && <Repeat className="h-3 w-3 shrink-0" strokeWidth={2} />}
                     {t.photo_url && <Camera className="h-3 w-3 shrink-0" strokeWidth={2} />}
                   </>
                 )}
               </p>
             </div>
 
+            {/* v1.43.1 — income amount switched from text-emerald-600
+                to text-[var(--color-income)] so it tracks the dark-mode
+                palette like the rest of the app. Expense stays as
+                foreground (the negative sign + category icon already
+                signal expense; we don't want every row red). */}
             <div className="flex flex-col items-end gap-0.5 shrink-0">
               <p
                 className={`text-[15px] font-semibold tabular-nums tracking-tight ${
                   isTransfer
                     ? "text-[#EE6452]"
                     : t.type === "income"
-                    ? "text-emerald-600"
+                    ? "text-[var(--color-income)]"
                     : "text-[var(--foreground)]"
                 }`}
               >

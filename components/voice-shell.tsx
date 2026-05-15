@@ -245,6 +245,53 @@ export default function VoiceShell({
   //   update   → patch the target row.
   //   remove   → mark target exiting.
   //   noop     → no-op.
+  // v1.43.1 — promote-or-drop the ghost row based on Gemini's parsed
+  // action. For `add`, we patch the existing ghost row in place
+  // (preserves DOM node → smooth animation, no flicker). For all
+  // other action kinds, drop the ghost first then fall through to the
+  // normal applyParsedAction.
+  const promoteGhostOrDrop = useCallback(
+    (ghostId: string, action: VoiceAction) => {
+      if (action.kind === "add") {
+        // Same row id → React keeps the DOM node mounted, so the row
+        // morphs in place (name + amount + type fill in, category
+        // icon starts the spinner from the still-coral pulse it had
+        // as a ghost).
+        lastAddedIdRef.current = ghostId;
+        setRows((rs) =>
+          rs.map((r) =>
+            r.id === ghostId
+              ? ({
+                  ...r,
+                  name: action.tx.name,
+                  amount: action.tx.amount,
+                  type: action.tx.type,
+                  wallet_id: action.tx.wallet_id,
+                  ghost: false,
+                  category_pending: action.tx.amount > 0,
+                  version: r.version + 1,
+                  changed: "name",
+                } as ParsedTransaction)
+              : r
+          )
+        );
+        // Kick off the auto-categorisation for the now-real row.
+        // Skip incomplete (amount=0) — runCategorize fires later when
+        // the amount stitches in.
+        if (action.tx.amount > 0) {
+          runCategorize(ghostId, action.tx.name, action.tx.type);
+        }
+        return;
+      }
+      // Drop the ghost and route the action through the normal path.
+      setRows((rs) => rs.filter((r) => r.id !== ghostId));
+      applyParsedAction(action);
+    },
+    // applyParsedAction + runCategorize are stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   const applyParsedAction = useCallback(
     (action: VoiceAction) => {
       if (action.kind === "noop") return;
@@ -469,6 +516,19 @@ export default function VoiceShell({
         // appearance (name+amount+type first → category fills in with
         // a sparkle) preserves the "AI is thinking" feel without
         // showing intermediate transcript noise.
+        // v1.43.1 — ghost row pattern (re-introduced).
+        // The user reported "3 seconds from end-of-speech to row
+        // appears" feels slow. The chain is:
+        //   silence (1500ms) + Whisper (~150ms) + Gemini parse (~400-900ms)
+        // Total: ~2.0-2.5s before anything shows. To make the screen
+        // feel responsive at ~1.7s, we now insert a "ghost" row the
+        // moment Whisper completes, with a CLEANED placeholder name
+        // (number-words stripped from the transcript). The row shows
+        // amount=— and a Loader2 in the category slot. When Gemini's
+        // parse lands a few hundred ms later, the existing patch path
+        // updates the row in place with the real name + amount + type.
+        const ghostId = crypto.randomUUID();
+        let ghostInserted = false;
         try {
           const fd = new FormData();
           fd.set("audio", blob, "utterance" + extFor(meta.mime));
@@ -483,40 +543,78 @@ export default function VoiceShell({
           if (!text) return;
           if (isWhisperHallucination(text)) return;
 
-          // Parse — context built fresh from rowsRef so Gemini sees the
-          // latest names + which rows are incomplete (stitching path).
+          // Phase A: ghost row appears NOW with cleaned description.
+          // We don't yet know if this is add / update / remove etc., so
+          // we render it as an incomplete "add" — same visual style as
+          // a real amount=0 row (— in the amount slot). When Gemini
+          // returns:
+          //   - add        → patch ghost into real row (in place)
+          //   - update     → drop ghost, route action to target row
+          //   - remove     → drop ghost, mark target exiting
+          //   - transfer   → drop ghost, append a transfer row
+          //   - undo / noop → drop ghost silently
+          // Skipped for very short transcripts (likely a stub word
+          // like "satu" or "ya" — no point flashing a ghost).
+          const placeholderName = cleanTranscriptForPlaceholder(text);
+          if (placeholderName.length >= 2) {
+            ghostInserted = true;
+            const ghost: ParsedTransaction = {
+              id: ghostId,
+              name: placeholderName,
+              amount: 0,
+              type: "expense",
+              category_id: null,
+              wallet_id: null,
+              version: 1,
+              changed: null,
+              ghost: true,
+            };
+            setRows((rs) => [...rs, ghost]);
+          }
+
+          // Phase B: parse — context built fresh from rowsRef so Gemini
+          // sees the latest names + which rows are incomplete. Strip
+          // the ghost we just inserted from the context so Gemini
+          // doesn't try to "update the kue" referring to itself.
           const parsed = await parseVoiceUtterance(text, {
             categories: geminiCats.map((c) => ({ id: c.id, name: c.name, type: c.type })),
             wallets: wallets.map((w) => ({ id: w.id, name: w.name })),
             rows: rowsRef.current
-              .filter((r) => !r.exiting)
+              .filter((r) => !r.exiting && !r.ghost)
               .map((r) => ({
                 id: r.id,
                 name: r.name,
-                // v1.43.0 — non-transfer rows with amount=0 are
-                // "incomplete" (waiting for the user to say the
-                // amount). The server uses this for the stitching
-                // safety net.
                 incomplete: r.type !== "transfer" && r.amount === 0,
               })),
             defaultWalletId: wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
           });
           if (cancelled) return;
           if (!parsed.ok) {
+            if (ghostInserted) setRows((rs) => rs.filter((r) => r.id !== ghostId));
             setSaveError(parsed.error);
             return;
           }
-          // Ambiguity check for update/remove.
+          // Ambiguity check for update/remove — handled BEFORE the
+          // ghost-promotion logic because we drop the ghost in that
+          // branch too.
           if (parsed.action.kind === "update" || parsed.action.kind === "remove") {
             const cands = resolveCandidates(parsed.action.target);
             if (cands.length > 1) {
+              if (ghostInserted) setRows((rs) => rs.filter((r) => r.id !== ghostId));
               setPendingAmbiguous({ action: parsed.action, candidateIds: cands });
               return;
             }
           }
-          applyParsedAction(parsed.action);
+
+          // Promote the ghost based on the parsed action.
+          if (ghostInserted) {
+            promoteGhostOrDrop(ghostId, parsed.action);
+          } else {
+            applyParsedAction(parsed.action);
+          }
         } catch (err) {
           if (cancelled) return;
+          if (ghostInserted) setRows((rs) => rs.filter((r) => r.id !== ghostId));
           setSaveError((err as Error).message ?? "Unknown error");
         }
       },
@@ -668,20 +766,28 @@ export default function VoiceShell({
         void recordVoiceCategoryUsage(r.name, r.category_id);
       }
 
-      // ── Magical save phase. Trigger the fly-out animation on every
-      //    row, wait its duration, then navigate. The .voice-row-fly
-      //    keyframes are staggered via animation-delay so rows leave
-      //    one after another (50ms apart) — feels like they're being
-      //    absorbed into the bottom nav. ──────────────────────────────
+      // ── Magical save phase. v1.43.1 — three changes from v1.42.x:
+      //   1. Fly-out glow is now emerald (success), not coral.
+      //   2. We kick off `router.refresh()` IMMEDIATELY when the save
+      //      resolves, so Next starts re-fetching the /transactions
+      //      SSR data IN PARALLEL with the fly-out animation playing.
+      //      By the time we navigate at the end of the animation, the
+      //      home screen's new data is usually warm — no white-screen
+      //      blink, the saved rows just appear with their own row-in +
+      //      tx-flash animation on the top one.
+      //   3. We also `prefetch` /transactions to warm the route shell.
+      router.prefetch("/transactions");
+      // Start the refresh now (async). The actual route change waits
+      // for the fly-out to finish.
+      void Promise.resolve().then(() => router.refresh());
+
       setFlying(true);
       const STAGGER_MS = 50;
       const FLY_DURATION_MS = 620;
       const totalMs = STAGGER_MS * liveRows.length + FLY_DURATION_MS;
       await new Promise((r) => setTimeout(r, Math.min(totalMs, 1100)));
 
-      // Done — navigate back and refresh the list.
       router.push("/transactions");
-      router.refresh();
     } catch (err) {
       setSaveError((err as Error).message ?? "Couldn't save");
       setSaving(false);
@@ -986,6 +1092,42 @@ function fuzzyResolveCategory(
     return b.score - a.score;
   });
   return cands[0].id;
+}
+
+// v1.43.1 — strip number-words from the Whisper transcript so the
+// ghost row's placeholder name shows just the description, not the
+// number tail. Approximate but cheap; the real cleanup happens when
+// Gemini parses and the ghost is patched in place.
+//
+// Stripped tokens:
+//   • bare digits, comma, period
+//   • Indonesian number words: satu/dua/.../sembilan, sepuluh, ratus,
+//     ribu, juta, miliar, milyar, sebelas, belas
+//   • English number words: thousand, million, billion, hundred, k
+//   • currency markers: rp, idr, rupiah, dollars, usd
+//
+// "Nasi goreng dua puluh lima ribu" → "Nasi goreng"
+// "Kopi 25rb"                       → "Kopi"
+// "Beli kue"                        → "Beli kue" (no numbers, untouched)
+const NUMBER_WORD_RE = new RegExp(
+  "\\b(" +
+    "satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|juta|miliar|milyar|" +
+    "one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|k|rb|" +
+    "rp|idr|rupiah|dollars?|usd" +
+  ")\\b",
+  "gi"
+);
+
+function cleanTranscriptForPlaceholder(raw: string): string {
+  const out = raw
+    .replace(/[\d.,]+/g, " ")       // drop bare numbers and grouping
+    .replace(NUMBER_WORD_RE, " ")    // drop number-words
+    .replace(/\s+/g, " ")
+    .trim();
+  // Capitalise first letter to match the ucFirst normalisation in the
+  // server parse. Tiny touch but reads consistently with later phases.
+  if (!out) return "";
+  return out.charAt(0).toUpperCase() + out.slice(1);
 }
 
 function extFor(mime: string): string {

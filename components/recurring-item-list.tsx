@@ -141,9 +141,11 @@ export default function RecurringItemList({ items, currency = "IDR", iconStyle =
                 </div>
               </div>
 
+              {/* v1.43.1 — income amount aligned with transaction-list +
+                  voice-row: text-[var(--color-income)] for dark-mode parity. */}
               <p
                 className={`shrink-0 text-[15px] font-semibold tabular-nums tracking-tight ${
-                  item.type === "income" ? "text-emerald-600" : "text-[var(--foreground)]"
+                  item.type === "income" ? "text-[var(--color-income)]" : "text-[var(--foreground)]"
                 }`}
               >
                 {item.type === "income" ? "+" : "-"}{formatAmount(item.amount, currency)}
