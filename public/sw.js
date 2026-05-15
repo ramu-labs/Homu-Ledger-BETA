@@ -1,37 +1,68 @@
 // Bump this version whenever you want to force-evict old caches.
-const CACHE_NAME = "homu-v61";
+const CACHE_NAME = "homu-v62";
+const NAV_CACHE_NAME = "homu-nav-v1";
+const NAV_CACHE_MAX = 30;
 
-// Install: nothing to pre-cache. Pages require auth, so pre-fetching them
-// would cache the login redirect as the page response (wrong). Static assets
-// (_next/static/*) are handled below with cache-first.
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
-// Activate: clean up old caches
 self.addEventListener("activate", (event) => {
+  const keep = new Set([CACHE_NAME, NAV_CACHE_NAME]);
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => !keep.has(k)).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
-// Fetch strategy:
-// - Static assets (_next/static): cache-first (content-addressed, safe)
-// - Navigation (HTML pages): network-ONLY, no caching.
-//   Pages are server-rendered with auth checks. If we cache them, a redirect
-//   (e.g. 307 → /login) gets stored as the page response, breaking hydration.
-// - Everything else: network-only (pass-through)
+// LRU trim: cache.keys() returns insertion order, so drop the oldest.
+async function trimNavCache() {
+  const cache = await caches.open(NAV_CACHE_NAME);
+  const keys = await cache.keys();
+  if (keys.length <= NAV_CACHE_MAX) return;
+  await Promise.all(keys.slice(0, keys.length - NAV_CACHE_MAX).map((k) => cache.delete(k)));
+}
+
+// Pages that auth-redirect or are themselves auth screens — never cache.
+// Caching /login would freeze a stale form state for offline users; the
+// auth callback must always hit network.
+function isUncachableNavPath(pathname) {
+  return (
+    pathname === "/" ||
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/onboarding") ||
+    pathname.startsWith("/privacy")
+  );
+}
+
+// Only cache real HTML responses. If middleware bounced us to /login the
+// Response has `redirected: true` — caching that under /transactions would
+// freeze the user on the login page forever. RSC payloads (Next 16 sends a
+// custom content-type on prefetch) are network-only too.
+function isCachableNavResponse(response, request) {
+  if (!response || !response.ok) return false;
+  if (response.redirected) return false;
+  if (response.type === "opaqueredirect") return false;
+  if (response.status !== 200) return false;
+  const ct = response.headers.get("content-type") || "";
+  if (!ct.includes("text/html")) return false;
+  if (request.headers.get("rsc")) return false;
+  if (request.headers.get("next-router-prefetch")) return false;
+  return true;
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Only handle same-origin requests
   if (url.origin !== self.location.origin) return;
 
-  // Static assets: cache-first (immutable, content-addressed hashes)
+  // _next/static is content-addressed (hash in filename) so cache-first is
+  // always safe: a new build = a new URL = a fresh fetch.
   if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(
       caches.match(request).then((cached) => {
@@ -48,15 +79,39 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigation requests: pure network-only.
-  // Do NOT cache: the server may redirect to /login if the session expired,
-  // and fetch() follows that redirect — caching the result would store the
-  // login page HTML under the original URL, causing React hydration loops.
+  // Navigation requests: network-first, fall back to cached HTML when offline.
+  // Strategy:
+  //   1. Try network. If we get a real 200 HTML (not an auth bounce), cache + return.
+  //   2. If network returns a redirect (302/307 to /login) we DON'T cache — return as-is.
+  //   3. On network failure, serve the last good cached HTML for this path if we have one.
+  //   4. If we have nothing cached, let the browser show its offline error.
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request));
+    if (isUncachableNavPath(url.pathname)) {
+      event.respondWith(fetch(request));
+      return;
+    }
+
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(NAV_CACHE_NAME);
+        try {
+          const response = await fetch(request);
+          if (isCachableNavResponse(response, request)) {
+            cache.put(request, response.clone()).then(trimNavCache).catch(() => {});
+          }
+          return response;
+        } catch (networkErr) {
+          const cached = await cache.match(request, { ignoreSearch: false });
+          if (cached) return cached;
+          // No cache → re-throw so the browser renders its native offline page.
+          throw networkErr;
+        }
+      })()
+    );
     return;
   }
 
-  // Everything else (API calls, images, etc.): network-only passthrough.
-  // The SW doesn't intercept — just let the browser handle it.
+  // /api/*, RSC payloads, images, fonts: network-only passthrough.
+  // We intentionally don't cache these in Phase 1 — they need the freshest
+  // possible answer and Phase 3 will introduce the write-queue layer.
 });

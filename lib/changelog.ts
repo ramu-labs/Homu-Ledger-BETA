@@ -45,6 +45,29 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.34.0",
+    date: "May 15, 2026",
+    changes: [
+      // ── User-facing ──
+      { type: "improvement", audience: "user",
+        en: "The app now keeps working on flaky wifi: if your connection drops mid-browse, the last pages you opened still render from cache. A small ‘Offline’ pill appears below the status bar so you know what you’re looking at might be a few seconds behind reality.",
+        id: "Aplikasi tetap berjalan di wifi yang tidak stabil: kalau koneksi putus saat sedang browsing, halaman yang baru saja kamu buka tetap muncul dari cache. Pil kecil ‘Offline’ akan tampil di bawah status bar agar kamu tahu data yang dilihat mungkin sedikit tertinggal." },
+      { type: "improvement", audience: "user",
+        en: "Editing things while offline is NOT supported yet — that arrives in v1.36.0. Phase 1 just makes read-only browsing reliable.",
+        id: "Mengedit saat offline BELUM didukung — fitur itu akan datang di v1.36.0. Phase 1 hanya membuat browsing read-only jadi andal." },
+      // ── Developer-facing ──
+      { type: "improvement", audience: "dev",
+        en: "Service worker rewritten as network-first for navigation with a smart redirect guard. 200 text/html responses go into a separate `homu-nav-v1` cache (LRU-trimmed to 30 entries). Responses with response.redirected, opaqueredirect, RSC headers (rsc / next-router-prefetch), or auth paths (/login, /signup, /auth, /onboarding, /privacy, /) are NEVER cached — the old SW comment about caching the login bounce as the page response is the exact failure mode the guard prevents.",
+        id: "Service worker ditulis ulang jadi network-first untuk navigasi dengan pengaman redirect. Respons 200 text/html disimpan di cache `homu-nav-v1` terpisah (LRU dipotong ke 30 entri). Respons dengan response.redirected, opaqueredirect, header RSC (rsc / next-router-prefetch), atau jalur auth (/login, /signup, /auth, /onboarding, /privacy, /) TIDAK PERNAH disimpan — komentar SW lama soal caching login-bounce sebagai page response adalah failure mode yang pengaman ini hindari." },
+      { type: "new", audience: "dev",
+        en: "Kill-switch endpoint at GET /api/sw-kill-switch (force-dynamic, no-store). Returns { kill: process.env.NEXT_PUBLIC_SW_KILL === \"1\" }. Registrar fetches it on every page load; if `kill` is true it unregisters all SWs, wipes caches, then reloads. Escape hatch for the day we ship a bad sw.js — flip the var in Vercel, no code deploy needed.",
+        id: "Endpoint kill-switch di GET /api/sw-kill-switch (force-dynamic, no-store). Mengembalikan { kill: process.env.NEXT_PUBLIC_SW_KILL === \"1\" }. Registrar memanggilnya di setiap page load; kalau `kill` true ia unregister semua SW, hapus caches, lalu reload. Jalur darurat kalau suatu hari kami merilis sw.js yang rusak — cukup flip var di Vercel, tidak perlu deploy kode." },
+      { type: "new", audience: "dev",
+        en: "components/sync-status-pill.tsx — tiny client pill mounted in app/(app)/layout.tsx. Listens to window online/offline and renders WifiOff + t(\"common.offline\") below the status-bar shield when navigator.onLine === false. SSR-safe via mounted gate so there's no hydration flash.",
+        id: "components/sync-status-pill.tsx — pil kecil client yang dipasang di app/(app)/layout.tsx. Mendengarkan event online/offline window dan menampilkan WifiOff + t(\"common.offline\") di bawah status-bar shield kalau navigator.onLine === false. Aman dari SSR lewat gate `mounted` jadi tidak ada flash saat hydration." },
+    ],
+  },
+  {
     version: "1.33.0",
     date: "May 15, 2026",
     changes: [

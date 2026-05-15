@@ -32,6 +32,27 @@ export default function ServiceWorkerRegistrar() {
     }
 
     // ── PRODUCTION ────────────────────────────────────────────────────
+    let cancelled = false;
+
+    // Kill-switch escape hatch. If we ever ship a broken sw.js that returns
+    // wrong responses or never lets fetches reach the network, users are
+    // stuck on the broken version forever (the SW intercepts the request
+    // for the next sw.js too). Flip NEXT_PUBLIC_SW_KILL=1 in Vercel and
+    // every client that reaches a page will self-heal on next load.
+    fetch("/api/sw-kill-switch", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then(async (data) => {
+        if (cancelled || !data?.kill) return;
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister().catch(() => {})));
+        if (typeof caches !== "undefined") {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k).catch(() => {})));
+        }
+        window.location.reload();
+      })
+      .catch(() => {});
+
     // If there's already a controller, a new SW taking over means an update.
     // Reload so the page gets fresh HTML + JS instead of showing stale content.
     const hadController = !!navigator.serviceWorker.controller;
@@ -51,6 +72,10 @@ export default function ServiceWorkerRegistrar() {
         reg.update().catch(() => {});
       })
       .catch((err) => console.warn("SW registration failed:", err));
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return null;

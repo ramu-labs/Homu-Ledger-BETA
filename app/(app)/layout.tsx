@@ -4,6 +4,7 @@ import { LanguageProvider } from "@/lib/i18n/provider";
 import { getServerT } from "@/lib/i18n/server";
 import { requireSession } from "@/lib/auth/session";
 import DevFeedbackNotifier from "@/components/dev-feedback-notifier";
+import SyncStatusPill from "@/components/sync-status-pill";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // requireSession() + getServerT() share ONE getSession() resolution via
@@ -44,6 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {children}
         </main>
         <BottomNav />
+        <SyncStatusPill />
         {isDeveloper && <DevFeedbackNotifier />}
       </div>
     </LanguageProvider>
