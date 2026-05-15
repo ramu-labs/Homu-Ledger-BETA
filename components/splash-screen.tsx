@@ -36,7 +36,13 @@ export default function SplashScreen() {
       className={`fixed inset-0 z-[9999] flex items-center justify-center transition-opacity duration-[400ms] ease-out ${
         hidden ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
-      style={{ backgroundColor: "#f6f1e9" }}
+      // v1.39.0 — use the design-system background var instead of the
+      // hardcoded cream. The theme bootstrap in app/layout.tsx runs
+      // beforeInteractive, so by the time React hydrates this splash
+      // --background already resolves to either cream (light) or the
+      // dark equivalent. Previously dark-mode users saw a cream splash
+      // followed by a hard cut to the dark page.
+      style={{ backgroundColor: "var(--background)" }}
     >
       <div className="flex flex-col items-center gap-4 animate-splash-breathe">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -45,7 +51,12 @@ export default function SplashScreen() {
           alt=""
           width={88}
           height={88}
-          className="rounded-[20px] shadow-[0_8px_24px_rgba(42,37,32,0.08)]"
+          // Drop-shadow uses currentColor opacity instead of a fixed
+          // brown so it reads in both modes. Tailwind doesn't have a
+          // pre-baked syntax for "current foreground at 8%" so the
+          // shadow gets an explicit black-with-opacity that's tame
+          // enough not to dominate either palette.
+          className="rounded-[20px] shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
           draggable={false}
         />
         <p className="text-[17px] font-semibold tracking-tight text-[var(--foreground)]">

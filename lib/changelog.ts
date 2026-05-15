@@ -45,6 +45,21 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.39.0",
+    date: "May 15, 2026",
+    changes: [
+      { type: "fix", audience: "user",
+        en: "Loading skeletons and the splash screen now read correctly in dark mode (previously they showed near-invisible black-on-near-black, or a cream flash that clashed with the dark theme).",
+        id: "Skeleton loading dan splash screen sekarang tampil benar di dark mode (sebelumnya hitam di atas hitam, atau ada kilat krem yang bertabrakan dengan tema gelap)." },
+      { type: "improvement", audience: "dev",
+        en: "Bulk-replaced `bg-black/[0.0X]` → `bg-[var(--foreground)]/[0.0X]` across the three loading skeletons (transactions / reports / settings). The var inverts correctly per theme, so the placeholder shapes are visible on both backgrounds.",
+        id: "Penggantian massal `bg-black/[0.0X]` → `bg-[var(--foreground)]/[0.0X]` di tiga skeleton loading (transactions / reports / settings). Var-nya membalik sesuai tema, jadi bentuk placeholder kelihatan di kedua background." },
+      { type: "improvement", audience: "dev",
+        en: "Splash screen background switched from hardcoded `#f6f1e9` to `var(--background)`. The theme bootstrap runs beforeInteractive so the var is resolved by the time the splash mounts; no more cream-flash-then-dark transition for dark-mode users. Drop-shadow swapped to `rgba(0,0,0,0.12)` which is tame in both modes.",
+        id: "Background splash screen diubah dari `#f6f1e9` hardcoded ke `var(--background)`. Theme bootstrap berjalan beforeInteractive jadi var sudah resolve saat splash di-mount; tidak ada lagi transisi kilat-krem-lalu-gelap untuk pengguna dark mode. Drop-shadow diganti ke `rgba(0,0,0,0.12)` yang aman di kedua mode." },
+    ],
+  },
+  {
     version: "1.38.0",
     date: "May 15, 2026",
     changes: [
