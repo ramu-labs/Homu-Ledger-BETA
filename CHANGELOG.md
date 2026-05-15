@@ -2,6 +2,94 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.30.0 - May 15, 2026
+
+Closes the "I got signed out on my iPhone when I signed out on the web" loop reported in v1.29.0. Two parts:
+
+### 1. Sign out is now local-only
+
+`app/actions/auth.ts`:
+
+```diff
+- await supabase.auth.signOut();
++ await supabase.auth.signOut({ scope: "local" });
+```
+
+Supabase's default sign-out scope is `'global'` — it revokes every refresh token for the user across every device. That's the right default for a "lost phone, sign me out everywhere" button, but a footgun when you just want to log out of the current tab. Switching to `'local'` keeps the other devices alive.
+
+### 2. New /settings/devices page
+
+A real "manage signed-in devices" surface, lives under Settings → Support → Signed-in Devices. Lists every active row from `auth.sessions` for the current user with a friendly label parsed from the `user_agent` string.
+
+**Per-row two-step flow** (matches the existing two-tap-to-confirm pattern from promo codes / AI key clear):
+
+```
+                    ┌───────────────────────┐
+                    │   ACTIVE              │
+                    │   [Sign out]          │
+                    └───┬───────────────────┘
+                        │  tap once
+                        ▼
+                    ┌───────────────────────┐
+                    │   ACTIVE — armed      │
+                    │   [Tap again to       │
+                    │    sign out]   red    │
+                    └───┬───────────────────┘
+                        │  tap again
+                        ▼
+                    ┌───────────────────────┐
+                    │   SIGNED OUT          │
+                    │   [Delete]            │
+                    └───┬───────────────────┘
+                        │  tap once
+                        ▼
+                    ┌───────────────────────┐
+                    │   SIGNED OUT — armed  │
+                    │   [Tap again to       │
+                    │    delete]    red     │
+                    └───┬───────────────────┘
+                        │  tap again
+                        ▼
+                    (row removed from list)
+```
+
+Armed state auto-cancels after 3s so an accidental first tap can't sit around as a one-tap-from-disaster trap.
+
+**Current device** shows a green "This device" badge instead of the action buttons — you can't kick yourself off this page, and for that the main Sign Out in /settings is what to use.
+
+**Bulk action** — "Sign out other devices (N)" at the bottom uses Supabase's built-in `scope: 'others'`. One confirm, then every non-current row flips to "Signed out" optimistically.
+
+### Migration 0025 — three SECURITY DEFINER RPCs over auth schema
+
+We can't expose `auth.sessions` directly via RLS (it's a Supabase-managed table), so three SECURITY DEFINER functions wrap the access:
+
+- `list_user_sessions()` — `auth.sessions` WHERE `user_id = auth.uid()`, plus `is_current` (from `auth.jwt() ->> 'session_id'`) and `is_signed_out` (NOT EXISTS valid refresh_tokens).
+- `sign_out_session(p_session_id uuid)` — UPDATE `auth.refresh_tokens` SET `revoked = true` WHERE `session_id = p_session_id` AND the session belongs to the calling user.
+- `delete_user_session(p_session_id uuid)` — DELETE FROM `auth.sessions` WHERE id matches AND user_id matches (cascades to refresh_tokens).
+
+Every function re-checks `auth.uid() = sessions.user_id` so a forged session_id can't touch someone else's data. Errors are identical for "not found" vs "not yours" to avoid leaking existence.
+
+### Tiny inline UA parser — `lib/user-agent.ts`
+
+~80 lines of regex covering the device classes and browsers we actually see. Returns `{ device, browser, label, glyph }`. Order of detection matters (Edge UA contains "Chrome", Chrome UA contains "Safari", etc) — comments in the file explain why.
+
+Avoided `ua-parser-js` (~30KB minzipped) for a narrow surface. If our coverage gets worse over time, swap to the library.
+
+### Files touched
+
+- `supabase/migrations/0025_session_management.sql` (new)
+- `lib/user-agent.ts` (new)
+- `app/(app)/settings/devices/page.tsx` (new — server wrapper)
+- `components/devices-shell.tsx` (new — client UI)
+- `app/actions/auth.ts` — `signOut()` scope flip + `signOutOtherDevices`, `signOutDeviceSession`, `deleteDeviceSession`
+- `app/(app)/settings/page.tsx` — new RowLink + Smartphone icon import
+- `lib/supabase/database.types.ts` — three new RPCs
+- `lib/i18n/dictionaries.ts` — Devices strings
+- `lib/changelog.ts` — v1.30.0 entry
+- Version bumps in `package.json`, `public/sw.js`, settings footer
+
+---
+
 ## v1.29.0 - May 15, 2026
 
 Follow-up to v1.28.0 — split the two changelog views onto two separate routes instead of using a tab switcher.

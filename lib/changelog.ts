@@ -45,6 +45,32 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.30.0",
+    date: "May 15, 2026",
+    changes: [
+      // ── User-facing ──
+      { type: "fix", audience: "user",
+        en: "Signing out only signs you out of THIS device now. Before, signing out anywhere would kick you out of every device — that's why your iPhone was getting logged out after you signed out on the web.",
+        id: "Sign out sekarang hanya keluar dari perangkat INI. Sebelumnya, sign out di mana pun akan mengeluarkan kamu dari semua perangkat — itulah penyebab iPhone-mu logout setelah kamu sign out di web." },
+      { type: "new", audience: "user",
+        en: "New Signed-in Devices page in Settings → Support. See every device that's signed in to your account, sign out the ones you don't recognise, then delete them to clean up. Plus a one-tap 'Sign out other devices' for the lost-phone scenario.",
+        id: "Halaman Perangkat Terhubung baru di Pengaturan → Support. Lihat semua perangkat yang sedang masuk ke akunmu, sign out yang tidak kamu kenali, lalu hapus untuk merapikan. Plus tombol 'Sign out perangkat lain' satu ketuk untuk skenario kehilangan ponsel." },
+      // ── Developer-facing ──
+      { type: "fix", audience: "dev",
+        en: "signOut() in app/actions/auth.ts switched from default scope:'global' to scope:'local'. Stops a sign-out on one device from revoking every refresh token across the user's other sessions.",
+        id: "signOut() di app/actions/auth.ts diubah dari scope:'global' default ke scope:'local'. Mencegah sign-out di satu perangkat mencabut semua refresh token di sesi pengguna lainnya." },
+      { type: "new", audience: "dev",
+        en: "Migration 0025 adds three SECURITY DEFINER RPCs over the auth schema: list_user_sessions (returns sessions for auth.uid() plus is_current from auth.jwt() session_id and is_signed_out from refresh-tokens.revoked), sign_out_session (marks refresh_tokens.revoked=true for one session), delete_user_session (DELETE on auth.sessions with cascade).",
+        id: "Migrasi 0025 menambahkan tiga RPC SECURITY DEFINER di atas auth schema: list_user_sessions (mengembalikan sesi untuk auth.uid() plus is_current dari auth.jwt() session_id dan is_signed_out dari refresh-tokens.revoked), sign_out_session (mengatur refresh_tokens.revoked=true untuk satu sesi), delete_user_session (DELETE pada auth.sessions dengan cascade)." },
+      { type: "new", audience: "dev",
+        en: "Devices page UX: per-row two-tap Sign out (arms red, auto-cancels in 3s) → flips row to 'Signed out' status → two-tap Delete appears → row removed. Current device shows 'This device' badge instead of buttons. Bulk 'Sign out other devices' uses Supabase's built-in scope:'others'.",
+        id: "UX halaman Perangkat: per-baris Sign out dua-ketuk (armed merah, batal otomatis dalam 3 detik) → status baris berubah 'Signed out' → Delete dua-ketuk muncul → baris dihapus. Perangkat saat ini menampilkan badge 'This device' bukan tombol. 'Sign out perangkat lain' massal pakai scope:'others' bawaan Supabase." },
+      { type: "improvement", audience: "dev",
+        en: "Tiny inline UA parser at lib/user-agent.ts — ~80 lines of regex covering iPhone/iPad/Android/Mac/Windows + Safari/Chrome/Firefox/Edge. Avoids pulling ua-parser-js (~30KB) for a feature this narrow.",
+        id: "Parser UA inline kecil di lib/user-agent.ts — ~80 baris regex yang mencakup iPhone/iPad/Android/Mac/Windows + Safari/Chrome/Firefox/Edge. Menghindari menarik ua-parser-js (~30KB) untuk fitur sesempit ini." },
+    ],
+  },
+  {
     version: "1.29.0",
     date: "May 15, 2026",
     changes: [
