@@ -2,6 +2,81 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.35.0 - May 15, 2026
+
+**Pragmatic offline, Phase 2 of 3** — idempotency foundation. The plumbing that makes Phase 3's offline write-queue safe.
+
+This release is deliberately invisible to users. No feature changes, no UI changes; just the columns, indexes, triggers, version-gate, and server-action plumbing that Phase 3 needs.
+
+### 1. Migration 0028 — idempotency columns
+
+Adds two nullable columns to `transactions`, `wallets`, and `categories`:
+
+- `client_op_id UUID` — generated on-device when the user taps "save". Same id is sent on every retry until the server confirms.
+- `updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()` — autoset by trigger on every UPDATE. Phase 3 uses this for last-write-wins conflict detection.
+
+Each table gets a partial unique index:
+
+```sql
+CREATE UNIQUE INDEX <table>_household_client_op_uniq
+  ON public.<table> (household_id, client_op_id)
+  WHERE client_op_id IS NOT NULL;
+```
+
+So a repeat INSERT with the same `client_op_id` (under the same household) raises Postgres `23505` unique-violation, which the server action catches and turns into a success response. The partial predicate means existing rows with `client_op_id IS NULL` aren't constrained — server-side or pre-2025 inserts keep working.
+
+A shared `set_updated_at()` trigger function fires BEFORE UPDATE on all three tables. Idempotent (`CREATE OR REPLACE FUNCTION` + `DROP TRIGGER IF EXISTS`), safe to re-run.
+
+This migration is **purely additive**. v1.34.0 clients keep working unchanged because they never set the new column, never trip the new index, and never UPDATE in ways the trigger cares about.
+
+### 2. Server actions accept optional `client_op_id`
+
+`app/actions/transactions.ts`, `app/actions/wallets.ts`, `app/actions/categories.ts` updated:
+
+- `addTransaction`, `addWallet`, `addCategory` now read `client_op_id` from FormData via `lib/idempotency.ts → getClientOpId()`.
+- On INSERT failure, `isClientOpDuplicate(error)` checks for `code === "23505"` + constraint name match. If true, treat as success.
+- For `addWallet` / `addCategory` (which return the inserted row), the dedupe path refetches the prior row by `(household_id, client_op_id)` so the caller still gets a row back.
+- `addTransfer` and `moveTransaction` skipped — they wrap RPCs (`create_transfer`, `move_transaction`) and would need the RPC signatures updated too. Deferred to Phase 3 if needed.
+
+Update/delete actions are not yet conflict-checked — that's Phase 3 territory. Today the `updated_at` column is set automatically by the trigger but nothing is read against it yet.
+
+### 3. Version contract — `lib/version.ts` + `GET /api/version` + `<VersionGate />`
+
+New constants:
+
+```ts
+export const APP_VERSION = "1.35.0";
+export const MIN_CLIENT_VERSION = "1.34.0";
+```
+
+`GET /api/version` (`dynamic = "force-dynamic"`, `Cache-Control: no-store`) returns `{ current, min }`.
+
+`components/version-gate.tsx` checks against this on:
+- first mount,
+- `window 'online'` event,
+- `document visibilitychange` → `visible`.
+
+If `APP_VERSION < server min`, it renders a blocking modal forcing a refresh. **Dormant in this release** (server `min === 1.34.0`, client is `1.35.0`), but primed for Phase 3 to start enforcing whenever we ship a release with a breaking schema/RPC change.
+
+Failure cases are silently ignored: the gate never blocks on a network error, so offline users — the entire reason we're doing this — are never stuck behind a fetch they can't complete.
+
+i18n keys added: `version.required.title` / `.body` / `.cta` (en + id).
+
+### 4. What's deliberately NOT in this PR
+
+- **The actual offline queue** — Phase 3 (v1.36.0).
+- **UPDATE conflict detection** — `updated_at` exists now but isn't compared. Phase 3 wires the optimistic-concurrency check.
+- **Transfer/move idempotency** — those are RPCs and need a separate SQL update. Phase 3.
+- **Photo-upload idempotency** — uploads go directly to Storage, separate problem.
+- **Bumping `MIN_CLIENT_VERSION`** — we leave the floor at the previous release so existing 1.34.0 clients keep working.
+
+### 5. Verification notes
+
+- `npm run build` and `npm run lint` clean locally.
+- Migration 0028 is purely additive — `ADD COLUMN IF NOT EXISTS` and partial indexes, no row rewrites, no data deletion.
+- Server action behaviour is unchanged when `client_op_id` is absent from FormData. Existing UI doesn't send it yet (that's Phase 3), so no in-the-wild behaviour change is expected.
+- Recommended: apply the migration to a Supabase **preview branch** first, smoke-test transaction add/update/delete on the preview Vercel deploy, then promote.
+
 ## v1.34.0 - May 15, 2026
 
 **Pragmatic offline, Phase 1 of 3** — cached reads + redirect-safe service worker + kill-switch.

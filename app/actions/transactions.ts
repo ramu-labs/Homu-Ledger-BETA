@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { LIMITS, validateAmount, validateDate, validateName, validateType } from "@/lib/validation";
+import { getClientOpId, isClientOpDuplicate } from "@/lib/idempotency";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 type ActionResult = { error?: string };
@@ -83,6 +84,8 @@ export async function addTransaction(formData: FormData): Promise<ActionResult> 
   const refs = await validateTransactionRefs(supabase, householdId, category_id, wallet_id);
   if (refs.error) return refs;
 
+  const client_op_id = getClientOpId(formData);
+
   const { error } = await supabase.from("transactions").insert({
     household_id: householdId,
     created_by: userId,
@@ -93,9 +96,20 @@ export async function addTransaction(formData: FormData): Promise<ActionResult> 
     wallet_id,
     date,
     photo_url,
+    ...(client_op_id ? { client_op_id } : {}),
   });
 
-  if (error) return { error: error.message };
+  if (error) {
+    // Idempotent retry from the offline queue: this client_op_id already
+    // landed for this household, so the prior attempt succeeded — return
+    // success and revalidate so the UI converges on the existing row.
+    if (isClientOpDuplicate(error)) {
+      revalidatePath("/transactions");
+      revalidatePath("/reports");
+      return {};
+    }
+    return { error: error.message };
+  }
   revalidatePath("/transactions");
   revalidatePath("/reports");
   return {};
