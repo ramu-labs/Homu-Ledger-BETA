@@ -1,5 +1,5 @@
 // AUTO-GENERATED — do not edit by hand.
-// Regenerated via Supabase MCP after migration 0024_household_ai_language.
+// Regenerated via Supabase MCP after migration 0025_session_management.
 export type Json =
   | string
   | number
@@ -734,6 +734,10 @@ export type Database = {
       }
       current_household_id: { Args: never; Returns: string }
       delete_promo_code: { Args: { p_id: string }; Returns: string }
+      delete_user_session: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
       generate_invite_code: { Args: never; Returns: string }
       generate_promo_code: {
         Args: { p_label?: string; p_tier: string }
@@ -760,6 +764,18 @@ export type Database = {
       join_household_by_invite_code: {
         Args: { p_code: string }
         Returns: string
+      }
+      list_user_sessions: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          ip: string
+          is_current: boolean
+          is_signed_out: boolean
+          refreshed_at: string
+          user_agent: string
+        }[]
       }
       log_api_usage: {
         Args: {
@@ -801,6 +817,7 @@ export type Database = {
         Args: { p_household_id: string }
         Returns: undefined
       }
+      sign_out_session: { Args: { p_session_id: string }; Returns: undefined }
       switch_household: { Args: { p_household_id: string }; Returns: undefined }
     }
     Enums: {

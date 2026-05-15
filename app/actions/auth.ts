@@ -183,8 +183,58 @@ export async function signIn(formData: FormData) {
 
 export async function signOut() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  // scope: 'local' (v1.30.0) — by default Supabase's signOut uses
+  // 'global', which revokes EVERY refresh token for the user across
+  // every device. That was responsible for the "I signed out on the
+  // preview and got kicked from my iPhone PWA" reports. Local keeps
+  // other devices alive; users who actually want to sign out
+  // everywhere have the new Devices page or the explicit "Sign out
+  // other devices" button there.
+  await supabase.auth.signOut({ scope: "local" });
   redirect("/login");
+}
+
+/**
+ * Sign out every OTHER device (keep the current one). Wraps Supabase's
+ * built-in `scope: 'others'`. Used by the bulk button on /settings/
+ * devices and by anyone who realises they lost a device.
+ */
+export async function signOutOtherDevices(): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase.auth.signOut({ scope: "others" });
+  if (error) return { error: error.message };
+  return {};
+}
+
+/**
+ * Revoke the refresh tokens for a single auth.sessions row. The row
+ * stays so the user can see what was kicked, then optionally delete
+ * it. RPC enforces the session belongs to the calling user.
+ */
+export async function signOutDeviceSession(
+  sessionId: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("sign_out_session", { p_session_id: sessionId });
+  if (error) return { error: error.message };
+  return {};
+}
+
+/**
+ * Permanently remove an auth.sessions row (and any leftover refresh
+ * tokens via the FK cascade). The row will be removed from the
+ * Devices list on the next refresh.
+ */
+export async function deleteDeviceSession(
+  sessionId: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_user_session", { p_session_id: sessionId });
+  if (error) return { error: error.message };
+  return {};
 }
 
 export async function createHousehold(formData: FormData) {

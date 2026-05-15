@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers, RefreshCw, Wallet, Ticket, Sparkles, SunMoon, Palette } from "lucide-react";
+import { ChevronLeft, ChevronRight, Tag, Bell, HelpCircle, LogOut, Users, Coins, Smile, Languages, Layers, RefreshCw, Wallet, Ticket, Sparkles, SunMoon, Palette, Smartphone } from "lucide-react";
 import { TapLink } from "@/components/tap";
 import { requireSession } from "@/lib/auth/session";
 import { signOut } from "@/app/actions/auth";
@@ -228,6 +228,7 @@ export default async function SettingsPage() {
 
       <Group title={t("settings.support")}>
         <RowLink href="/settings/help" icon={<HelpCircle className="h-[18px] w-[18px]" strokeWidth={2} />} label={t("settings.helpFeedback")} />
+        <RowLink href="/settings/devices" icon={<Smartphone className="h-[18px] w-[18px]" strokeWidth={2} />} label={t("settings.devices")} />
         <RowLink href="/settings/updates" icon={<RefreshCw className="h-[18px] w-[18px]" strokeWidth={2} />} label={t("settings.updates")} />
       </Group>
 
@@ -259,7 +260,7 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.29.0</p>
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.30.0</p>
     </div>
   );
 }
