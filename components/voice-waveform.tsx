@@ -44,10 +44,15 @@ export default function VoiceWaveform({ volume, listening, color = "#EE6452" }: 
         const u = i / N;
         const x = u * W;
         // Three octaves so the line never reads as a pure sine.
+        // v1.42.3: amplitude multipliers bumped from .30/.18/.12 to
+        // .50/.32/.20 so the line reads as actually-wavy on speech,
+        // not just a slightly-jittery flat line. Tested against a quiet
+        // room (still readable) and a loud TV in the background (still
+        // looks like one wave, not chaos).
         const yRaw =
-          Math.sin(t * 0.0019 + u * 8) * vol * H * 0.30 +
-          Math.sin(t * 0.0033 + u * 14) * vol * H * 0.18 +
-          Math.sin(t * 0.0011 + u * 5) * vol * H * 0.12;
+          Math.sin(t * 0.0019 + u * 8) * vol * H * 0.50 +
+          Math.sin(t * 0.0033 + u * 14) * vol * H * 0.32 +
+          Math.sin(t * 0.0011 + u * 5) * vol * H * 0.20;
         // Edge taper so the ends never whip out the side of the box.
         const taper = Math.sin(Math.PI * u);
         const y = mid + yRaw * taper;

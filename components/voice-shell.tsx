@@ -36,6 +36,7 @@ import VoiceAurora from "@/components/voice-aurora";
 import VoiceWaveform from "@/components/voice-waveform";
 import VoiceRow from "@/components/voice-row";
 import { transcribeVoiceAudio, parseVoiceUtterance, recordVoiceCategoryUsage } from "@/app/actions/voice";
+import { suggestCategory } from "@/app/actions/ai";
 import { queuedAddTransaction } from "@/lib/queue-actions";
 import { addTransfer } from "@/app/actions/transactions";
 import { createMicCapture, type MicCaptureHandle } from "@/lib/voice/mic-capture";
@@ -171,11 +172,32 @@ export default function VoiceShell({
     (action: VoiceAction) => {
       if (action.kind === "noop") return;
 
+      // v1.42.3 — undo command. Pops the most-recent row immediately.
+      // We use the lastAddedIdRef instead of array-tail because a row
+      // the user has already swiped-out via "delete the kopi" might
+      // still be in the exiting-animation phase.
+      if (action.kind === "undo") {
+        const lastId = lastAddedIdRef.current;
+        if (!lastId) return;
+        setRows((rs) => rs.map((r) => (r.id === lastId ? { ...r, exiting: true } : r)));
+        setTimeout(() => {
+          setRows((rs) => rs.filter((r) => r.id !== lastId));
+        }, 280);
+        // Clear lastAdded so a second consecutive "undo" doesn't try
+        // to remove an already-gone row. A new add will refresh this.
+        lastAddedIdRef.current = null;
+        return;
+      }
+
       if (action.kind === "add") {
         const id = crypto.randomUUID();
-        const finalCategoryId = action.tx.category_id;
-        // Phase 1: row appears WITHOUT a category. Category icon slot
-        // shows a Loader2 (driven by `category_pending: true`).
+        // v1.42.3 — Phase 1: row appears IMMEDIATELY with
+        // name + amount + type. The category icon shows a Loader2
+        // spinner because category_pending=true. We fire the
+        // categorisation call in parallel via suggestCategory() which
+        // is cache-first (instant on hit, ~400ms Gemini on miss). No
+        // artificial 250ms delay — the gap between phases is whatever
+        // suggestCategory takes.
         const phase1: ParsedTransaction = {
           ...action.tx,
           id,
@@ -188,27 +210,37 @@ export default function VoiceShell({
         lastAddedIdRef.current = id;
         setRows((rs) => [...rs, phase1]);
 
-        // Phase 2: 250ms later, fill in the auto-pick (Gemini's parse or
-        // a category_hints cache override). The version bump + changed
-        // flag triggers voice-cell-pop on the icon and the row tint
-        // flash. Skipped silently if the row was deleted in the
-        // meantime (e.g. user said "delete the last one" mid-flight).
-        setTimeout(() => {
+        // Phase 2: categorise. suggestCategory() is the same call the
+        // typed Add Transaction sheet uses, so voice + typing share
+        // the category_hints cache — train once, both benefit.
+        // Fire-and-forget: on failure we leave category_id null, the
+        // user picks manually from the picker.
+        void (async () => {
+          let resolved: string | null = null;
+          try {
+            const res = await suggestCategory(
+              action.tx.name,
+              action.tx.type
+            );
+            if (res.ok) resolved = res.categoryId;
+          } catch {
+            /* swallow — row stays in pending state until user picks */
+          }
           setRows((rs) =>
             rs.map((r) => {
               if (r.id !== id) return r;
-              if (r.type === "transfer") return r; // shouldn't happen, but…
+              if (r.type === "transfer") return r;
               return {
                 ...r,
-                category_id: finalCategoryId,
+                category_id: resolved,
                 category_pending: false,
-                category_ai: finalCategoryId !== null,
+                category_ai: resolved !== null,
                 version: r.version + 1,
-                changed: "category",
+                changed: resolved !== null ? "category" : null,
               };
             })
           );
-        }, 250);
+        })();
         return;
       }
 
@@ -241,6 +273,7 @@ export default function VoiceShell({
   const applyActionInternal = useCallback(
     (action: VoiceAction) => {
       if (action.kind === "noop") return;
+      if (action.kind === "undo") return; // handled by applyParsedAction
       if (action.kind === "add" || action.kind === "transfer") return; // handled by applyParsedAction
 
       if (action.kind === "update") {

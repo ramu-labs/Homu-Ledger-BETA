@@ -139,8 +139,13 @@ export default function VoiceRow({
     return () => document.removeEventListener("pointerdown", onOutside, true);
   }, [anyOpen]);
 
+  // v1.42.3: transfer amount reads as neutral foreground colour, not
+  // coral. Coral was redundant — the row already has the coral
+  // arrow-rightleft icon + coral wallet→wallet sub-line, so the number
+  // shouting in coral too was overkill. Matches transaction-list.tsx
+  // where transfer amounts are also non-tinted.
   const amountColor = isTransfer
-    ? "#EE6452"
+    ? "var(--foreground)"
     : row.type === "income"
       ? "var(--color-income)"
       : "var(--color-expense)";

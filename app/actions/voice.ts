@@ -22,7 +22,7 @@ import { createClient } from "@/lib/supabase/server";
 import { transcribeAudio } from "@/lib/llm/groq";
 import { GEMINI_DEFAULT_MODEL, GEMINI_PROVIDER } from "@/lib/llm/gemini";
 import { estimateCostUsd } from "@/lib/llm/pricing";
-import { canonicalKey, candidateKeys } from "@/lib/llm/normalize";
+import { canonicalKey } from "@/lib/llm/normalize";
 import type { VoiceAction, VoiceContext } from "@/lib/voice/types";
 
 // v1.42.2: capitalize the first letter of the first word in a
@@ -184,13 +184,17 @@ export async function parseVoiceUtterance(
   // up narrowing on `apiKey?.trim()` when re-read inside the closure.)
   const apiKey: string = rawKey;
 
-  // Build the parse prompt. We embed the household categories + wallets
-  // verbatim so Gemini can pick by name. The "Output JSON only" line is
-  // critical — without it Flash-Lite tends to wrap the answer in
-  // ```json fences or chat-style "Here's the action:" preambles.
-  const catList = context.categories
-    .map((c) => `- ${c.id} | ${c.name} | ${c.type}`)
-    .join("\n");
+  // v1.42.3 — FAST PARSE PROMPT.
+  //
+  // Categories used to be embedded here so Gemini could pick one in
+  // the same call. v1.42.3 removed them: a separate suggestCategory()
+  // call handles categorisation on the client, with cache hits for
+  // free. Removing the category list cuts ~360 input tokens AND ~150ms
+  // off this call's latency. The trimmed prompt fits ~4× the request
+  // budget at the same cost.
+  //
+  // We still embed wallets (for transfer parsing) and the current
+  // draft rows (for "the kopi" target resolution).
   const walletList = context.wallets
     .map((w) => `- ${w.id} | ${w.name}`)
     .join("\n");
@@ -201,19 +205,42 @@ export async function parseVoiceUtterance(
   const prompt =
     `You are a transaction parser for a household ledger. The user spoke ` +
     `ONE short utterance in Indonesian or English. Return ONE JSON action.\n\n` +
-    `Available categories (id | name | type):\n${catList}\n\n` +
     `Available wallets (id | name):\n${walletList}\n\n` +
     `Current draft rows (id | name):\n${rowList}\n\n` +
     `Action shapes (output exactly one):\n` +
-    `  {"kind":"add","tx":{"name":string,"amount":number,"type":"expense"|"income","category_id":string|null,"wallet_id":string|null}}\n` +
-    `  {"kind":"update","target":{"name":string|null,"mostRecent":boolean},"patch":{"amount":number?,"category_id":string?,"wallet_id":string?,"name":string?}}\n` +
+    `  {"kind":"add","tx":{"name":string,"amount":number,"type":"expense"|"income","wallet_id":string|null}}\n` +
+    `  {"kind":"update","target":{"name":string|null,"mostRecent":boolean},"patch":{"amount":number?,"wallet_id":string?,"name":string?}}\n` +
     `  {"kind":"remove","target":{"name":string|null,"mostRecent":boolean}}\n` +
     `  {"kind":"transfer","tx":{"name":string,"amount":number,"from_wallet_id":string,"to_wallet_id":string}}\n` +
+    `  {"kind":"undo"}\n` +
     `  {"kind":"noop"}\n\n` +
+    `Indonesian numbers — VERY IMPORTANT zero counts:\n` +
+    `  ribu   = thousand     (3 zeros)  → 1 ribu   = 1000\n` +
+    `  juta   = million      (6 zeros)  → 1 juta   = 1000000\n` +
+    `  miliar = billion      (9 zeros)  → 1 miliar = 1000000000\n` +
+    `NEVER confuse juta (1 million / 6 zeros) with miliar (1 billion / 9 zeros).\n` +
+    `Examples:\n` +
+    `  "satu juta"               = 1000000        (NOT 1000000000)\n` +
+    `  "satu miliar"             = 1000000000\n` +
+    `  "lima belas juta"         = 15000000\n` +
+    `  "tiga ratus ribu"         = 300000\n` +
+    `  "satu juta dua ratus ribu" = 1200000\n` +
+    `  "sepuluh ribu lima ratus"  = 10500\n\n` +
+    `Correction patterns (a follow-up that fixes the most recent row):\n` +
+    `When the user says ONLY a corrected amount with a corrective marker\n` +
+    `("oh", "actually", "oops", "sorry", "not", "bukan", "eh", "maaf"),\n` +
+    `route to update with target.mostRecent=true. Examples:\n` +
+    `  "Oh, not 25 ribu but 35 ribu"   → {"kind":"update","target":{"mostRecent":true},"patch":{"amount":35000}}\n` +
+    `  "Actually 30 thousand"           → {"kind":"update","target":{"mostRecent":true},"patch":{"amount":30000}}\n` +
+    `  "Bukan 25 ribu, 35 ribu"         → {"kind":"update","target":{"mostRecent":true},"patch":{"amount":35000}}\n` +
+    `  "Eh maaf, 50 ribu"               → {"kind":"update","target":{"mostRecent":true},"patch":{"amount":50000}}\n` +
+    `  "Oops 35"                        → {"kind":"update","target":{"mostRecent":true},"patch":{"amount":35000}}\n\n` +
+    `Undo: if the user says "undo", "batalkan", "cancel the last", "remove the last",\n` +
+    `"hapus yang terakhir" → {"kind":"undo"}. The client will pop the last added row.\n\n` +
     `Rules:\n` +
-    `- Indonesian number words: "tiga ratus ribu" = 300000, "satu juta dua ratus" = 1200000, "sepuluh ribu lima ratus" = 10500, "lima belas juta" = 15000000.\n` +
-    `- target.name = case-insensitive substring on a draft row name. mostRecent:true means the row most recently added.\n` +
-    `- category_id and wallet_id MUST be one of the ids listed above, or null. Never invent ids.\n` +
+    `- target.name = case-insensitive substring on a draft row name. mostRecent:true = the row most recently added.\n` +
+    `- wallet_id MUST be one of the wallet ids listed above, or null. Never invent ids.\n` +
+    `- DO NOT include category_id. Categories are handled separately by another call.\n` +
     `- If the utterance is off-topic (small talk, filler) return {"kind":"noop"}.\n` +
     `- For transfers, identify both from and to wallets from the list.\n` +
     `- Income vs expense: words like "gajian", "salary", "bonus", "refund", "income" → income. Everything else default to expense.\n` +
@@ -307,66 +334,25 @@ export async function parseVoiceUtterance(
     return { ok: true, action: { kind: "noop" }, tokensIn, tokensOut };
   }
 
-  const action = safeParseAction(text, context);
-
-  // v1.42.0: cross-feature integration with the category_hints cache
-  // (originally built for the typed Add Transaction sheet in v1.25.0).
-  //
-  // If the user has previously trained the cache for this description
-  // — by saving a typed transaction with a manually-chosen category —
-  // that's a STRONGER signal than Gemini's guess. We override.
-  //
-  // This makes the two AI surfaces share a single source of truth: the
-  // user trains once, voice + typing both benefit. And it's free —
-  // category_hints is a single indexed Postgres lookup.
-  const enriched = await applyCachedCategory(action, access.householdId);
-  return { ok: true, action: enriched, tokensIn, tokensOut };
+  // v1.42.3: pass the raw transcript + a hint that there's a recent
+  // row to the parser. Both feed the correction-marker safety net.
+  // hasRecentRow lets the safety net know an "update mostRecent"
+  // rewrite is actually safe (no recent row → keep the add).
+  const action = safeParseAction(
+    text,
+    context,
+    cleaned,
+    context.rows.length > 0
+  );
+  return { ok: true, action, tokensIn, tokensOut };
 }
 
-/**
- * If the parsed action carries a description (add or update with a
- * name patch), look it up in category_hints. On hit, override the
- * action's category_id with the cached one — user-confirmed mappings
- * trump model guesses.
- */
-async function applyCachedCategory(
-  action: VoiceAction,
-  householdId: string | null
-): Promise<VoiceAction> {
-  if (!householdId) return action;
-  // Only meaningful for the "add" path. For "update" we'd need to
-  // know the row's name BEFORE this server call, which we don't have
-  // (the target resolves client-side). Voice updates that change
-  // category by voice already pass category_id explicitly.
-  if (action.kind !== "add") return action;
-  const name = action.tx.name;
-  if (!name) return action;
-
-  const candidates = candidateKeys(name);
-  if (candidates.length === 0) return action;
-
-  // Single indexed query against the cache. The .in() with the small
-  // candidate list (typically 3–6 entries) is ~1ms on a warm DB.
-  const supabase = await createClient();
-  const { data: hints } = await supabase
-    .from("category_hints")
-    .select("keyword, category_id")
-    .eq("household_id", householdId)
-    .in("keyword", candidates);
-  if (!hints || hints.length === 0) return action;
-
-  // Iterate candidates in order (longest/most-specific first) so a
-  // trained "kopi di kaldi" hint beats a generic "kopi" hint when both
-  // exist.
-  const byKey = new Map(hints.map((h) => [h.keyword, h.category_id]));
-  for (const key of candidates) {
-    const cid = byKey.get(key);
-    if (cid && cid !== action.tx.category_id) {
-      return { ...action, tx: { ...action.tx, category_id: cid } };
-    }
-  }
-  return action;
-}
+// v1.42.3: applyCachedCategory removed. The parse no longer returns
+// a category — the client calls suggestCategory() instead, which
+// already implements the category_hints lookup with the same priority
+// rules (longest-prefix wins, user-trained overrides AI guesses).
+// The cross-feature integration is preserved; the path just runs on
+// the client now as a separate call.
 
 /** Public so the client-side save can mirror voice picks into the
  *  shared cache. Mirrors recordCategoryUsage from app/actions/ai.ts
@@ -415,7 +401,62 @@ export async function recordVoiceCategoryUsage(
 // validate the shape against our discriminated union. Anything off →
 // treat as noop (the user can re-say it).
 
-function safeParseAction(raw: string, ctx: VoiceContext): VoiceAction {
+// v1.42.3 — suspiciously-large amount sanity check.
+//
+// The "satu juta = 1,000,000,000" bug (model confuses juta with miliar)
+// puts an extra factor of 1000 on the amount. We catch the obvious
+// case: if the transcript clearly says "juta" (without "miliar") AND
+// Gemini returned a value with >= 1 billion (10^9), divide by 1000.
+// This is a hardcoded guard, not a learning fix — the prompt fix in
+// v1.42.3 should make the bug rare in the first place; this catches
+// the residue.
+//
+// We don't second-guess "miliar" utterances (those legitimately produce
+// 10^9+ amounts) and we don't touch the model for any other ambiguity.
+function correctJutaMiliarConfusion(transcript: string, amount: number): number {
+  if (amount < 1_000_000_000) return amount; // not in the suspicious range
+  const lc = transcript.toLowerCase();
+  const sawJuta = /\bjuta\b/.test(lc);
+  const sawMiliar = /\b(miliar|milyar|billion)\b/.test(lc);
+  if (sawJuta && !sawMiliar) return Math.round(amount / 1000);
+  return amount;
+}
+
+// v1.42.3 — correction-marker detection.
+//
+// If the user just said something like "oh, 35 thousand" with no
+// description, Gemini sometimes parses it as a fresh `add` with a
+// stub name. This safety net catches that: when (a) Gemini returned
+// add, (b) the utterance starts with / contains a correction marker
+// AND lacks a real description, AND (c) there's a recent row to
+// update, we rewrite the action as update-most-recent-amount.
+const CORRECTION_MARKERS_RE =
+  /\b(oh|ohh|oops|sorry|actually|not|bukan|eh|maaf)\b/i;
+
+function looksLikeCorrection(transcript: string): boolean {
+  return CORRECTION_MARKERS_RE.test(transcript);
+}
+
+// Heuristic: does the add's name look like a real description, or
+// is it basically just a number / filler word? "35 ribu", "thirty
+// five thousand", "35", "amount", a one-word filler — all should be
+// treated as a correction. A two-word real description like "Nasi
+// goreng" is left alone.
+function isStubName(name: string): boolean {
+  const cleaned = name.toLowerCase().trim();
+  if (!cleaned) return true;
+  // Pure-digits-or-numberwords name
+  if (/^[\d\s.,]+$/.test(cleaned)) return true;
+  // Indonesian number words only
+  const numWords = /\b(satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|juta|miliar|milyar|million|thousand|hundred|billion)\b/g;
+  const stripped = cleaned.replace(numWords, " ").replace(/\s+/g, " ").trim();
+  if (!stripped) return true;
+  // 1-character or very short stub
+  if (stripped.length <= 2) return true;
+  return false;
+}
+
+function safeParseAction(raw: string, ctx: VoiceContext, transcript: string, hasRecentRow: boolean): VoiceAction {
   let stripped = raw.trim();
   // Strip code fences if present
   if (stripped.startsWith("```")) {
@@ -437,30 +478,44 @@ function safeParseAction(raw: string, ctx: VoiceContext): VoiceAction {
   const kind = obj.kind;
 
   // Sets for fast id-existence checks
-  const catIds = new Set(ctx.categories.map((c) => c.id));
   const walletIds = new Set(ctx.wallets.map((w) => w.id));
 
   if (kind === "noop") return { kind: "noop" };
+  if (kind === "undo") return { kind: "undo" };
 
   if (kind === "add") {
     const tx = obj.tx as Record<string, unknown> | undefined;
     if (!tx) return { kind: "noop" };
     const name = ucFirst(typeof tx.name === "string" ? tx.name.trim() : "");
-    const amount = typeof tx.amount === "number" ? Math.round(tx.amount) : NaN;
+    let amount = typeof tx.amount === "number" ? Math.round(tx.amount) : NaN;
     const type = tx.type === "income" ? "income" : "expense";
     if (!name || !Number.isFinite(amount) || amount <= 0) return { kind: "noop" };
-    const category_id =
-      typeof tx.category_id === "string" && catIds.has(tx.category_id) ? tx.category_id : null;
+    amount = correctJutaMiliarConfusion(transcript, amount);
+
+    // Correction safety net: stub name + correction marker + we have a
+    // recent row to update → rewrite as {kind:"update", mostRecent}.
+    // This is the second line of defence after the prompt examples.
+    if (hasRecentRow && looksLikeCorrection(transcript) && isStubName(name)) {
+      return {
+        kind: "update",
+        target: { name: null, mostRecent: true },
+        patch: { amount },
+      };
+    }
+
     const wallet_id =
       typeof tx.wallet_id === "string" && walletIds.has(tx.wallet_id) ? tx.wallet_id : null;
-    return { kind: "add", tx: { name, amount, type, category_id, wallet_id } };
+    // v1.42.3: category_id always null from the parse — categorisation
+    // moved to a separate suggestCategory() call on the client.
+    return { kind: "add", tx: { name, amount, type, category_id: null, wallet_id } };
   }
 
   if (kind === "transfer") {
     const tx = obj.tx as Record<string, unknown> | undefined;
     if (!tx) return { kind: "noop" };
     const name = ucFirst((typeof tx.name === "string" ? tx.name.trim() : "") || "Transfer");
-    const amount = typeof tx.amount === "number" ? Math.round(tx.amount) : NaN;
+    let amount = typeof tx.amount === "number" ? Math.round(tx.amount) : NaN;
+    amount = correctJutaMiliarConfusion(transcript, amount);
     const from = typeof tx.from_wallet_id === "string" ? tx.from_wallet_id : "";
     const to = typeof tx.to_wallet_id === "string" ? tx.to_wallet_id : "";
     if (
@@ -484,14 +539,17 @@ function safeParseAction(raw: string, ctx: VoiceContext): VoiceAction {
     if (!target || !patch) return { kind: "noop" };
     const cleanPatch: {
       amount?: number;
-      category_id?: string | null;
       wallet_id?: string | null;
       name?: string;
     } = {};
-    if (typeof patch.amount === "number" && patch.amount > 0) cleanPatch.amount = Math.round(patch.amount);
-    if (typeof patch.category_id === "string" && catIds.has(patch.category_id)) cleanPatch.category_id = patch.category_id;
+    if (typeof patch.amount === "number" && patch.amount > 0) {
+      cleanPatch.amount = correctJutaMiliarConfusion(transcript, Math.round(patch.amount));
+    }
     if (typeof patch.wallet_id === "string" && walletIds.has(patch.wallet_id)) cleanPatch.wallet_id = patch.wallet_id;
     if (typeof patch.name === "string" && patch.name.trim()) cleanPatch.name = ucFirst(patch.name.trim());
+    // v1.42.3: category updates via voice no longer flow through this
+    // path — the user changes category via the picker in voice-row.
+    // The parse prompt also no longer mentions category_id.
     if (Object.keys(cleanPatch).length === 0) return { kind: "noop" };
     return {
       kind: "update",

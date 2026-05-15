@@ -98,6 +98,10 @@ export type VoiceActionUpdate = {
   }>;
 };
 export type VoiceActionRemove = { kind: "remove"; target: VoiceTarget };
+/** v1.42.3 — user said "undo" / "batalkan" / "cancel the last".
+ *  Client pops the most recent row regardless of name. No payload
+ *  needed; the client uses its own lastAddedIdRef. */
+export type VoiceActionUndo = { kind: "undo" };
 export type VoiceActionNoop = { kind: "noop" };
 
 export type VoiceAction =
@@ -105,6 +109,7 @@ export type VoiceAction =
   | VoiceActionTransfer
   | VoiceActionUpdate
   | VoiceActionRemove
+  | VoiceActionUndo
   | VoiceActionNoop;
 
 export type VoiceTarget = {

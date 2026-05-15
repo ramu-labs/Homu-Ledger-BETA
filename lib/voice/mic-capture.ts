@@ -159,10 +159,13 @@ export function createMicCapture(handlers: MicCaptureHandlers): MicCaptureHandle
       let sum = 0;
       for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
       const rms = Math.sqrt(sum / buf.length);
-      // Scale to 0..1; voices typically peak around 0.2 RMS so we boost a
-      // little for the waveform — the silence threshold below uses the raw
-      // RMS, not this scaled value.
-      const vol = paused ? 0.02 : Math.min(1, rms * 4 + 0.05);
+      // Scale to 0..1; voices typically peak around 0.15-0.25 RMS so we
+      // boost a fair bit for the waveform — the silence threshold below
+      // uses the raw RMS, not this scaled value. v1.42.3 raised the
+      // multiplier from 4 → 7 because v1.42.2 readings looked
+      // dampened on real hardware; users perceived the line as
+      // "barely moving" even when speaking clearly.
+      const vol = paused ? 0.02 : Math.min(1, rms * 7 + 0.05);
       handlers.onVolume(vol);
 
       const now = performance.now();
