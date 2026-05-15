@@ -45,6 +45,24 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.43.2",
+    date: "May 15, 2026",
+    changes: [
+      { type: "fix", audience: "user",
+        en: "Voice now reliably catches the amount even when you say description AND number in the same breath. v1.43.0/1 added a 'description-only' fallback that biased the AI to ignore numbers (so 'Nasi goreng 50 ribu' came out as 'Nasi goreng' with no amount). Two safeguards now: strict prompt rules with explicit positive/negative examples, and a server guard that rejects amount=0 whenever the transcript contains any number — better to make you retry than create an empty row.",
+        id: "Voice sekarang andal menangkap jumlah meskipun kamu ucapkan deskripsi DAN angka dalam satu napas. v1.43.0/1 menambahkan jalur 'description-only' yang membuat AI mengabaikan angka (sehingga 'Nasi goreng 50 ribu' keluar sebagai 'Nasi goreng' tanpa jumlah). Sekarang ada dua pengaman: aturan prompt ketat dengan contoh positif/negatif eksplisit, dan penjaga server yang menolak amount=0 saat transkrip mengandung angka — lebih baik kamu coba lagi daripada baris kosong tercipta." },
+      { type: "improvement", audience: "user",
+        en: "Description-only stitching still works for the proper case: say 'Beli kue' with no number at all → row appears with — placeholder → say '200 ribu' later → it attaches. Just no longer falsely triggered by single-utterance speech that did include a number.",
+        id: "Stitching deskripsi-saja tetap bekerja untuk kasus yang benar: ucapkan 'Beli kue' tanpa angka sama sekali → baris muncul dengan placeholder — → ucapkan '200 ribu' kemudian → otomatis terlampir. Tidak lagi salah-trigger oleh ucapan satu-frasa yang sebenarnya mengandung angka." },
+      { type: "improvement", audience: "dev",
+        en: "safeParseAction: new transcriptHasNumber() regex covers digits + Indonesian (satu..miliar) + English (one..billion, k, rb) number words. add branch rejects amount=0 when this returns true. The description-only path is still legal but only when the transcript is truly numberless.",
+        id: "safeParseAction: regex transcriptHasNumber() baru mencakup digit + kata angka Indonesia (satu..miliar) + Inggris (one..billion, k, rb). Cabang add menolak amount=0 saat ini bernilai true. Jalur description-only tetap legal tapi hanya saat transkrip benar-benar tanpa angka." },
+      { type: "improvement", audience: "dev",
+        en: "Prompt rewrite for the description-only path: explicit ✓ positive AND ✓ negative examples ('Nasi goreng' → amount=0, 'Nasi goreng 50 ribu' → amount=50000) plus an explicit 'NEVER amount=0' rule when any number signal is present. Reduces Gemini's over-generalisation under JSON mode.",
+        id: "Penulisan ulang prompt untuk jalur description-only: contoh positif ✓ DAN negatif ✓ yang eksplisit ('Nasi goreng' → amount=0, 'Nasi goreng 50 ribu' → amount=50000) plus aturan eksplisit 'NEVER amount=0' saat ada sinyal angka. Mengurangi over-generalisasi Gemini di mode JSON." },
+    ],
+  },
+  {
     version: "1.43.1",
     date: "May 15, 2026",
     changes: [

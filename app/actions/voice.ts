@@ -237,11 +237,20 @@ export async function parseVoiceUtterance(
     `  "tiga ratus ribu"         = 300000\n` +
     `  "satu juta dua ratus ribu" = 1200000\n` +
     `  "sepuluh ribu lima ratus"  = 10500\n\n` +
-    `Incomplete adds (description-only, amount unknown):\n` +
-    `If the user says ONLY a description with no amount, output amount=0.\n` +
-    `Then a follow-up number-only utterance attaches as an update.\n` +
-    `  "Beli kue"                       → {"kind":"add","tx":{"name":"Beli kue","amount":0,"type":"expense"}}\n` +
-    `  "Nasi goreng"                    → {"kind":"add","tx":{"name":"Nasi goreng","amount":0,"type":"expense"}}\n\n` +
+    `Description-only adds (RARE — strict rules):\n` +
+    `Output amount=0 ONLY when the utterance LITERALLY contains NO number anywhere:\n` +
+    `  • NO digit (1, 2, 3, ...)\n` +
+    `  • NO Indonesian number word (satu, dua, tiga ... sembilan, sepuluh, sebelas,\n` +
+    `    belas, puluh, ratus, ribu, juta, miliar, milyar)\n` +
+    `  • NO English number word (one, two ... ten, eleven, ... ninety, hundred,\n` +
+    `    thousand, million, billion, k, rb)\n` +
+    `If ANY of the above is present, you MUST extract the amount. NEVER amount=0.\n\n` +
+    `  "Nasi goreng"                  → {"kind":"add","tx":{"name":"Nasi goreng","amount":0,"type":"expense"}}     ✓ (no number)\n` +
+    `  "Beli kue"                     → {"kind":"add","tx":{"name":"Beli kue","amount":0,"type":"expense"}}        ✓ (no number)\n` +
+    `  "Nasi goreng 50 ribu"          → {"kind":"add","tx":{"name":"Nasi goreng","amount":50000,"type":"expense"}} ✓ (number present)\n` +
+    `  "Nasi goreng lima puluh ribu"  → {"kind":"add","tx":{"name":"Nasi goreng","amount":50000,"type":"expense"}} ✓ (number words present)\n` +
+    `  "Bensin 300 ribu"              → {"kind":"add","tx":{"name":"Bensin","amount":300000,"type":"expense"}}     ✓\n` +
+    `  "Beli kue 200 ribu"            → {"kind":"add","tx":{"name":"Beli kue","amount":200000,"type":"expense"}}   ✓\n\n` +
     `Number-only follow-up (attaches to the last row):\n` +
     `When the user says ONLY an amount (no description, no corrective marker)\n` +
     `AND the most recent row has amount=0 (incomplete), route to update mostRecent.\n` +
@@ -473,6 +482,19 @@ function looksLikeCorrection(transcript: string): boolean {
   return CORRECTION_MARKERS_RE.test(transcript);
 }
 
+// v1.43.2 — does the transcript contain ANY number signal?
+// Used to guard against Gemini wrongly returning amount=0 on
+// utterances that clearly do mention a number. If this returns true
+// but Gemini gave us amount=0, we treat the whole parse as a failure
+// (noop) rather than create a stub incomplete-row that the user
+// thinks should have an amount.
+const NUMBER_PRESENT_RE =
+  /\d|\b(satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh|sebelas|belas|puluh|ratus|ribu|juta|miliar|milyar|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|million|billion|k|rb)\b/i;
+
+function transcriptHasNumber(text: string): boolean {
+  return NUMBER_PRESENT_RE.test(text);
+}
+
 // Heuristic: does the add's name look like a real description, or
 // is it basically just a number / filler word? "35 ribu", "thirty
 // five thousand", "35", "amount", a one-word filler — all should be
@@ -534,6 +556,18 @@ function safeParseAction(
     // v1.43.0: amount=0 is now LEGAL — represents an incomplete row
     // ("beli kue", no amount yet). Reject only NaN or negative.
     if (!name || !Number.isFinite(amount) || amount < 0) return { kind: "noop" };
+
+    // v1.43.2 — GUARD against Gemini's amount=0 bias.
+    // If Gemini gave us amount=0 BUT the transcript clearly mentions
+    // a number (digit OR Indonesian/English number word), the model
+    // dropped the number — almost certainly the description-only
+    // examples in the prompt biased it. Reject the parse; the user
+    // can retry. Better than creating a confusing empty row when
+    // they clearly said "Nasi goreng 50 ribu".
+    if (amount === 0 && transcriptHasNumber(transcript)) {
+      return { kind: "noop" };
+    }
+
     amount = correctJutaMiliarConfusion(transcript, amount);
 
     // Correction safety net: stub name + correction marker + we have a
