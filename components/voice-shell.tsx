@@ -31,15 +31,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
+import { cn } from "@/lib/cn";
 import VoiceAurora from "@/components/voice-aurora";
 import VoiceWaveform from "@/components/voice-waveform";
 import VoiceRow from "@/components/voice-row";
-import { transcribeVoiceAudio, parseVoiceUtterance } from "@/app/actions/voice";
+import { transcribeVoiceAudio, parseVoiceUtterance, recordVoiceCategoryUsage } from "@/app/actions/voice";
 import { queuedAddTransaction } from "@/lib/queue-actions";
 import { addTransfer } from "@/app/actions/transactions";
 import { createMicCapture, type MicCaptureHandle } from "@/lib/voice/mic-capture";
 import { useT } from "@/lib/i18n/provider";
 import type { DbCategory, DbWallet } from "@/lib/types";
+import type { IconStyle } from "@/lib/category-icons";
 import type {
   ParsedTransaction,
   ParsedTransfer,
@@ -53,9 +55,12 @@ type Props = {
   wallets: DbWallet[];
   currency: string;
   languageHint?: "auto" | "en" | "id" | null;
+  /** v1.42.0 — pipe through the user's icon preference so voice rows
+   *  match the rest of the app's category iconography. */
+  iconStyle?: IconStyle;
 };
 
-export default function VoiceShell({ categories, wallets, currency, languageHint = "auto" }: Props) {
+export default function VoiceShell({ categories, wallets, currency, languageHint = "auto", iconStyle = "3d" }: Props) {
   const router = useRouter();
   const t = useT();
 
@@ -103,21 +108,40 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
     return null;
   }, []);
 
-  // ── Reducer: apply a VoiceAction to the rows list ───────────────────
-  const applyAction = useCallback(
-    (action: VoiceAction) => {
-      if (action.kind === "noop") return;
+  // ── Reducer: promote a ghost row based on Gemini's parsed action ────
+  //
+  // The flow is: an utterance comes in, we drop a ghost row at `ghostId`
+  // with the raw transcript while we wait on Gemini. When the parse
+  // returns:
+  //   add      → in-place upgrade the ghost to a real ParsedTransaction
+  //              (same id, so React keeps the DOM node and the row
+  //              doesn't unmount → no flicker / no animation restart).
+  //   transfer → drop the ghost, append a transfer row.
+  //   update   → drop the ghost, patch the target row.
+  //   remove   → drop the ghost, mark target exiting.
+  //   noop     → drop the ghost silently.
+  const promoteGhost = useCallback(
+    (ghostId: string, action: VoiceAction) => {
+      if (action.kind === "noop") {
+        setRows((rs) => rs.filter((r) => r.id !== ghostId));
+        return;
+      }
 
       if (action.kind === "add") {
-        const id = crypto.randomUUID();
-        const next: ParsedTransaction = {
-          ...action.tx,
-          id,
-          version: 1,
-          changed: null,
-        };
-        lastAddedIdRef.current = id;
-        setRows((rs) => [...rs, next]);
+        lastAddedIdRef.current = ghostId;
+        setRows((rs) =>
+          rs.map((r) =>
+            r.id === ghostId
+              ? ({
+                  ...action.tx,
+                  id: ghostId,
+                  version: 1,
+                  changed: null,
+                  ghost: false,
+                } as ParsedTransaction)
+              : r
+          )
+        );
         return;
       }
 
@@ -131,9 +155,28 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
           changed: null,
         };
         lastAddedIdRef.current = id;
-        setRows((rs) => [...rs, next]);
+        setRows((rs) => [...rs.filter((r) => r.id !== ghostId), next]);
         return;
       }
+
+      // update / remove → ghost is irrelevant, route through applyAction.
+      setRows((rs) => rs.filter((r) => r.id !== ghostId));
+      applyActionInternal(action);
+    },
+    // applyActionInternal is stable via useCallback below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  // ── Reducer: apply non-add VoiceActions (used by promoteGhost) ──────
+  //
+  // The original applyAction included add/transfer too, but with ghost
+  // rows those branches are handled by promoteGhost. This helper exists
+  // for the update/remove cases where the ghost is already gone.
+  const applyActionInternal = useCallback(
+    (action: VoiceAction) => {
+      if (action.kind === "noop") return;
+      if (action.kind === "add" || action.kind === "transfer") return; // handled by promoteGhost
 
       if (action.kind === "update") {
         const targetId = resolveTarget(action.target);
@@ -216,6 +259,13 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
           setThinking(false);
           return;
         }
+        // v1.42.0: a stable ghost-row id we generate UP-FRONT.
+        // Whisper completes ~150ms after silence detect → we insert a
+        // skeleton row at that id. Gemini completes ~600ms later → we
+        // promote the SAME id from ghost to real (or drop it if Gemini
+        // returns noop). The user sees the row land instantly with the
+        // transcript text; it morphs in place when the parse is done.
+        const ghostId = crypto.randomUUID();
         try {
           const fd = new FormData();
           fd.set("audio", blob, "utterance" + extFor(meta.mime));
@@ -235,31 +285,60 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
             return;
           }
           setUtterance(text);
-          // Build the context FRESH each parse — Gemini uses the
-          // current draft rows to resolve "the kopi" references.
-          // rowsRef is updated by the [rows]-deps effect above, so it
-          // always reflects the latest list.
+
+          // INSERT THE GHOST ROW NOW. We don't yet know if this will
+          // resolve to add / update / remove / transfer / noop, so we
+          // optimistically render it as an "add" placeholder. When
+          // Gemini comes back:
+          //   - add        → promote the same id to a real row
+          //   - transfer   → swap the ghost out, append a transfer row
+          //                  (different shape)
+          //   - update     → drop the ghost, patch the targeted row
+          //   - remove     → drop the ghost, mark targeted row exiting
+          //   - noop       → drop the ghost silently
+          setRows((rs) => [
+            ...rs,
+            {
+              id: ghostId,
+              name: text,
+              amount: 0,
+              type: "expense",
+              category_id: null,
+              wallet_id: null,
+              version: 1,
+              changed: null,
+              ghost: true,
+            } as ParsedTransaction,
+          ]);
+
+          // Parse — context built fresh from rowsRef so Gemini sees the
+          // latest names (minus the ghost we just inserted; we strip it
+          // here so the parser doesn't try to "update" itself).
           const parsed = await parseVoiceUtterance(text, {
             categories: categories.map((c) => ({ id: c.id, name: c.name, type: c.type })),
             wallets: wallets.map((w) => ({ id: w.id, name: w.name })),
             rows: rowsRef.current
-              .filter((r) => !r.exiting)
+              .filter((r) => !r.exiting && !r.ghost)
               .map((r) => ({ id: r.id, name: r.name })),
             defaultWalletId: wallets.find((w) => w.is_default)?.id ?? wallets[0]?.id ?? null,
           });
           if (cancelled) return;
           setThinking(false);
           if (!parsed.ok) {
+            // Remove the ghost on error.
+            setRows((rs) => rs.filter((r) => r.id !== ghostId));
             setSaveError(parsed.error);
             return;
           }
-          applyAction(parsed.action);
-          // Clear the caption shortly after — keeps the screen calm.
+          // Promote the ghost based on the action kind.
+          promoteGhost(ghostId, parsed.action);
           setTimeout(() => {
             if (!cancelled) setUtterance(null);
           }, 1500);
         } catch (err) {
           if (cancelled) return;
+          // Clean up the ghost on any crash.
+          setRows((rs) => rs.filter((r) => r.id !== ghostId));
           setThinking(false);
           setSaveError((err as Error).message ?? "Unknown error");
         }
@@ -298,11 +377,21 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
     });
   }
 
-  function onClose() {
-    router.back();
-  }
+  // v1.42.0: ghosts (Whisper-done-but-Gemini-pending) are excluded
+  // from save — they have amount=0 and would land as zero-rows.
+  const liveRows = useMemo(() => rows.filter((r) => !r.exiting && !r.ghost), [rows]);
+  // Count of all visible rows (incl. ghosts) for the close-confirmation
+  // count — losing a ghost feels just as bad as losing a real row from
+  // the user's POV.
+  const visibleCount = useMemo(() => rows.filter((r) => !r.exiting).length, [rows]);
 
-  const liveRows = useMemo(() => rows.filter((r) => !r.exiting), [rows]);
+  // v1.42.0: "magical" save phase. Set `flying` on every row when the
+  // user taps Save → CSS animates each row in turn (staggered) up + out
+  // with a sparkle glow. We wait the animation duration then navigate.
+  // The destination /transactions list has its own row-in animation, so
+  // the user sees: voice rows fly away → page transition → real rows
+  // appear in the list. Reads as "they were just absorbed."
+  const [flying, setFlying] = useState(false);
 
   async function onSave() {
     if (!liveRows.length || saving) return;
@@ -353,15 +442,61 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
         micRef.current?.resume();
         return;
       }
+
+      // ── v1.42.0: write voice picks into the category_hints cache so
+      //    future typed entries auto-suggest the same category. Mirrors
+      //    what add-transaction-sheet does on its own save path. Fire-
+      //    and-forget — if the cache write fails, the save itself is
+      //    already done. ─────────────────────────────────────────────
+      for (const r of liveRows) {
+        if (r.type === "transfer") continue;
+        if (!r.category_id || !r.name) continue;
+        void recordVoiceCategoryUsage(r.name, r.category_id);
+      }
+
+      // ── Magical save phase. Trigger the fly-out animation on every
+      //    row, wait its duration, then navigate. The .voice-row-fly
+      //    keyframes are staggered via animation-delay so rows leave
+      //    one after another (50ms apart) — feels like they're being
+      //    absorbed into the bottom nav. ──────────────────────────────
+      setFlying(true);
+      const STAGGER_MS = 50;
+      const FLY_DURATION_MS = 620;
+      const totalMs = STAGGER_MS * liveRows.length + FLY_DURATION_MS;
+      await new Promise((r) => setTimeout(r, Math.min(totalMs, 1100)));
+
       // Done — navigate back and refresh the list.
       router.push("/transactions");
       router.refresh();
     } catch (err) {
       setSaveError((err as Error).message ?? "Couldn't save");
       setSaving(false);
+      setFlying(false);
       micRef.current?.resume();
     }
   }
+
+  function onClose() {
+    // v1.42.0: close-with-drafts confirmation. If there's anything in
+    // the list the user could lose (real rows OR ghosts that are still
+    // resolving), require a second tap on the X within 3s.
+    if (visibleCount > 0 && !confirmingClose) {
+      setConfirmingClose(true);
+      if (closeArmRef.current) clearTimeout(closeArmRef.current);
+      closeArmRef.current = setTimeout(() => {
+        setConfirmingClose(false);
+        closeArmRef.current = null;
+      }, 3000);
+      return;
+    }
+    router.back();
+  }
+  // Two-tap-to-close state. Same pattern as the AI key Clear button.
+  const [confirmingClose, setConfirmingClose] = useState(false);
+  const closeArmRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (closeArmRef.current) clearTimeout(closeArmRef.current);
+  }, []);
 
   // Caption fallback copy — driven by mic state + list length.
   const captionFallback = paused
@@ -384,10 +519,16 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
         <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-3">
           <button
             onClick={onClose}
-            aria-label={t("common.close") || "Close"}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.04)] ring-1 ring-black/[0.05] transition-transform active:scale-95"
+            aria-label={confirmingClose ? "Tap again to discard drafts" : t("common.close") || "Close"}
+            className={cn(
+              "flex h-9 items-center justify-center rounded-full text-[var(--foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.04)] ring-1 transition-all active:scale-95",
+              confirmingClose
+                ? "w-auto gap-1.5 bg-rose-500 px-3 text-[12px] font-semibold text-white ring-rose-500"
+                : "w-9 bg-[var(--surface)] ring-black/[0.05]"
+            )}
           >
             <X className="h-[18px] w-[18px]" strokeWidth={2.25} />
+            {confirmingClose && <span>Discard {visibleCount}?</span>}
           </button>
           <h2 className="m-0 text-[15px] font-semibold tracking-tight">
             {t("voice.title") || "Speak to add"}
@@ -398,13 +539,16 @@ export default function VoiceShell({ categories, wallets, currency, languageHint
         {/* Scrollable list — packs from the top */}
         <div className="min-h-0 flex-1 overflow-y-auto px-[14px] pb-3 pt-1" style={{ WebkitOverflowScrolling: "touch" }}>
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
-            {rows.map((row) => (
+            {rows.map((row, idx) => (
               <VoiceRow
                 key={row.id}
                 row={row}
                 categories={categories}
                 wallets={wallets}
                 currency={currency}
+                iconStyle={iconStyle}
+                flying={flying}
+                flyIndex={idx}
                 onSetWallet={(walletId) =>
                   setRows((rs) =>
                     rs.map((r) =>
