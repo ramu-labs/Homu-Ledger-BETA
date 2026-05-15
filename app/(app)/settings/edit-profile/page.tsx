@@ -30,11 +30,14 @@ export default async function EditProfilePage() {
         initials: profile.initials ?? "",
         avatar_color: profile.avatar_color ?? "#f97316",
         email: profile.email ?? user.email ?? "",
+        // v1.40.0 — Gender narrowed to Male / Female in the UI. If
+        // an existing row stores 'other' or 'prefer_not_to_say'
+        // (allowed by the DB constraint, set via the pre-v1.40
+        // signup), we treat it as null — neither pill is
+        // pre-highlighted but the value remains in the DB until the
+        // user picks one. Picking Male or Female overwrites it.
         gender:
-          extra?.gender === "male" ||
-          extra?.gender === "female" ||
-          extra?.gender === "other" ||
-          extra?.gender === "prefer_not_to_say"
+          extra?.gender === "male" || extra?.gender === "female"
             ? extra.gender
             : null,
         birth_date: extra?.birth_date ?? null,

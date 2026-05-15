@@ -21,7 +21,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Eye, EyeOff, Loader2, MailCheck } from "lucide-react";
+import { ChevronLeft, Check, Eye, EyeOff, Loader2, MailCheck } from "lucide-react";
 import {
   signUpStartEmailOtp,
   verifySignUpOtp,
@@ -31,13 +31,16 @@ import { useT } from "@/lib/i18n/provider";
 import { cn } from "@/lib/cn";
 
 type Step = "form" | "otp";
-type Gender = "male" | "female" | "other" | "prefer_not_to_say";
+// v1.40.0 — signup gender narrowed to Male / Female only. The DB
+// constraint + VALID_GENDERS in app/actions/auth.ts still allow
+// 'other' and 'prefer_not_to_say' for backwards-compat with existing
+// rows, but the signup picker no longer offers them. Edit Profile
+// matches this shape (see edit-profile-shell.tsx).
+type Gender = "male" | "female";
 
 const GENDER_OPTIONS: { value: Gender; key: string }[] = [
   { value: "male", key: "auth.genderMale" },
   { value: "female", key: "auth.genderFemale" },
-  { value: "other", key: "auth.genderOther" },
-  { value: "prefer_not_to_say", key: "auth.genderPreferNotSay" },
 ];
 
 export default function SignupPage() {
@@ -156,6 +159,15 @@ function SignupForm({
   setGender: (g: Gender) => void;
   t: ReturnType<typeof useT>;
 }) {
+  // v1.40.0 — lift password + confirm to state so we can show a live
+  // "passwords match" indicator beneath the confirm field. The
+  // PasswordField is now controlled (value + onChange) so the
+  // FormData still serialises correctly via name=... and React owns
+  // the values for the comparison.
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const passwordsMatch = password.length > 0 && password === passwordConfirm;
+  const passwordsMismatch = passwordConfirm.length > 0 && !passwordsMatch;
   return (
     <>
       <p className="mb-5 text-[14px] text-[var(--label-secondary)]">
@@ -217,14 +229,35 @@ function SignupForm({
           showPassword={showPassword}
           onToggle={toggleShowPassword}
           autoComplete="new-password"
+          value={password}
+          onChange={setPassword}
         />
-        <PasswordField
-          label={t("auth.passwordConfirm")}
-          name="password_confirm"
-          showPassword={showPassword}
-          onToggle={toggleShowPassword}
-          autoComplete="new-password"
-        />
+        <div>
+          <PasswordField
+            label={t("auth.passwordConfirm")}
+            name="password_confirm"
+            showPassword={showPassword}
+            onToggle={toggleShowPassword}
+            autoComplete="new-password"
+            value={passwordConfirm}
+            onChange={setPasswordConfirm}
+          />
+          {/* Inline match feedback — green ✓ when both filled and
+              equal, red copy when the confirm field has content but
+              doesn't match yet. Stays empty while either is blank to
+              avoid yelling at the user mid-type. */}
+          {passwordsMatch && (
+            <p className="mt-1.5 flex items-center gap-1 px-1 text-[12px] font-medium text-emerald-600">
+              <Check className="h-3 w-3" strokeWidth={2.5} />
+              {t("auth.passwordsMatch")}
+            </p>
+          )}
+          {passwordsMismatch && (
+            <p className="mt-1.5 px-1 text-[12px] font-medium text-rose-600">
+              {t("auth.passwordsDontMatch")}
+            </p>
+          )}
+        </div>
 
         {/* Promo code — required, since the free-tier work hasn't
             shipped yet. The /signup → free-tier flow lives behind
@@ -468,12 +501,19 @@ function PasswordField({
   showPassword,
   onToggle,
   autoComplete,
+  value,
+  onChange,
 }: {
   label: string;
   name: string;
   showPassword: boolean;
   onToggle: () => void;
   autoComplete: string;
+  // v1.40.0 — controlled so the parent can compare password fields
+  // for the live match indicator. The DOM input still has a `name`
+  // attribute so FormData(...) picks the value up on submit.
+  value: string;
+  onChange: (v: string) => void;
 }) {
   return (
     <div>
@@ -488,6 +528,8 @@ function PasswordField({
           required
           minLength={8}
           autoComplete={autoComplete}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
           className="h-12 w-full rounded-2xl bg-[var(--surface)] px-4 pr-12 text-[15px] text-[var(--foreground)] outline-none ring-1 ring-black/[0.08] placeholder:text-[var(--label-tertiary)] focus:ring-2 focus:ring-[var(--foreground)]/20 transition-shadow"
         />
         <button

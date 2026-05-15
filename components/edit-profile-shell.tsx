@@ -54,13 +54,16 @@ const FACE_EMOJIS = [
 ];
 
 type AvatarMode = "initial" | "emoji";
-type Gender = "male" | "female" | "other" | "prefer_not_to_say";
+// v1.40.0 — narrowed to Male / Female, matching the signup picker.
+// Existing users whose row stores 'other' / 'prefer_not_to_say' are
+// still valid against the CHECK constraint; their old value just
+// won't render as a highlighted pill (none of the buttons will be
+// active). They can pick Male or Female to update.
+type Gender = "male" | "female";
 
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "male", label: "Male" },
   { value: "female", label: "Female" },
-  { value: "other", label: "Other" },
-  { value: "prefer_not_to_say", label: "Prefer not to say" },
 ];
 
 type Props = {

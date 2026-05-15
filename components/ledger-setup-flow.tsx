@@ -23,7 +23,7 @@
 import { useState } from "react";
 import {
   USE_CASES,
-  EXPENSE_CATEGORY_MASTER,
+  USE_CASE_CATEGORIES,
   USE_CASE_PRESELECTED_CATS,
   type UseCaseId,
 } from "@/lib/onboarding-presets";
@@ -229,7 +229,12 @@ export default function LedgerSetupFlow({
             {selectedCategoryIds.size} selected
           </p>
           <div className="grid grid-cols-2 gap-2">
-            {EXPENSE_CATEGORY_MASTER.map((c) => {
+            {/* v1.40.0 — picker shows ONLY the chosen use-case's
+                category list (not the deduped union). So family
+                doesn't show "Office supplies", business doesn't
+                show "Baby", etc. The preselection set is a subset
+                of this list by construction. */}
+            {(useCase ? USE_CASE_CATEGORIES[useCase] : []).map((c) => {
               const isSelected = selectedCategoryIds.has(c.id);
               return (
                 <button

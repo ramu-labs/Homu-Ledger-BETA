@@ -45,6 +45,36 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.40.0",
+    date: "May 15, 2026",
+    changes: [
+      { type: "improvement", audience: "user",
+        en: "Sign up's gender picker now shows just Male / Female (was 4 options). Same change applied to Edit Profile so they're consistent.",
+        id: "Pilihan jenis kelamin di Sign up sekarang hanya Male / Female (sebelumnya 4 opsi). Perubahan sama diterapkan di Edit Profile supaya konsisten." },
+      { type: "new", audience: "user",
+        en: "Sign up now shows 'Passwords match' (green) or 'Passwords don't match yet' (red) underneath the confirm-password field as you type — no surprise rejection on submit.",
+        id: "Sign up sekarang menampilkan 'Password cocok' (hijau) atau 'Password belum cocok' (merah) di bawah field konfirmasi password saat kamu mengetik — tidak ada tolakan kejutan saat submit." },
+      { type: "improvement", audience: "user",
+        en: "Ledger name placeholder updated to 'e.g. Marc's Family' so the example matches a typical household setup.",
+        id: "Placeholder nama ledger diubah jadi 'e.g. Marc's Family' supaya contohnya cocok dengan setup rumah tangga umum." },
+      { type: "new", audience: "user",
+        en: "Category picker is now use-case-aware. Family doesn't show 'Office supplies'; Business doesn't show 'Baby'. Each use case has its own extensive list (~14–22 categories) tailored to that scenario, with some preselected to start.",
+        id: "Pilihan kategori sekarang sesuai use-case. Family tidak menampilkan 'Office supplies'; Business tidak menampilkan 'Baby'. Setiap use case punya daftar luas sendiri (~14–22 kategori) yang sesuai skenarionya, dengan beberapa terpilih sebagai awalan." },
+      { type: "improvement", audience: "dev",
+        en: "lib/onboarding-presets.ts restructured: each use case (family / personal / couple / business / side_hustle / travel) now owns its own CategoryPreset[] in USE_CASE_CATEGORIES. EXPENSE_CATEGORY_MASTER is derived as the deduped union, still exported so server-side applyHouseholdPresets's id-filter keeps working unchanged. USE_CASE_PRESELECTED_CATS continues to point at category ids — they're now guaranteed-subsets of the case's own list.",
+        id: "lib/onboarding-presets.ts direstrukturisasi: tiap use case (family / personal / couple / business / side_hustle / travel) sekarang punya CategoryPreset[] sendiri di USE_CASE_CATEGORIES. EXPENSE_CATEGORY_MASTER diturunkan sebagai union ter-dedupe, tetap di-export supaya filter-id server-side applyHouseholdPresets tetap jalan. USE_CASE_PRESELECTED_CATS tetap pakai id kategori — sekarang dijamin subset dari list use-case-nya." },
+      { type: "improvement", audience: "dev",
+        en: "components/ledger-setup-flow.tsx step-3 picker reads USE_CASE_CATEGORIES[useCase] instead of the shared master list, so the user only sees relevant categories. New category counts per case: family ~21, personal ~15, couple ~18, business ~19, side_hustle ~12, travel ~14.",
+        id: "Picker langkah-3 di components/ledger-setup-flow.tsx membaca USE_CASE_CATEGORIES[useCase] alih-alih master list bersama, jadi pengguna hanya melihat kategori relevan. Jumlah kategori per case: family ~21, personal ~15, couple ~18, business ~19, side_hustle ~12, travel ~14." },
+      { type: "improvement", audience: "dev",
+        en: "Signup gender narrowed at the TypeScript level (Gender = 'male' | 'female'). DB CHECK constraint and VALID_GENDERS server-side enum still allow 'other' and 'prefer_not_to_say' for backwards-compat. Edit Profile mirrors the narrowing; rows with old values render with no pill active (user picks Male/Female to update).",
+        id: "Gender di signup dipersempit di level TypeScript (Gender = 'male' | 'female'). Constraint CHECK di DB dan enum VALID_GENDERS server-side tetap mengizinkan 'other' dan 'prefer_not_to_say' untuk kompatibilitas mundur. Edit Profile mengikuti penyempitan; baris dengan nilai lama tidak menyalakan pill mana pun (pengguna pilih Male/Female untuk update)." },
+      { type: "improvement", audience: "dev",
+        en: "PasswordField in /signup is now controlled (value + onChange); SignupForm lifts password + passwordConfirm state for the live match indicator. FormData still picks up the values via the input's name attribute on submit.",
+        id: "PasswordField di /signup sekarang controlled (value + onChange); SignupForm mengangkat state password + passwordConfirm untuk indikator live match. FormData tetap mengambil nilai via attribute name input saat submit." },
+    ],
+  },
+  {
     version: "1.38.1",
     date: "May 15, 2026",
     changes: [
