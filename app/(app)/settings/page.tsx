@@ -5,6 +5,7 @@ import { signOut } from "@/app/actions/auth";
 import { CopyButton } from "@/components/copy-button";
 import { getServerT } from "@/lib/i18n/server";
 import DevFeedbackBadge from "@/components/dev-feedback-badge";
+import { APP_VERSION } from "@/lib/version";
 
 export default async function SettingsPage() {
   // requireSession + getServerT share the SAME getSession() call via
@@ -260,7 +261,10 @@ export default async function SettingsPage() {
         </form>
       </div>
 
-      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v1.40.0</p>
+      {/* v1.42.4: pulled from lib/version.ts (APP_VERSION) so the label
+          can never drift from the actual build. Previously hard-coded
+          and stuck at v1.40.0 through several releases. */}
+      <p className="mt-6 text-center text-[11px] text-[var(--label-tertiary)]">Homu v{APP_VERSION}</p>
     </div>
   );
 }

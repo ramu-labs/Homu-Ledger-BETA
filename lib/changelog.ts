@@ -45,6 +45,18 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.42.4",
+    date: "May 15, 2026",
+    changes: [
+      { type: "fix", audience: "user",
+        en: "Settings page version label is now always accurate. It was hard-coded as 'Homu v1.40.0' and got stale through v1.40.1, v1.41.x, v1.42.x. Now reads from the same constant the rest of the app uses, so it can never drift again.",
+        id: "Label versi di halaman Pengaturan sekarang selalu akurat. Sebelumnya di-hardcode sebagai 'Homu v1.40.0' dan basi melalui v1.40.1, v1.41.x, v1.42.x. Sekarang dibaca dari konstanta yang sama dengan aplikasi, jadi tidak akan pernah melenceng lagi." },
+      { type: "improvement", audience: "dev",
+        en: "app/(app)/settings/page.tsx now imports APP_VERSION from lib/version.ts instead of carrying a string literal. Swept the rest of the tree for similar hard-coded version mentions — none found in user-facing UI; only docs (CHANGELOG entries) and the SW cache name still touch versions directly, which is intentional.",
+        id: "app/(app)/settings/page.tsx sekarang mengimpor APP_VERSION dari lib/version.ts alih-alih menyimpan string literal. Menyapu seluruh pohon untuk versi hardcoded serupa — tidak ada di UI; hanya docs (entri CHANGELOG) dan nama cache SW yang masih menyentuh versi langsung, yang memang disengaja." },
+    ],
+  },
+  {
     version: "1.42.3",
     date: "May 15, 2026",
     changes: [
