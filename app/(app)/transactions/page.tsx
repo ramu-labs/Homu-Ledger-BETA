@@ -102,7 +102,16 @@ export default async function TransactionsPage() {
   const { error: materializeError } = await supabase.rpc("materialize_due_recurring_items");
   if (materializeError) console.warn("[recurring] materialize failed:", materializeError.message);
 
-  const [{ data: categoriesRaw }, { data: walletsRaw }, { data: membersRaw }, txRaw, { data: membershipsRaw }, { data: recurringRaw }, { data: invitationsRaw }, totals] = await Promise.all([
+  // v1.41.0: read the voice feature flag in parallel with everything else.
+  // Empty / missing → false. Server-side gate; the FAB never renders for
+  // households on environments where the dev hasn't flipped it on.
+  const voiceFlagPromise = supabase
+    .from("app_settings")
+    .select("value")
+    .eq("key", "voice_input_enabled")
+    .maybeSingle();
+
+  const [{ data: categoriesRaw }, { data: walletsRaw }, { data: membersRaw }, txRaw, { data: membershipsRaw }, { data: recurringRaw }, { data: invitationsRaw }, totals, { data: voiceFlagRow }] = await Promise.all([
     supabase
       .from("categories")
       .select("id, name, symbol, color, type")
@@ -135,7 +144,9 @@ export default async function TransactionsPage() {
       .eq("status", "pending")
       .order("created_at", { ascending: false }),
     fetchLedgerTotalRows(supabase, household.id),
+    voiceFlagPromise,
   ]);
+  const voiceEnabled = voiceFlagRow?.value === "true";
 
   const categories: DbCategory[] = categoriesRaw ?? [];
   const wallets: DbWallet[] = (walletsRaw ?? []).map((w) => ({
@@ -214,6 +225,7 @@ export default async function TransactionsPage() {
       pendingInvitations={pendingInvitations}
       recurringItems={recurringItems}
       iconStyle={profile.icon_style ?? "3d"}
+      voiceEnabled={voiceEnabled}
     />
   );
 }

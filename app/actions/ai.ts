@@ -265,6 +265,59 @@ export async function clearGeminiKey(): Promise<{ ok: true } | { ok: false; erro
   return { ok: true };
 }
 
+// ─── Voice (v1.41.0) ─────────────────────────────────────────────────
+//
+// Whisper key + feature-flag toggle. Stored alongside the Gemini key
+// in app_settings so the same `save_app_setting` SECURITY DEFINER RPC
+// handles auth + developer-check.
+
+export async function saveGroqKey(
+  rawKey: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const trimmed = (rawKey ?? "").trim();
+  if (!trimmed) return { ok: false, error: "Key is required" };
+  if (trimmed.length < 20) return { ok: false, error: "Key looks too short — paste the full one." };
+
+  const { error } = await supabase.rpc("save_app_setting", {
+    p_key: "groq_api_key",
+    p_value: trimmed,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/settings/ai-admin");
+  revalidatePath("/settings/ai-admin/voice");
+  return { ok: true };
+}
+
+export async function clearGroqKey(): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("save_app_setting", {
+    p_key: "groq_api_key",
+    p_value: "",
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/settings/ai-admin");
+  revalidatePath("/settings/ai-admin/voice");
+  return { ok: true };
+}
+
+/** Flip the voice-feature kill-switch. Stored as the string "true"
+ *  or "" so empty/missing = off. */
+export async function setVoiceInputEnabled(
+  enabled: boolean
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("save_app_setting", {
+    p_key: "voice_input_enabled",
+    p_value: enabled ? "true" : "",
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/settings/ai-admin");
+  revalidatePath("/settings/ai-admin/voice");
+  revalidatePath("/transactions");
+  return { ok: true };
+}
+
 export async function testGeminiConnection(): Promise<{
   ok: true;
   category: string;
