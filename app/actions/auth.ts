@@ -237,6 +237,31 @@ export async function deleteDeviceSession(
   return {};
 }
 
+/**
+ * Set / update / clear a session's friendly nickname (v1.31.0).
+ * Empty-string `nickname` clears any existing nickname, falling the UI
+ * back to the parsed user-agent label.
+ *
+ * RPC enforces ownership: the session must belong to the calling user.
+ * Same opaque "Session not found" error for missing vs not-yours.
+ */
+export async function renameDeviceSession(
+  sessionId: string,
+  nickname: string
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const trimmed = (nickname ?? "").trim();
+  if (trimmed.length > 50) {
+    return { error: "Nickname must be 50 characters or fewer." };
+  }
+  const { error } = await supabase.rpc("rename_device_session", {
+    p_session_id: sessionId,
+    p_nickname: trimmed,
+  });
+  if (error) return { error: error.message };
+  return {};
+}
+
 export async function createHousehold(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

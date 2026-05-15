@@ -2,6 +2,64 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.31.0 - May 15, 2026
+
+Three things: the redirect-loop fix from yesterday's bug report, device nicknames, and instant Settings navigation.
+
+### 1. Redirect-loop fix (Safari "20 redirections")
+
+Root cause: middleware was using `supabase.auth.getSession()`, which only decodes the cookie's JWT locally. When a session was revoked elsewhere (Devices page → Sign out, OAuth on another device, etc.), the JWT in the cookie stayed syntactically valid for up to ~1h. So middleware said "logged in", but page-level `requireSession()` calls `getUser()` which actually round-trips to Supabase → returns null → page redirects to `/login` → middleware sees the still-decodable cookie → redirects back to `/transactions`. Loop until Safari throws "Load cannot follow more than 20 redirections".
+
+Fix in `lib/supabase/middleware.ts`:
+
+```diff
+- const { data: { session } } = await supabase.auth.getSession();
++ const { data: { user } } = await supabase.auth.getUser();
+```
+
+`getUser()` validates against Supabase auth on every request — adds ~50–100ms latency but eliminates the loop. This is the [Supabase-recommended pattern](https://supabase.com/docs/guides/auth/server-side/nextjs) since the SSR template update in 2024.
+
+### 2. Device nicknames
+
+New feature on `/settings/devices`. Tap the pencil icon next to any device → inline input → save or cancel. Empty-string nickname clears it.
+
+Migration `0026_device_nicknames.sql`:
+
+- `public.device_nicknames` table keyed by `session_id` with FK cascade to `auth.sessions(id)` — when a session is deleted, its nickname disappears automatically.
+- Per-user RLS (4 policies, one per CRUD verb) gates access to your own rows. The actual session-ownership check is done in the RPC, but RLS provides defence-in-depth against direct queries.
+- DROP + recreate `list_user_sessions()` because the return type widens (added `nickname` column).
+- New `rename_device_session(p_session_id, p_nickname)` SECURITY DEFINER RPC. Empty-string nickname → DELETE the row (revert to parsed UA label). 50-char limit enforced both as a CHECK constraint and a runtime check.
+
+UI in `components/devices-shell.tsx`:
+- When a nickname is set: primary line is the nickname, subtitle becomes `"iPhone · Safari · 2 hr ago"`.
+- No nickname: primary line is the parsed UA label, subtitle is just the relative time.
+- Pencil icon swaps the row header into an inline input with Save / Cancel buttons. Auto-focus the input; Enter to save, Escape to cancel. Optimistic UI on save.
+
+### 3. Instant Settings navigation
+
+`app/(app)/settings/loading.tsx` new — renders a skeleton matching the real page layout (header bar, profile card, 3 section groups with row counts that roughly match reality). Next.js shows it instantly on navigation while the real page server-renders behind it.
+
+The settings page itself runs `requireSession()` + household SELECT + a feedback-count SELECT for developers — ~200ms perceived delay before the skeleton, ~10ms with it. The shape match means no layout jump when the real content swaps in.
+
+### What's NOT in this PR
+
+User asked for a "previous-screen + popup" UX on signed-out devices (instead of redirecting to /login). That requires client-side 401 handling + a modal layer that doesn't exist yet — bigger feature, will queue as a follow-up. The redirect-loop fix alone is the immediate-relief change.
+
+### Files touched
+
+- `supabase/migrations/0026_device_nicknames.sql` (new)
+- `lib/supabase/middleware.ts` — getUser() instead of getSession()
+- `app/(app)/settings/loading.tsx` (new — skeleton)
+- `app/(app)/settings/devices/page.tsx` — thread nickname through `DeviceRow`
+- `components/devices-shell.tsx` — rename UI (Pencil, input, Save/Cancel)
+- `app/actions/auth.ts` — new `renameDeviceSession` server action
+- `lib/supabase/database.types.ts` — `list_user_sessions` widened + `rename_device_session`
+- `lib/i18n/dictionaries.ts` — `devices.rename` + `devices.nicknamePlaceholder`
+- `lib/changelog.ts` — v1.31.0 entry
+- Version bumps in `package.json`, `public/sw.js`, settings footer
+
+---
+
 ## v1.30.0 - May 15, 2026
 
 Closes the "I got signed out on my iPhone when I signed out on the web" loop reported in v1.29.0. Two parts:

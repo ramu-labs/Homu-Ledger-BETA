@@ -16,14 +16,19 @@ import { parseUserAgent } from "@/lib/user-agent";
 
 export type DeviceRow = {
   id: string;
+  // Friendly nickname the user can set per device (v1.31.0). Empty
+  // string when not set — the UI falls back to `label` (the parsed
+  // user-agent string) in that case.
+  nickname: string;
+  // Auto-parsed label from the UA — "iPhone · Safari", "Mac · Chrome".
+  // Always shown either as the primary line (no nickname) or as a
+  // small subtitle under the nickname.
   label: string;
   glyph: string;
   createdAt: string;
   refreshedAt: string | null;
   isCurrent: boolean;
   isSignedOut: boolean;
-  // Show truncated raw UA in the dev tooltip so we can debug a
-  // mis-parsed device without round-tripping to SQL.
   rawUserAgent: string;
 };
 
@@ -36,6 +41,7 @@ export default async function DevicesPage() {
     const parsed = parseUserAgent(r.user_agent);
     return {
       id: String(r.id),
+      nickname: r.nickname ?? "",
       label: parsed.label,
       glyph: parsed.glyph,
       // RPC returns refreshed_at as a `timestamp` (no zone). Cast back

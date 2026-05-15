@@ -45,6 +45,32 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.31.0",
+    date: "May 15, 2026",
+    changes: [
+      // ── User-facing ──
+      { type: "fix", audience: "user",
+        en: "Fixed the 'Load cannot follow more than 20 redirections' error you saw when opening the app on a device whose session had been signed out from elsewhere. The app now correctly lands on the Login screen.",
+        id: "Memperbaiki error 'Load cannot follow more than 20 redirections' yang muncul saat membuka app di perangkat yang sesinya sudah di-sign-out dari tempat lain. Sekarang app langsung ke halaman Login dengan benar." },
+      { type: "improvement", audience: "user",
+        en: "Settings page opens instantly now — added a quick skeleton so it doesn't feel laggy while the data loads.",
+        id: "Halaman Pengaturan kini terbuka instan — ditambahkan skeleton singkat agar tidak terasa lambat saat data dimuat." },
+      { type: "new", audience: "user",
+        en: "You can now give each signed-in device a nickname (Settings → Support → Signed-in Devices, tap the pencil icon). Useful when you have multiple iPhones / browsers and want to tell them apart at a glance.",
+        id: "Sekarang setiap perangkat yang masuk bisa diberi nama (Pengaturan → Support → Perangkat Terhubung, ketuk ikon pensil). Berguna kalau punya beberapa iPhone / browser dan ingin mudah membedakannya." },
+      // ── Developer-facing ──
+      { type: "fix", audience: "dev",
+        en: "Middleware switched from supabase.auth.getSession() to getUser(). getSession() only decodes the cookie locally, so a revoked-but-not-yet-expired JWT looked valid → /transactions appeared 'authenticated' → page-level requireSession() called getUser() (actually validates) → null → redirect to /login → middleware bounces back to /transactions. Infinite loop = the 20-redirect Safari error. getUser() validates against Supabase auth on every request (~50–100ms cost) but eliminates the loop.",
+        id: "Middleware diubah dari supabase.auth.getSession() ke getUser(). getSession() hanya mendekode cookie secara lokal, jadi JWT yang sudah dicabut tapi belum expired terlihat valid → /transactions tampak 'terotentikasi' → requireSession() di page memanggil getUser() (validasi sungguhan) → null → redirect ke /login → middleware membalikkan ke /transactions. Loop tak terbatas = error 20 redirect Safari. getUser() memvalidasi ke Supabase auth setiap request (~50–100ms) tapi menghilangkan loop." },
+      { type: "new", audience: "dev",
+        en: "Migration 0026 adds public.device_nicknames keyed by auth.sessions.id with FK cascade. list_user_sessions widened to LEFT JOIN the nicknames; new rename_device_session(p_session_id, p_nickname) RPC with empty-string-clears semantics. Same ownership re-check pattern as the other auth RPCs.",
+        id: "Migrasi 0026 menambahkan public.device_nicknames dengan key auth.sessions.id dan FK cascade. list_user_sessions diperluas dengan LEFT JOIN nicknames; RPC rename_device_session(p_session_id, p_nickname) baru dengan semantik string-kosong-menghapus. Pola pemeriksaan kepemilikan yang sama dengan RPC auth lainnya." },
+      { type: "improvement", audience: "dev",
+        en: "Added app/(app)/settings/loading.tsx with a skeleton that matches the real page layout (profile card + section group shapes) so the route swap is jitter-free. The route itself runs a requireSession + household query (+ feedback count for devs) which is the ~200ms perceived delay the skeleton hides.",
+        id: "Menambahkan app/(app)/settings/loading.tsx dengan skeleton yang cocok dengan layout halaman asli (kartu profil + bentuk section group) jadi pergantian route tidak goyang. Route-nya menjalankan requireSession + query household (+ count feedback untuk dev) yang menyebabkan ~200ms perceived delay yang skeleton ini sembunyikan." },
+    ],
+  },
+  {
     version: "1.30.0",
     date: "May 15, 2026",
     changes: [

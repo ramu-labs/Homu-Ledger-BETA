@@ -35,9 +35,24 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // Use getSession() — reads cookie locally, no network round-trip.
-  // Pages call getUser() themselves for authoritative checks.
-  const { data: { session } } = await supabase.auth.getSession();
+  // v1.31.0 — switched from getSession() to getUser().
+  //
+  // Why this matters: getSession() only DECODES the JWT in the cookie.
+  // It doesn't ask Supabase whether the session is still valid. When a
+  // session is revoked elsewhere (Devices page → Sign out, or a global
+  // sign-out from another device), the cookie's JWT remains decodable
+  // for up to its expiry (~1h), so getSession() returns it as
+  // "logged in". The page-level requireSession() then calls getUser()
+  // which actually validates with Supabase → null → redirect to /login.
+  // Middleware then redirects /login → /transactions because cookie
+  // "still has a session". Infinite redirect → "Load cannot follow
+  // more than 20 redirections" in Safari.
+  //
+  // getUser() pays one round-trip per request (~50–100ms in our
+  // region) but it's the only correct check. Without it, revoked
+  // tokens can't be detected until they naturally expire, leaving
+  // users stuck in the loop above.
+  const { data: { user } } = await supabase.auth.getUser();
   const pathname = request.nextUrl.pathname;
   const isPublic = PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
   const isAuthPassthrough = AUTH_PASSTHROUGH.some((r) => pathname.startsWith(r));
@@ -52,15 +67,15 @@ export async function updateSession(request: NextRequest) {
   // not signed in) but doesn't get the "signed-in user gets bounced to
   // /transactions" treatment that PUBLIC_ROUTES get.
   if (pathname.startsWith("/auth/setup")) {
-    if (!session) return NextResponse.redirect(new URL("/login", request.url));
+    if (!user) return NextResponse.redirect(new URL("/login", request.url));
     return response;
   }
 
-  if (!session && !isPublic && !isAuthPassthrough) {
+  if (!user && !isPublic && !isAuthPassthrough) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (session && isPublic) {
+  if (user && isPublic) {
     return NextResponse.redirect(new URL("/transactions", request.url));
   }
 

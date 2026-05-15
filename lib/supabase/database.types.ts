@@ -1,5 +1,5 @@
 // AUTO-GENERATED — do not edit by hand.
-// Regenerated via Supabase MCP after migration 0025_session_management.
+// Regenerated via Supabase MCP after migration 0026_device_nicknames.
 export type Json =
   | string
   | number
@@ -773,9 +773,14 @@ export type Database = {
           ip: string
           is_current: boolean
           is_signed_out: boolean
+          nickname: string
           refreshed_at: string
           user_agent: string
         }[]
+      }
+      rename_device_session: {
+        Args: { p_nickname: string; p_session_id: string }
+        Returns: undefined
       }
       log_api_usage: {
         Args: {
