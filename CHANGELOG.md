@@ -2,6 +2,70 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+## v1.34.0 - May 15, 2026
+
+**Pragmatic offline, Phase 1 of 3** — cached reads + redirect-safe service worker + kill-switch.
+
+After a flaky-wifi incident (school network closed every TLS connection to `homu.ramu.app`), this is the first of three PRs that take Homu from "needs internet" to "works on the train":
+
+- **Phase 1 (this PR)**: cached reads, offline pill. Read-only browsing keeps working on hostile networks.
+- **Phase 2**: idempotency foundation — `client_op_id` columns + `updated_at`, plus `min-client-version` gate.
+- **Phase 3**: queued writes with optimistic UI, replay on reconnect, last-write-wins conflict toasts.
+
+This PR ships *only* Phase 1 so we can validate the SW behaviour in production before piling on more.
+
+### 1. Service worker, redirect-safe navigation cache
+
+`public/sw.js` is rewritten as **network-first for navigation requests**, with a strict guard against the auth-bounce trap the previous SW correctly worried about:
+
+- Successful **200 text/html** responses go into a separate `homu-nav-v1` cache (LRU-trimmed to 30 entries; oldest dropped when full).
+- Anything with `response.redirected`, `type === "opaqueredirect"`, an `rsc` request header, a `next-router-prefetch` request header, or a non-2xx status is **never** cached.
+- Auth paths — `/`, `/login`, `/signup`, `/auth`, `/onboarding`, `/privacy` — bypass the cache entirely (network-only).
+- On network failure during navigation, the cached HTML for that exact path is served. If nothing is cached, the request rejects and the browser shows its native offline page.
+
+`/_next/static/*` is still cache-first (content-addressed hashes make new builds always miss the cache and fetch fresh). Two cache buckets: `homu-v62` for static, `homu-nav-v1` for navigation HTML. Old caches are evicted on activate.
+
+API calls (`/api/*`), images, and fonts remain **network-only** — Phase 3 will introduce the write-queue layer that intercepts mutations, but Phase 1 leaves writes untouched.
+
+### 2. Kill-switch escape hatch
+
+New route `GET /api/sw-kill-switch` (force-dynamic, `Cache-Control: no-store`) returns `{ kill: boolean }` based on the `NEXT_PUBLIC_SW_KILL` env var.
+
+The registrar fetches it on every page load. If `kill === true`:
+
+1. Unregister every SW on the origin
+2. Wipe every cache
+3. `window.location.reload()`
+
+This exists because a bad `sw.js` intercepts the request for the *next* `sw.js` — without an out-of-band escape, users would be permanently stuck. To activate: flip the var in Vercel Production, no code deploy needed. To recover: unset the var.
+
+### 3. Offline status pill
+
+`components/sync-status-pill.tsx` — a tiny pill that appears only when `navigator.onLine === false`. WifiOff icon + `t("common.offline")` ("Offline" / "Offline"). Mounted in `app/(app)/layout.tsx`, positioned below the status-bar shield at z-40 (above content, under modals/sheets).
+
+SSR-safe via a `mounted` gate — the pill renders nothing on first paint, then hydrates and reads `navigator.onLine`, so there's no flash on healthy connections. Listens to `online`/`offline` window events to flip without a refresh.
+
+Dictionary keys added: `common.offline` (en + id).
+
+### 4. What's deliberately NOT in this PR
+
+- **Offline writes** — Phase 3. Today, attempting to add/edit while offline still fails like before. The cached-reads work alone is the high-value, low-risk first slice.
+- **TanStack Query / client-side data refactor** — looked into it; Homu is SSR-first via Supabase server client. A full client-cache refactor is much bigger than "pragmatic," so we stayed with the SW layer.
+- **Offline photo uploads** — deferred indefinitely (heavy, needs IndexedDB blob storage).
+- **`@tanstack/react-query` dep removal** — it's in `package.json` but unused. Separate cleanup PR.
+
+### 5. Verification notes
+
+Service workers don't register in dev mode (`NODE_ENV !== "production"` short-circuits the registrar, and unregisters any leftover SW from prior prod visits on the same origin). All real validation happens on a Vercel preview deploy:
+
+- DevTools → Application → Service Workers: confirm `homu-v62` installs and activates without errors
+- DevTools → Application → Cache Storage: confirm `homu-nav-v1` populates with the pages you visit
+- DevTools → Network → "Offline" mode: hard-reload an already-visited page; it should render from cache. The pill should appear.
+- DevTools → Network → "Offline" mode + navigate to a never-visited path: should fail (expected — Phase 1 only caches what you've seen).
+- Set `NEXT_PUBLIC_SW_KILL=1` in preview env, redeploy, reload: SW should unregister and caches should clear within one navigation.
+
+`npm run build` passes locally. `npm run lint` passes locally.
+
 ## v1.33.0 - May 15, 2026
 
 Edit Profile picks up the new fields from v1.32.0, plus a real password-reset story (forgot-password OTP flow + signed-in change).

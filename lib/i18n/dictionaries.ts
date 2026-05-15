@@ -22,6 +22,7 @@ export const en = {
   "common.filter": "Filter",
   "common.clearAll": "Clear all",
   "common.required": "Required",
+  "common.offline": "Offline",
 
   // Navigation
   "nav.transactions": "Transactions",
@@ -384,6 +385,7 @@ export const id: Record<TKey, string> = {
   "common.filter": "Filter",
   "common.clearAll": "Hapus semua",
   "common.required": "Wajib diisi",
+  "common.offline": "Offline",
 
   // Navigation
   "nav.transactions": "Transaksi",
