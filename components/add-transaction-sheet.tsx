@@ -384,8 +384,12 @@ export default function AddTransactionSheet({
     setPickerVisible(true);
   }
   function openCategoryPicker() {
+    // NOTE: do NOT set userTouchedCategory here. Merely OPENING the
+    // picker must not disable AI auto-categorisation — only actually
+    // SELECTING a category does (handled in the picker's onSelect).
+    // Setting it on open was a v1.45.0 regression: tapping the empty
+    // Category pill killed AI suggestions for the rest of the session.
     setShowCategoryPicker(true);
-    setUserTouchedCategory(true);
     setPickerVisible(true);
   }
 
