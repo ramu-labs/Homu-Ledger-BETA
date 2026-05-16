@@ -45,6 +45,24 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.45.4",
+    date: "May 16, 2026",
+    changes: [
+      { type: "new", audience: "user",
+        en: "The amount in Add Transaction now uses a clean in-app number pad instead of the iOS keyboard. That removes the ‹ › Done bar for good — it's iOS system chrome that can't be hidden for the native keyboard, so the only real fix was to not use the native keyboard. The pad appears instantly when you tap +.",
+        id: "Jumlah di Add Transaction sekarang memakai number pad dalam-aplikasi yang bersih alih-alih keyboard iOS. Itu menghapus bar ‹ › Done untuk selamanya — itu chrome sistem iOS yang tidak bisa disembunyikan untuk keyboard native, jadi satu-satunya perbaikan nyata adalah tidak memakai keyboard native. Pad muncul instan saat kamu ketuk +." },
+      { type: "fix", audience: "user",
+        en: "Fixed the stray cream box at the bottom of the screen (and the gap above the keyboard). Both were the sheet being mis-positioned by a faulty keyboard-height calculation. The sheet now sits flush — keypad mode anchors it to the bottom; for the description's text keyboard it lifts by the exact keyboard height.",
+        id: "Memperbaiki kotak krem nyasar di bagian bawah layar (dan celah di atas keyboard). Keduanya karena sheet salah-posisi akibat perhitungan tinggi-keyboard yang keliru. Sheet sekarang rata — mode keypad menambatkannya ke bawah; untuk keyboard teks deskripsi, sheet terangkat persis setinggi keyboard." },
+      { type: "improvement", audience: "user",
+        en: "Tapping the Description field switches to the normal text keyboard; tapping the amount switches back to the number pad. Everything else — categories, AI suggestions, photos, recurring, transfers — works exactly as before.",
+        id: "Mengetuk field Deskripsi beralih ke keyboard teks biasa; mengetuk jumlah beralih kembali ke number pad. Semua yang lain — kategori, saran AI, foto, berulang, transfer — berfungsi persis seperti sebelumnya." },
+      { type: "improvement", audience: "dev",
+        en: "New components/numeric-keypad.tsx. The amount field is now a plain focusable <div> (no <input>/contenteditable → iOS draws no accessory bar). HeroAmountInput lost its keystroke-capture element; the keypad appends digits to the value with leading-zero stripping. kbInset rewritten: self-calibrates from the largest visualViewport.height seen (no window.innerHeight, which is ~70px off on Chrome-iOS PWA). amountActive state gates keypad render + sheet anchoring; Description onFocus clears it. Scope is confined to add-transaction-sheet.tsx + the new file — nothing outside the transaction sheet touched.",
+        id: "components/numeric-keypad.tsx baru. Field jumlah sekarang <div> fokusabel biasa (tanpa <input>/contenteditable → iOS tidak menggambar accessory bar). HeroAmountInput kehilangan elemen penangkap-keystroke; keypad menambahkan digit ke nilai dengan pelucutan leading-zero. kbInset ditulis ulang: kalibrasi-mandiri dari visualViewport.height terbesar yang terlihat (tanpa window.innerHeight, yang meleset ~70px di Chrome-iOS PWA). State amountActive menggerbangi render keypad + penambatan sheet; onFocus Deskripsi membersihkannya. Cakupan terbatas pada add-transaction-sheet.tsx + file baru — tidak ada yang di luar sheet transaksi tersentuh." },
+    ],
+  },
+  {
     version: "1.45.3",
     date: "May 16, 2026",
     changes: [
