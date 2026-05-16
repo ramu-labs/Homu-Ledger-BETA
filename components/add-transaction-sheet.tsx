@@ -281,9 +281,38 @@ export default function AddTransactionSheet({
   const previewObjectUrlRef = useRef<string | null>(null);
 
   // `pickerVisible` drives the coordinated motion: while a bento picker
-  // is open the sheet slides down 40% + dims. The picker flips this back
-  // synchronously via onCloseStart so the two motions are one gesture.
+  // is open the sheet slides fully off-screen and the picker takes over.
+  // The picker flips this back synchronously via onCloseStart.
   const [pickerVisible, setPickerVisible] = useState(false);
+
+  // ── iOS keyboard anchoring (v1.45.1) ────────────────────────────────
+  // The sheet is bottom-anchored. When the soft keyboard opens, a plain
+  // `bottom: 0` sheet ends up BEHIND the keyboard (the hero amount + the
+  // action row overlap it). We track window.visualViewport — when the
+  // keyboard is up, vv.height shrinks; the gap between innerHeight and
+  // vv.height IS the keyboard height. We lift the sheet by that amount
+  // so its bottom edge sits flush on top of the keyboard.
+  const [kbInset, setKbInset] = useState(0);
+  const [viewportH, setViewportH] = useState<number | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    function update() {
+      if (!vv) return;
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      // <40px = no keyboard (rounding / browser-chrome jitter). Treat as 0.
+      setKbInset(inset > 40 ? inset : 0);
+      setViewportH(vv.height);
+    }
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [open]);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -687,15 +716,19 @@ export default function AddTransactionSheet({
       {open && (
         <div
           ref={sheetRef}
-          className="fixed inset-x-0 bottom-0 z-[70] mx-auto flex w-full max-w-md flex-col rounded-t-3xl bg-[var(--surface)] [touch-action:pan-y]"
+          className="fixed inset-x-0 z-[70] mx-auto flex w-full max-w-md flex-col rounded-t-3xl bg-[var(--surface)] [touch-action:pan-y]"
           style={{
+            // Lifted above the keyboard when one is open (see kbInset).
+            bottom: kbInset,
             height: "auto",
-            maxHeight: "92dvh",
+            // When the keyboard is up, dvh doesn't shrink for it — cap
+            // the sheet to the actual visible viewport instead.
+            maxHeight: kbInset > 0 && viewportH ? `${viewportH}px` : "92dvh",
             boxShadow: "0 -10px 30px rgba(0,0,0,0.18)",
-            transform: pickerVisible ? "translateY(40%)" : "translateY(0)",
-            opacity: pickerVisible ? 0.6 : 1,
-            transition:
-              "transform 280ms cubic-bezier(0.32,0.72,0,1), opacity 280ms ease",
+            // Picker open → slide the whole sheet off-screen so no white
+            // sliver shows behind the floating bento picker.
+            transform: pickerVisible ? "translateY(100%)" : "translateY(0)",
+            transition: "transform 280ms cubic-bezier(0.32,0.72,0,1)",
             animation: pickerVisible
               ? "none"
               : "sheet-slide-up 280ms cubic-bezier(0.32,0.72,0,1) both",
@@ -731,6 +764,10 @@ export default function AddTransactionSheet({
                   <button
                     key={t}
                     type="button"
+                    // preventDefault keeps a focused input (amount /
+                    // description) from blurring — switching type tab
+                    // shouldn't drop the keyboard.
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       if (t !== type) {
                         const sel = allCategories.find((c) => c.id === categoryId);
@@ -825,6 +862,11 @@ export default function AddTransactionSheet({
                 {!isTransfer && !editing && (
                   <button
                     type="button"
+                    // preventDefault on mousedown keeps the currently
+                    // focused input (amount / description) — toggling
+                    // Recurring with the keyboard up should NOT dismiss
+                    // it or move the cursor.
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => setRecurringMode((v) => !v)}
                     aria-pressed={recurringMode}
                     aria-label={tr("tx.makeRecurring")}
@@ -949,7 +991,12 @@ export default function AddTransactionSheet({
             {/* Action row */}
             <div
               className="flex shrink-0 items-center justify-between gap-3 border-t border-[var(--separator)] bg-[var(--surface)] px-5 pt-2.5"
-              style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+              style={{
+                // Keyboard up → the sheet bottom sits on the keyboard, so
+                // the home-indicator safe-area inset is irrelevant; a small
+                // fixed pad is enough. Keyboard down → clear the home bar.
+                paddingBottom: kbInset > 0 ? "12px" : "max(16px, env(safe-area-inset-bottom))",
+              }}
             >
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 {/* Edit-mode buttons */}

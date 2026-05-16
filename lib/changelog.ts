@@ -45,6 +45,24 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.45.1",
+    date: "May 16, 2026",
+    changes: [
+      { type: "fix", audience: "user",
+        en: "Add Transaction now sits properly above the keyboard. Before, the amount field and the Camera/Gallery/Save row were hidden behind the keyboard — the sheet now lifts to rest right on top of it, and the empty white gap below the action row is gone.",
+        id: "Add Transaction sekarang berada tepat di atas keyboard. Sebelumnya field jumlah dan baris Camera/Gallery/Simpan tertutup keyboard — sheet sekarang terangkat persis di atasnya, dan ruang putih kosong di bawah baris aksi hilang." },
+      { type: "fix", audience: "user",
+        en: "Toggling Recurring no longer dismisses the keyboard. If you're mid-typing and tap the Recurring button, the keyboard stays up and your cursor keeps its place. Same for switching the Expense / Income / Transfer tabs.",
+        id: "Mengaktifkan Recurring tidak lagi menutup keyboard. Kalau kamu sedang mengetik lalu menekan tombol Recurring, keyboard tetap muncul dan kursor tetap di tempatnya. Sama untuk berpindah tab Expense / Income / Transfer." },
+      { type: "fix", audience: "user",
+        en: "Opening the Wallet or Category picker no longer leaves a stray white box at the bottom of the screen — the sheet now slides fully out of the way behind the floating picker.",
+        id: "Membuka picker Wallet atau Category tidak lagi menyisakan kotak putih di bagian bawah layar — sheet sekarang sepenuhnya menggeser keluar di balik picker mengambang." },
+      { type: "improvement", audience: "dev",
+        en: "add-transaction-sheet.tsx tracks window.visualViewport (resize + scroll) to compute the keyboard inset; the sheet's `bottom` is set to that inset and maxHeight is capped to the visible viewport when a keyboard is up. Picker-open transform changed translateY(40%)→translateY(100%). Recurring toggle + type tabs got onMouseDown preventDefault to retain input focus.",
+        id: "add-transaction-sheet.tsx melacak window.visualViewport (resize + scroll) untuk menghitung inset keyboard; `bottom` sheet diset ke inset itu dan maxHeight dibatasi ke viewport terlihat saat keyboard naik. Transform picker-open diubah translateY(40%)→translateY(100%). Toggle Recurring + tab tipe diberi onMouseDown preventDefault untuk mempertahankan fokus input." },
+    ],
+  },
+  {
     version: "1.45.0",
     date: "May 16, 2026",
     changes: [
