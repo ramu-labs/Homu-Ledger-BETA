@@ -1,6 +1,16 @@
 // ─── CHANGELOG SOP ───────────────────────────────────────────────────────────
+// This file is the DETAILED, technical changelog. It is shown ONLY on the
+// developer-only /settings/dev-changelog page. End users never see it.
+//
+// End users see ONE short plain-language line per release, defined in
+// lib/changelog-summaries.ts. EVERY release needs an entry in BOTH files.
+//
+// Per release:
+//   1. Add a VersionEntry here with the full technical `changes` (en + id).
+//   2. Add a one-line user summary in lib/changelog-summaries.ts (en + id) —
+//      jargon-free, no bug/error framing, no file names. App-store tone.
+//
 // Every entry MUST include BOTH `en` (English) and `id` (Bahasa Indonesia).
-// Never add an entry with only one language — the Updates page renders both.
 //
 // Template for a new entry:
 //
@@ -11,6 +21,9 @@
 //       { type: "new" | "fix" | "improvement", en: "English text", id: "Teks Indonesia" },
 //     ],
 //   },
+//
+// The `audience` field on ChangeEntry is legacy (pre-v1.46.0) and no longer
+// affects what's shown — the dev page shows every change. Safe to omit.
 //
 // Versioning: major feature → +0.1.0 · minor fix/tweak → +0.0.1
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,6 +57,21 @@ export type VersionEntry = {
 };
 
 export const CHANGELOG: VersionEntry[] = [
+  {
+    version: "1.46.0",
+    date: "May 16, 2026",
+    changes: [
+      { type: "improvement", audience: "user",
+        en: "Version Updates page rewritten for end users: each release now shows ONE short, plain-language line instead of the detailed multi-bullet technical notes — no bug/regression framing, no internal jargon, no file names.",
+        id: "Halaman Version Updates ditulis ulang untuk pengguna akhir: tiap rilis kini menampilkan SATU baris singkat berbahasa sederhana alih-alih catatan teknis multi-poin — tanpa framing bug/regresi, tanpa jargon internal, tanpa nama file." },
+      { type: "improvement", audience: "dev",
+        en: "Changelog split into two files. lib/changelog.ts stays the full technical record and is now shown ONLY on the developer-only /settings/dev-changelog page (which renders every change, no audience filter). lib/changelog-summaries.ts (NEW) holds one plain en/id summary line per version, keyed by version string — that's what /settings/updates renders for everyone.",
+        id: "Changelog dipecah jadi dua file. lib/changelog.ts tetap catatan teknis lengkap dan kini hanya ditampilkan di halaman developer-only /settings/dev-changelog (yang merender semua perubahan, tanpa filter audience). lib/changelog-summaries.ts (BARU) menyimpan satu baris ringkasan en/id sederhana per versi, dikunci dengan string versi — itu yang dirender /settings/updates untuk semua orang." },
+      { type: "improvement", audience: "dev",
+        en: "All 111 historical versions back-filled with simple summaries. updates-shell.tsx branches on view: 'user' renders CHANGELOG_SUMMARIES[version] as a single line; 'dev' renders the full entry.changes list. The ChangeEntry.audience field is now legacy/no-op (dev page shows everything).",
+        id: "Seluruh 111 versi historis diisi ulang dengan ringkasan sederhana. updates-shell.tsx bercabang pada view: 'user' merender CHANGELOG_SUMMARIES[version] sebagai satu baris; 'dev' merender daftar entry.changes lengkap. Field ChangeEntry.audience kini legacy/no-op (halaman dev menampilkan semuanya)." },
+    ],
+  },
   {
     version: "1.45.4",
     date: "May 16, 2026",
