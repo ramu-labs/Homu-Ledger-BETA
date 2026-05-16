@@ -37,6 +37,7 @@ import { signTransactionPhoto } from "@/app/actions/photos";
 import { addRecurringItem } from "@/app/actions/recurring";
 import { suggestCategory, recordCategoryUsage } from "@/app/actions/ai";
 import CategoryPicker from "@/components/category-picker";
+import NumericKeypad from "@/components/numeric-keypad";
 import WalletPickerSheet from "@/components/wallet-picker-sheet";
 import { CategoryIcon } from "@/components/category-icon";
 import { cn } from "@/lib/cn";
@@ -99,76 +100,30 @@ function formatChipDate(value: string) {
   return `${days[dt.getDay()]} ${d} ${months[m - 1]}`;
 }
 
-// Move the caret to the end of a contenteditable element. Used after
-// a programmatic textContent write so the next keystroke appends.
-function placeCaretEnd(el: HTMLElement) {
-  try {
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    range.collapse(false);
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-  } catch {
-    /* selection API unavailable — non-fatal */
-  }
-}
-
 // ─── Hero amount ──────────────────────────────────────────────────────
-// v1.45.3 — the keystroke capture is a contentEditable <div>, NOT an
-// <input>. iOS shows the form-navigation accessory bar (the ‹ › Done
-// strip above the keyboard) for <input>/<textarea> but NOT for
-// contenteditable elements — so this swap removes that bar entirely.
-// The div is transparent (opacity 0); the visible number is the span
-// above it and the caret is our own coral bar.
+// v1.45.4 — the amount is driven by a CUSTOM in-app keypad
+// (components/numeric-keypad.tsx), NOT the native keyboard. iOS draws
+// the form-accessory bar (‹ › Done) above the system keyboard for any
+// native editable element and there is no web API to remove it — so we
+// don't summon the native keyboard at all. This field is just a plain
+// focusable <div> (a div never triggers a virtual keyboard); the keypad
+// appends digits to the value.
+//
+// `onActivate` tells the parent the field was tapped → show the keypad.
 function HeroAmountInput({
   value,
-  onChange,
-  autoFocus,
-  inputRef,
+  focused,
+  fieldRef,
+  onActivate,
 }: {
   value: string;
-  onChange: (v: string) => void;
-  autoFocus: boolean;
-  inputRef: React.RefObject<HTMLDivElement | null>;
+  focused: boolean;
+  fieldRef: React.RefObject<HTMLDivElement | null>;
+  onActivate: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
-  const [focused, setFocused] = useState(false);
   const [scale, setScale] = useState(1);
-
-  // Autofocus — focus the field the instant it mounts. No long
-  // setTimeout: a delayed focus loses the +-tap gesture context and
-  // iOS Chrome PWA then refuses to pop the keyboard. An extra rAF
-  // re-focus covers the rare race with the slide-up animation.
-  useEffect(() => {
-    if (!autoFocus) return;
-    const el = inputRef.current;
-    if (!el) return;
-    el.focus();
-    placeCaretEnd(el);
-    const r = requestAnimationFrame(() => {
-      const e2 = inputRef.current;
-      if (e2) {
-        e2.focus();
-        placeCaretEnd(e2);
-      }
-    });
-    return () => cancelAnimationFrame(r);
-  }, [autoFocus, inputRef]);
-
-  // Keep the contenteditable's text synced to the external value —
-  // reset to "" on open, or the existing amount in edit mode.
-  useEffect(() => {
-    const el = inputRef.current;
-    if (!el) return;
-    if ((el.textContent || "") !== value) {
-      el.textContent = value;
-      if (typeof document !== "undefined" && document.activeElement === el) {
-        placeCaretEnd(el);
-      }
-    }
-  }, [value, inputRef]);
 
   // Auto-shrink: measure rendered text width against the container,
   // scale down (never up) when it would overflow.
@@ -186,9 +141,9 @@ function HeroAmountInput({
     <div
       role="button"
       tabIndex={-1}
-      onClick={() => inputRef.current?.focus()}
+      onClick={onActivate}
       ref={containerRef}
-      className="relative flex w-full cursor-text items-start justify-center"
+      className="relative flex w-full cursor-pointer items-start justify-center"
       style={{ padding: "18px 24px 14px", gap: 4, boxSizing: "border-box" }}
     >
       <div
@@ -227,18 +182,15 @@ function HeroAmountInput({
           />
         )}
       </div>
+      {/* Plain focusable div — NO keyboard, NO iOS accessory bar.
+          The keypad is the only input path. Focus drives the caret. */}
       <div
-        ref={inputRef}
-        contentEditable
-        suppressContentEditableWarning
-        inputMode="numeric"
+        ref={fieldRef}
+        tabIndex={0}
         role="textbox"
         aria-label="Amount"
-        onInput={(e) => onChange((e.currentTarget.textContent || "").replace(/\D/g, ""))}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
         className="absolute inset-0 h-full w-full"
-        style={{ opacity: 0, outline: "none", fontSize: 16, color: "transparent", caretColor: "transparent" }}
+        style={{ opacity: 0, outline: "none" }}
       />
     </div>
   );
@@ -328,36 +280,50 @@ export default function AddTransactionSheet({
   const [showPhotoViewer, setShowPhotoViewer] = useState(false);
   const previewObjectUrlRef = useRef<string | null>(null);
 
+  // v1.45.4 — true when the in-app numeric keypad is showing (the
+  // amount field is "active"). For a NEW transaction it starts true
+  // (keypad auto-shows on +). Focusing the Description flips it false
+  // so the native keyboard can take over for text.
+  const [amountActive, setAmountActive] = useState(false);
+
   // `pickerVisible` drives the coordinated motion: while a bento picker
   // is open the sheet slides fully off-screen and the picker takes over.
   // The picker flips this back synchronously via onCloseStart.
   const [pickerVisible, setPickerVisible] = useState(false);
 
-  // ── iOS keyboard anchoring (v1.45.1) ────────────────────────────────
-  // The sheet is bottom-anchored. When the soft keyboard opens, a plain
-  // `bottom: 0` sheet ends up BEHIND the keyboard (the hero amount + the
-  // action row overlap it). We track window.visualViewport — when the
-  // keyboard is up, vv.height shrinks; the gap between innerHeight and
-  // vv.height IS the keyboard height. We lift the sheet by that amount
-  // so its bottom edge sits flush on top of the keyboard.
+  // ── Native-keyboard anchoring (v1.45.4 rewrite) ─────────────────────
+  // Only the Description field uses the native keyboard now (the amount
+  // uses the in-app keypad). When that keyboard opens, a bottom-anchored
+  // sheet would sit behind it — so we lift the sheet by the keyboard
+  // height.
+  //
+  // v1.45.4 fix: the height is computed PURELY from window.visualViewport
+  // — NO window.innerHeight. On Chrome-iOS PWA, innerHeight is ~70px
+  // larger than the true viewport even with no keyboard, which the old
+  // code mis-read as a phantom keyboard (→ the stray cream box + the gap
+  // above the accessory bar). We instead self-calibrate: the LARGEST
+  // visualViewport.height ever seen is the no-keyboard baseline; the
+  // keyboard height is baseline − current. Pure delta, no innerHeight,
+  // no magic threshold.
   const [kbInset, setKbInset] = useState(0);
   const [viewportH, setViewportH] = useState<number | null>(null);
+  const vhBaselineRef = useRef<number | null>(null);
   useEffect(() => {
     if (!open) return;
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
+    // Fresh baseline each open (covers an orientation change between opens).
+    vhBaselineRef.current = null;
     function update() {
       if (!vv) return;
-      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      // v1.45.3 — threshold raised 40 → 150px. On Chrome-iOS PWA the
-      // gap between innerHeight and visualViewport.height is ~70px even
-      // with NO keyboard up; a 40px threshold mis-read that as a
-      // keyboard and lifted the sheet ~70px — leaving a stray cream box
-      // at the screen bottom (the sheet's own top edge poking out, or a
-      // gap behind it). A real iOS keyboard is always ≥220px, so 150
-      // cleanly rejects the false positive without missing a real one.
-      setKbInset(inset > 150 ? inset : 0);
-      setViewportH(vv.height);
+      const vh = vv.height;
+      if (vhBaselineRef.current === null || vh > vhBaselineRef.current) {
+        vhBaselineRef.current = vh; // largest seen = no keyboard
+      }
+      const kb = Math.max(0, (vhBaselineRef.current ?? vh) - vh);
+      // 80px ignores sub-keyboard jitter; a real iOS keyboard is ≥220px.
+      setKbInset(kb > 80 ? kb : 0);
+      setViewportH(vh);
     }
     update();
     vv.addEventListener("resize", update);
@@ -434,6 +400,25 @@ export default function AddTransactionSheet({
   const selectedToWallet = allWallets.find((w) => w.id === toWalletId) ?? null;
   const isTransfer = type === "transfer";
 
+  // ── Keypad input (v1.45.4) ──────────────────────────────────────────
+  // The amount is driven entirely by the in-app NumericKeypad.
+  function activateAmount() {
+    setAmountActive(true);
+    // Pull focus to the amount field — this blurs the Description input
+    // if it was focused, dismissing the native keyboard.
+    amountRef.current?.focus();
+  }
+  function pushDigit(d: string) {
+    setAmount((prev) => {
+      if (prev.length >= 12) return prev; // ~trillions ceiling
+      // Strip leading zeros so "0" → "" and "05" → "5".
+      return (prev + d).replace(/^0+/, "");
+    });
+  }
+  function backspaceAmount() {
+    setAmount((prev) => prev.slice(0, -1));
+  }
+
   function openWalletPicker(slot: "wallet" | "from" | "to") {
     setWalletPickerSlot(slot);
     setShowWalletPicker(true);
@@ -490,6 +475,9 @@ export default function AddTransactionSheet({
     setShowWalletPicker(false);
     setWalletPickerSlot("wallet");
     setPickerVisible(false);
+    // New transaction → keypad auto-shows. Editing → start quiet (the
+    // user is reviewing; they tap the amount to bring up the keypad).
+    setAmountActive(!editing);
     setConfirmDelete(false);
     setShowMovePicker(false);
     setMoving(false);
@@ -779,12 +767,15 @@ export default function AddTransactionSheet({
           ref={sheetRef}
           className="fixed inset-x-0 z-[70] mx-auto flex w-full max-w-md flex-col rounded-t-3xl bg-[var(--surface)] [touch-action:pan-y]"
           style={{
-            // Lifted above the keyboard when one is open (see kbInset).
-            bottom: kbInset,
+            // amountActive → the in-app keypad is the sheet's own
+            // bottom section, so the sheet stays anchored at bottom: 0.
+            // Otherwise lift above the native keyboard (Description).
+            bottom: amountActive ? 0 : kbInset,
             height: "auto",
-            // When the keyboard is up, dvh doesn't shrink for it — cap
-            // the sheet to the actual visible viewport instead.
-            maxHeight: kbInset > 0 && viewportH ? `${viewportH}px` : "92dvh",
+            // Keypad mode + no-keyboard → 92dvh. Native keyboard up →
+            // cap to the visible viewport (dvh doesn't shrink for it).
+            maxHeight:
+              !amountActive && kbInset > 0 && viewportH ? `${viewportH}px` : "92dvh",
             boxShadow: "0 -10px 30px rgba(0,0,0,0.18)",
             // Picker open → slide the whole sheet off-screen so no white
             // sliver shows behind the floating bento picker.
@@ -854,21 +845,25 @@ export default function AddTransactionSheet({
           </div>
 
           <form onSubmit={handleSubmit} className="flex min-h-0 flex-col overflow-hidden">
-            {/* Hero amount */}
+            {/* Hero amount — driven by the in-app keypad (NumericKeypad
+                below), not the native keyboard. */}
             <HeroAmountInput
               value={amount}
-              onChange={setAmount}
-              autoFocus={!editing}
-              inputRef={amountRef}
+              focused={amountActive}
+              fieldRef={amountRef}
+              onActivate={activateAmount}
             />
 
             {/* Body — natural height, scrolls if it overflows. */}
             <div data-scroll className="flex flex-[0_1_auto] flex-col gap-2.5 overflow-y-auto px-5 pb-3" style={{ minHeight: 0 }}>
-              {/* Description (expense/income + transfer notes) */}
+              {/* Description (expense/income + transfer notes).
+                  Focusing it hides the in-app keypad so the native
+                  keyboard can take over for text entry. */}
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onFocus={() => setAmountActive(false)}
                 placeholder={isTransfer ? tr("tx.note") : tr("tx.descriptionPlaceholder")}
                 aria-label={tr("tx.description")}
                 className="h-12 w-full rounded-full border border-[var(--separator)] bg-[var(--background)] px-[18px] text-[14.5px] text-[var(--foreground)] outline-none placeholder:text-[var(--label-tertiary)] focus:border-[var(--foreground)]/30"
@@ -1055,10 +1050,14 @@ export default function AddTransactionSheet({
             <div
               className="flex shrink-0 items-center justify-between gap-3 border-t border-[var(--separator)] bg-[var(--surface)] px-5 pt-2.5"
               style={{
-                // Keyboard up → the sheet bottom sits on the keyboard, so
-                // the home-indicator safe-area inset is irrelevant; a small
-                // fixed pad is enough. Keyboard down → clear the home bar.
-                paddingBottom: kbInset > 0 ? "12px" : "max(16px, env(safe-area-inset-bottom))",
+                // amountActive → the keypad sits below this row and owns
+                // the home-indicator clearance, so a small pad is fine.
+                // Native keyboard up → also small. Otherwise clear the
+                // home bar with the safe-area inset.
+                paddingBottom:
+                  amountActive || kbInset > 0
+                    ? "10px"
+                    : "max(16px, env(safe-area-inset-bottom))",
               }}
             >
               <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -1154,6 +1153,14 @@ export default function AddTransactionSheet({
                 {loading ? <Loader2 className="h-5 w-5 animate-spin" strokeWidth={2.5} /> : <Check className="h-[22px] w-[22px]" strokeWidth={2.75} />}
               </button>
             </div>
+
+            {/* In-app numeric keypad — the sheet's bottom section while
+                the amount field is active. Replaces the native numeric
+                keyboard entirely (which always carries the un-removable
+                iOS ‹ › Done accessory bar). */}
+            {amountActive && (
+              <NumericKeypad onDigit={pushDigit} onBackspace={backspaceAmount} />
+            )}
           </form>
         </div>
       )}
