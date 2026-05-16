@@ -3,13 +3,16 @@
 // AI-categorization server actions.
 //
 // suggestCategory(description, type)
-//   ─ Normalise the description → candidate keys.
-//   ─ Look each key up in category_hints (longest-first wins).
-//   ─ On hit: return the cached category_id, log a "hit" row.
-//   ─ On miss: call Gemini, match its answer back to a real
-//     category for the user's household, insert a hint, return.
-//   ─ On any error or unconfigured key: return no suggestion. Never
-//     blocks the user — they can still pick a category manually.
+//   Four-layer resolution, cheapest first — only the last hits Gemini:
+//   1. Disambiguation rules — regex over the literal description that
+//      force a category ("ayam 500g" → Groceries, "ayam goreng" →
+//      Dining out). See lib/llm/disambiguation.ts.
+//   2. category_hints — this household's learned (ai) + corrected
+//      (user) mappings. Longest candidate key wins.
+//   3. category_keyword_seeds — the global keyword seed table.
+//   4. Gemini — only on a true miss; the answer warms category_hints.
+//   On any error or unconfigured key: return no suggestion. Never
+//   blocks the user — they can still pick a category manually.
 //
 // recordCategoryUsage(description, categoryId)
 //   ─ Called when the user saves a transaction. Upserts the hint with
@@ -27,6 +30,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { categorize, logCacheHit, testConnection, GEMINI_DEFAULT_MODEL } from "@/lib/llm/gemini";
 import { candidateKeys, canonicalKey } from "@/lib/llm/normalize";
+import { disambiguate } from "@/lib/llm/disambiguation";
 
 const FEATURE_CATEGORIZE = "auto_categorize";
 
@@ -35,7 +39,11 @@ export type SuggestCategoryResult =
       ok: true;
       categoryId: string;
       categoryName: string;
-      source: "cache" | "ai";
+      // rule  = a disambiguation rule forced it (e.g. "ayam 500g" → Groceries)
+      // cache = this household's learned/corrected hint
+      // seed  = the global keyword seed table
+      // ai    = Gemini fallback
+      source: "rule" | "cache" | "seed" | "ai";
     }
   | { ok: false; reason: "no_match" | "no_categories" | "no_session" | "ai_error" | "ai_unconfigured" };
 
@@ -87,8 +95,28 @@ export async function suggestCategory(
   const allowedByType = categories.filter((c) => c.type === type);
   if (allowedByType.length === 0) return { ok: false, reason: "no_categories" };
   const allowedIds = new Set(allowedByType.map((c) => c.id));
+  // category name (lowercased) → category, for resolving rule + seed
+  // results, which are keyed by name rather than id.
+  const byName = new Map(allowedByType.map((c) => [c.name.toLowerCase(), c]));
 
-  // ── Cache lookup ──────────────────────────────────────────────────
+  // ── Layer 1: disambiguation rules ─────────────────────────────────
+  // Run regex rules over the literal description. A rule that fires
+  // forces a category by name; if this household owns that category we
+  // return immediately. If it doesn't (e.g. a Personal-template user
+  // has no "Date nights"), the result is discarded and we fall through.
+  const ruled = disambiguate(description, type);
+  if (ruled) {
+    const cat = byName.get(ruled.categoryName.toLowerCase());
+    if (cat) {
+      void logCacheHit({
+        feature: FEATURE_CATEGORIZE,
+        preview: description.slice(0, 80),
+      });
+      return { ok: true, categoryId: cat.id, categoryName: cat.name, source: "rule" };
+    }
+  }
+
+  // ── Layer 2: per-household cache lookup ───────────────────────────
   // Fetch all matching hints in one query (saves a round-trip per
   // candidate). Then iterate candidates IN ORDER and pick the first
   // hint that points to a category of the right type.
@@ -121,7 +149,33 @@ export async function suggestCategory(
     }
   }
 
-  // ── Cache miss → Gemini ───────────────────────────────────────────
+  // ── Layer 3: global keyword seed table ────────────────────────────
+  // Same candidate-ordering as the per-household cache: longest /
+  // most-specific key first. The seed maps keyword → category NAME, so
+  // we resolve through byName against the household's own categories.
+  const { data: seeds } = await supabase
+    .from("category_keyword_seeds")
+    .select("keyword, category_name")
+    .in("keyword", candidates);
+
+  if (seeds && seeds.length > 0) {
+    const seedByKey = new Map(seeds.map((s) => [s.keyword, s]));
+    for (const key of candidates) {
+      const seed = seedByKey.get(key);
+      if (seed) {
+        const cat = byName.get(seed.category_name.toLowerCase());
+        if (cat) {
+          void logCacheHit({
+            feature: FEATURE_CATEGORIZE,
+            preview: description.slice(0, 80),
+          });
+          return { ok: true, categoryId: cat.id, categoryName: cat.name, source: "seed" };
+        }
+      }
+    }
+  }
+
+  // ── Layer 4: cache miss → Gemini ──────────────────────────────────
   const aiLanguage = (householdRow?.ai_language ?? "auto") as "auto" | "en" | "id";
   const result = await categorize({
     description,

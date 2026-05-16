@@ -87,7 +87,7 @@ export default function AddTransactionSheet({ open, onClose, categories, wallets
   // category. After that we never override their choice with an AI
   // suggestion, even if the description keeps changing.
   const [aiSuggestingFor, setAiSuggestingFor] = useState<string | null>(null);
-  const [aiSource, setAiSource] = useState<"cache" | "ai" | null>(null);
+  const [aiSource, setAiSource] = useState<"rule" | "cache" | "seed" | "ai" | null>(null);
   const [userTouchedCategory, setUserTouchedCategory] = useState(false);
   // Track what the AI most recently SUGGESTED so onSubmit can tell
   // "user accepted the suggestion" from "user typed/picked something
