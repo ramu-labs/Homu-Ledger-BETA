@@ -45,6 +45,18 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.45.2",
+    date: "May 16, 2026",
+    changes: [
+      { type: "fix", audience: "user",
+        en: "Fixed AI auto-categorisation in Add Transaction. The v1.45.0 redesign accidentally disabled the AI suggestion the moment you tapped the Category pill — so it never got a chance to fill the category from your description. Now it works like before: type a description and the AI picks a category; it only stops auto-suggesting once you manually choose one.",
+        id: "Memperbaiki auto-kategorisasi AI di Add Transaction. Desain ulang v1.45.0 tanpa sengaja menonaktifkan saran AI begitu kamu menyentuh pill Category — jadi AI tidak pernah sempat mengisi kategori dari deskripsimu. Sekarang berfungsi seperti sebelumnya: ketik deskripsi dan AI memilih kategori; AI berhenti menyarankan hanya setelah kamu memilih sendiri." },
+      { type: "improvement", audience: "dev",
+        en: "openCategoryPicker no longer calls setUserTouchedCategory(true). That flag — which the AI effect checks to bail out — must only flip when the user SELECTS a category (the picker's onSelect handler), not when they merely open the picker.",
+        id: "openCategoryPicker tidak lagi memanggil setUserTouchedCategory(true). Flag itu — yang dicek efek AI untuk berhenti — hanya boleh aktif saat pengguna MEMILIH kategori (handler onSelect picker), bukan saat hanya membuka picker." },
+    ],
+  },
+  {
     version: "1.45.1",
     date: "May 16, 2026",
     changes: [
