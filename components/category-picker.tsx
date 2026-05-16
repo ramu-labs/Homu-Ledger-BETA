@@ -75,7 +75,7 @@ export default function CategoryPicker({
   function startClose() {
     setVisible(false);
     onCloseStart?.();
-    setTimeout(onClose, 280);
+    setTimeout(onClose, 560);
   }
 
   function handleAdded(cat: DbCategory) {
@@ -98,8 +98,8 @@ export default function CategoryPicker({
           backdropFilter: visible ? "blur(2px)" : "blur(0px)",
           WebkitBackdropFilter: visible ? "blur(2px)" : "blur(0px)",
           transition: visible
-            ? "background 280ms ease, backdrop-filter 280ms ease"
-            : "background 140ms ease, backdrop-filter 140ms ease",
+            ? "background 560ms ease, backdrop-filter 560ms ease"
+            : "background 280ms ease, backdrop-filter 280ms ease",
           padding: "0 10px 18px",
         }}
       >
@@ -113,7 +113,7 @@ export default function CategoryPicker({
             padding: "10px 0 16px",
             boxShadow: "0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
             transform: visible ? "translateY(0)" : "translateY(110%)",
-            transition: "transform 280ms cubic-bezier(0.32, 0.72, 0, 1)",
+            transition: "transform 560ms cubic-bezier(0.32, 0.72, 0, 1)",
           }}
         >
           {/* Drag handle */}

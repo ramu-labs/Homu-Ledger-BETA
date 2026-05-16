@@ -45,6 +45,27 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.45.3",
+    date: "May 16, 2026",
+    changes: [
+      { type: "fix", audience: "user",
+        en: "Removed the stray cream box that appeared at the bottom of the screen whenever the Add Transaction sheet, the Category picker, or the Wallet picker was open. It was the sheet being lifted by a phantom 'keyboard' that wasn't actually there.",
+        id: "Menghapus kotak krem nyasar yang muncul di bagian bawah layar setiap kali sheet Add Transaction, picker Category, atau picker Wallet terbuka. Itu sebenarnya sheet yang terangkat oleh 'keyboard' palsu yang tidak benar-benar ada." },
+      { type: "fix", audience: "user",
+        en: "Removed the ‹ › ✓ toolbar that iOS shows above the keyboard when you type the amount. The amount field is now a contenteditable element, which iOS doesn't decorate with that form-navigation bar.",
+        id: "Menghapus toolbar ‹ › ✓ yang ditampilkan iOS di atas keyboard saat kamu mengetik jumlah. Field jumlah sekarang elemen contenteditable, yang tidak diberi bar navigasi-form oleh iOS." },
+      { type: "improvement", audience: "user",
+        en: "Add Transaction animations are now half-speed — the sheet sliding up, the Wallet/Category pickers opening and closing all glide more gently.",
+        id: "Animasi Add Transaction sekarang setengah kecepatan — sheet meluncur naik, picker Wallet/Category membuka dan menutup, semuanya meluncur lebih lembut." },
+      { type: "improvement", audience: "user",
+        en: "Tapping + now pops the numeric keyboard more reliably with the cursor already on the amount — the focus fires immediately on open instead of after a delay.",
+        id: "Mengetuk + sekarang memunculkan keyboard numerik lebih andal dengan kursor sudah di jumlah — fokus terjadi langsung saat terbuka, bukan setelah jeda." },
+      { type: "improvement", audience: "dev",
+        en: "kbInset false-positive threshold raised 40→150px: Chrome-iOS PWA reports innerHeight−visualViewport.height≈70px with no keyboard, which the old 40px threshold mis-read as a keyboard and lifted the sheet, exposing a cream box. HeroAmountInput rewritten as a contentEditable div (no <input> → no iOS accessory bar) with placeCaretEnd sync. Sheet/picker durations doubled (280→560, 140→280ms). Autofocus drops the 250ms setTimeout for an immediate focus + rAF re-focus.",
+        id: "Ambang false-positive kbInset dinaikkan 40→150px: Chrome-iOS PWA melaporkan innerHeight−visualViewport.height≈70px tanpa keyboard, yang oleh ambang 40px lama disalahbaca sebagai keyboard dan mengangkat sheet, memunculkan kotak krem. HeroAmountInput ditulis ulang sebagai div contentEditable (tanpa <input> → tanpa accessory bar iOS) dengan sinkronisasi placeCaretEnd. Durasi sheet/picker digandakan (280→560, 140→280md). Autofocus melepas setTimeout 250md untuk fokus langsung + re-fokus rAF." },
+    ],
+  },
+  {
     version: "1.45.2",
     date: "May 16, 2026",
     changes: [

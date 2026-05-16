@@ -99,7 +99,28 @@ function formatChipDate(value: string) {
   return `${days[dt.getDay()]} ${d} ${months[m - 1]}`;
 }
 
+// Move the caret to the end of a contenteditable element. Used after
+// a programmatic textContent write so the next keystroke appends.
+function placeCaretEnd(el: HTMLElement) {
+  try {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  } catch {
+    /* selection API unavailable — non-fatal */
+  }
+}
+
 // ─── Hero amount ──────────────────────────────────────────────────────
+// v1.45.3 — the keystroke capture is a contentEditable <div>, NOT an
+// <input>. iOS shows the form-navigation accessory bar (the ‹ › Done
+// strip above the keyboard) for <input>/<textarea> but NOT for
+// contenteditable elements — so this swap removes that bar entirely.
+// The div is transparent (opacity 0); the visible number is the span
+// above it and the caret is our own coral bar.
 function HeroAmountInput({
   value,
   onChange,
@@ -109,18 +130,45 @@ function HeroAmountInput({
   value: string;
   onChange: (v: string) => void;
   autoFocus: boolean;
-  inputRef: React.RefObject<HTMLInputElement | null>;
+  inputRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
   const [focused, setFocused] = useState(false);
   const [scale, setScale] = useState(1);
 
+  // Autofocus — focus the field the instant it mounts. No long
+  // setTimeout: a delayed focus loses the +-tap gesture context and
+  // iOS Chrome PWA then refuses to pop the keyboard. An extra rAF
+  // re-focus covers the rare race with the slide-up animation.
   useEffect(() => {
     if (!autoFocus) return;
-    const id = setTimeout(() => inputRef.current?.focus(), 250);
-    return () => clearTimeout(id);
+    const el = inputRef.current;
+    if (!el) return;
+    el.focus();
+    placeCaretEnd(el);
+    const r = requestAnimationFrame(() => {
+      const e2 = inputRef.current;
+      if (e2) {
+        e2.focus();
+        placeCaretEnd(e2);
+      }
+    });
+    return () => cancelAnimationFrame(r);
   }, [autoFocus, inputRef]);
+
+  // Keep the contenteditable's text synced to the external value —
+  // reset to "" on open, or the existing amount in edit mode.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    if ((el.textContent || "") !== value) {
+      el.textContent = value;
+      if (typeof document !== "undefined" && document.activeElement === el) {
+        placeCaretEnd(el);
+      }
+    }
+  }, [value, inputRef]);
 
   // Auto-shrink: measure rendered text width against the container,
   // scale down (never up) when it would overflow.
@@ -179,18 +227,18 @@ function HeroAmountInput({
           />
         )}
       </div>
-      <input
+      <div
         ref={inputRef}
-        type="text"
+        contentEditable
+        suppressContentEditableWarning
         inputMode="numeric"
-        autoComplete="off"
-        value={value}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
+        role="textbox"
+        aria-label="Amount"
+        onInput={(e) => onChange((e.currentTarget.textContent || "").replace(/\D/g, ""))}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        aria-label="Amount"
-        className="absolute inset-0 h-full w-full border-0 bg-transparent"
-        style={{ opacity: 0, fontSize: 16, color: "transparent", caretColor: "transparent" }}
+        className="absolute inset-0 h-full w-full"
+        style={{ opacity: 0, outline: "none", fontSize: 16, color: "transparent", caretColor: "transparent" }}
       />
     </div>
   );
@@ -301,8 +349,14 @@ export default function AddTransactionSheet({
     function update() {
       if (!vv) return;
       const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      // <40px = no keyboard (rounding / browser-chrome jitter). Treat as 0.
-      setKbInset(inset > 40 ? inset : 0);
+      // v1.45.3 — threshold raised 40 → 150px. On Chrome-iOS PWA the
+      // gap between innerHeight and visualViewport.height is ~70px even
+      // with NO keyboard up; a 40px threshold mis-read that as a
+      // keyboard and lifted the sheet ~70px — leaving a stray cream box
+      // at the screen bottom (the sheet's own top edge poking out, or a
+      // gap behind it). A real iOS keyboard is always ≥220px, so 150
+      // cleanly rejects the false positive without missing a real one.
+      setKbInset(inset > 150 ? inset : 0);
       setViewportH(vv.height);
     }
     update();
@@ -317,7 +371,9 @@ export default function AddTransactionSheet({
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
-  const amountRef = useRef<HTMLInputElement>(null);
+  // Hero amount is a contentEditable div (see HeroAmountInput) — ref
+  // is a div, not an input.
+  const amountRef = useRef<HTMLDivElement>(null);
   // Hidden end-date input for the recurring "On date" dropdown — we
   // call showPicker() on it the moment the user flips to "On date".
   const endDateRef = useRef<HTMLInputElement>(null);
@@ -707,10 +763,11 @@ export default function AddTransactionSheet({
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop. v1.45.3 — fade duration 300→600ms (animations
+          globally slowed to half speed at the user's request). */}
       <div
         className={cn(
-          "fixed inset-0 z-[60] bg-black/40 transition-opacity duration-300",
+          "fixed inset-0 z-[60] bg-black/40 transition-opacity duration-[600ms]",
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
         onClick={onClose}
@@ -731,11 +788,13 @@ export default function AddTransactionSheet({
             boxShadow: "0 -10px 30px rgba(0,0,0,0.18)",
             // Picker open → slide the whole sheet off-screen so no white
             // sliver shows behind the floating bento picker.
+            // v1.45.3 — durations doubled (280→560ms): animations slowed
+            // to half speed at the user's request.
             transform: pickerVisible ? "translateY(100%)" : "translateY(0)",
-            transition: "transform 280ms cubic-bezier(0.32,0.72,0,1)",
+            transition: "transform 560ms cubic-bezier(0.32,0.72,0,1)",
             animation: pickerVisible
               ? "none"
-              : "sheet-slide-up 280ms cubic-bezier(0.32,0.72,0,1) both",
+              : "sheet-slide-up 560ms cubic-bezier(0.32,0.72,0,1) both",
           }}
         >
           {/* Drag handle — tap backdrop to dismiss; no header chrome. */}
