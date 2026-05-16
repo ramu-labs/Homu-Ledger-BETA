@@ -7,6 +7,10 @@
 // Keep each summary to ONE short, jargon-free sentence in both languages.
 
 export const CHANGELOG_SUMMARIES: Record<string, { en: string; id: string }> = {
+  "1.46.1": {
+    en: "Add Transaction looks clean again — no stray box at the bottom, and the Description field no longer leaves a gap above the keyboard.",
+    id: "Add Transaction kembali rapi — tanpa kotak nyasar di bagian bawah, dan kolom Deskripsi tidak lagi meninggalkan celah di atas keyboard.",
+  },
   "1.46.0": {
     en: "Version Updates is simpler — each release now shows one short, friendly note about what's new.",
     id: "Version Updates kini lebih sederhana — tiap rilis menampilkan satu catatan singkat dan ramah tentang yang baru.",

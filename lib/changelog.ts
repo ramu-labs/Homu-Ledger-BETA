@@ -58,6 +58,24 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.46.1",
+    date: "May 16, 2026",
+    changes: [
+      { type: "fix", audience: "user",
+        en: "Fixed a stray cream-coloured box that appeared at the bottom of the Add Transaction sheet, the Wallet picker and the Category picker.",
+        id: "Memperbaiki kotak warna krem yang muncul di bagian bawah lembar Tambah Transaksi, pemilih Dompet, dan pemilih Kategori." },
+      { type: "fix", audience: "user",
+        en: "Tapping the Description field no longer pushes the sheet up and leaves a large gap above the keyboard that grew each time you re-tapped.",
+        id: "Mengetuk kolom Deskripsi tidak lagi mendorong lembar ke atas dan meninggalkan celah besar di atas keyboard yang makin lebar tiap kali diketuk ulang." },
+      { type: "fix", audience: "dev",
+        en: "Root cause of both: the Add Transaction sheet positioned itself with `bottom: kbInset`, a self-calibrated keyboard height. On iOS Chrome PWA the calibration drifted by a few px, so (a) when a bento picker opened, translateY(100%) didn't fully clear the off-by-N sheet — its surface peeked from behind the picker's dim backdrop (the 'cream box'), and (b) the keyboard inset mis-measured, opening/widening a gap on each Description re-focus.",
+        id: "Akar masalah keduanya: lembar Tambah Transaksi memposisikan dirinya dengan `bottom: kbInset`, tinggi keyboard yang dikalibrasi sendiri. Di iOS Chrome PWA kalibrasi melenceng beberapa px, sehingga (a) saat picker bento terbuka, translateY(100%) tidak menggeser lembar yang melenceng itu sepenuhnya — permukaannya mengintip dari balik backdrop gelap picker ('kotak krem'), dan (b) inset keyboard salah ukur, membuka/melebarkan celah tiap kali Deskripsi difokus ulang." },
+      { type: "fix", audience: "dev",
+        en: "Fix: the sheet now renders inside a position:fixed wrapper sized to window.visualViewport.height and offset by visualViewport.offsetTop (pointer-events:none so taps above the sheet still dismiss). The sheet is position:absolute; bottom:0 inside that wrapper, so it is always genuinely flush at the bottom of the visible area — above the keyboard when one is up, at the screen bottom otherwise. visualViewport is read directly on every resize/scroll event; no baseline, no accumulation, no drift. Removed kbInset / viewportH / vhBaselineRef.",
+        id: "Perbaikan: lembar kini dirender di dalam pembungkus position:fixed yang berukuran window.visualViewport.height dan diberi offset visualViewport.offsetTop (pointer-events:none agar ketukan di atas lembar tetap menutup). Lembar berada position:absolute; bottom:0 di dalam pembungkus itu, jadi selalu benar-benar rapat di bagian bawah area terlihat — di atas keyboard saat keyboard muncul, di dasar layar jika tidak. visualViewport dibaca langsung pada tiap event resize/scroll; tanpa baseline, tanpa akumulasi, tanpa drift. Menghapus kbInset / viewportH / vhBaselineRef." },
+    ],
+  },
+  {
     version: "1.46.0",
     date: "May 16, 2026",
     changes: [

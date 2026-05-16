@@ -291,39 +291,33 @@ export default function AddTransactionSheet({
   // The picker flips this back synchronously via onCloseStart.
   const [pickerVisible, setPickerVisible] = useState(false);
 
-  // ── Native-keyboard anchoring (v1.45.4 rewrite) ─────────────────────
-  // Only the Description field uses the native keyboard now (the amount
-  // uses the in-app keypad). When that keyboard opens, a bottom-anchored
-  // sheet would sit behind it — so we lift the sheet by the keyboard
-  // height.
+  // ── Viewport-tracking wrapper (v1.46.1 rewrite) ─────────────────────
+  // The sheet lives inside a `position: fixed` wrapper that is sized and
+  // offset to EXACTLY overlay window.visualViewport — the *visible* area,
+  // i.e. the screen minus the on-screen keyboard. The sheet itself is
+  // then simply `position: absolute; bottom: 0` inside that wrapper, so
+  // it is always flush against the bottom of the visible area:
+  //   • keyboard down → wrapper = full screen   → sheet at screen bottom
+  //   • keyboard up   → wrapper = area above kb → sheet sits on the kb
   //
-  // v1.45.4 fix: the height is computed PURELY from window.visualViewport
-  // — NO window.innerHeight. On Chrome-iOS PWA, innerHeight is ~70px
-  // larger than the true viewport even with no keyboard, which the old
-  // code mis-read as a phantom keyboard (→ the stray cream box + the gap
-  // above the accessory bar). We instead self-calibrate: the LARGEST
-  // visualViewport.height ever seen is the no-keyboard baseline; the
-  // keyboard height is baseline − current. Pure delta, no innerHeight,
-  // no magic threshold.
-  const [kbInset, setKbInset] = useState(0);
-  const [viewportH, setViewportH] = useState<number | null>(null);
-  const vhBaselineRef = useRef<number | null>(null);
+  // This replaces the old `bottom: kbInset` hack. That hack lifted the
+  // sheet by a SELF-CALIBRATED keyboard height; on iOS Chrome PWA the
+  // calibration drifted, leaving the sheet a few px off — which showed
+  // up as the stray "cream box" at the bottom (the mis-placed sheet /
+  // keypad surface peeking out from behind a picker that hadn't fully
+  // slid the sheet off-screen) and as a gap that widened on every
+  // re-focus. Reading visualViewport directly on every event — no
+  // baseline, no accumulation — removes the drift entirely.
+  const [vvHeight, setVvHeight] = useState<number | null>(null);
+  const [vvOffsetTop, setVvOffsetTop] = useState(0);
   useEffect(() => {
     if (!open) return;
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
-    // Fresh baseline each open (covers an orientation change between opens).
-    vhBaselineRef.current = null;
     function update() {
       if (!vv) return;
-      const vh = vv.height;
-      if (vhBaselineRef.current === null || vh > vhBaselineRef.current) {
-        vhBaselineRef.current = vh; // largest seen = no keyboard
-      }
-      const kb = Math.max(0, (vhBaselineRef.current ?? vh) - vh);
-      // 80px ignores sub-keyboard jitter; a real iOS keyboard is ≥220px.
-      setKbInset(kb > 80 ? kb : 0);
-      setViewportH(vh);
+      setVvHeight(vv.height);
+      setVvOffsetTop(vv.offsetTop);
     }
     update();
     vv.addEventListener("resize", update);
@@ -333,6 +327,11 @@ export default function AddTransactionSheet({
       vv.removeEventListener("scroll", update);
     };
   }, [open]);
+
+  // True only while the Description native keyboard is up — used purely
+  // to trim the action row's bottom padding (the keyboard already covers
+  // the home indicator, so the safe-area inset would be dead space).
+  const [descFocused, setDescFocused] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -478,6 +477,7 @@ export default function AddTransactionSheet({
     // New transaction → keypad auto-shows. Editing → start quiet (the
     // user is reviewing; they tap the amount to bring up the keypad).
     setAmountActive(!editing);
+    setDescFocused(false);
     setConfirmDelete(false);
     setShowMovePicker(false);
     setMoving(false);
@@ -761,24 +761,35 @@ export default function AddTransactionSheet({
         onClick={onClose}
       />
 
-      {/* Sheet — content-driven bottom sheet, mounted only while open. */}
+      {/* Sheet — mounted only while open. It lives inside a wrapper that
+          is sized + offset to overlay the visual viewport (see the
+          viewport-tracking effect above), so the sheet — anchored to the
+          wrapper's bottom — is always flush at the bottom of the visible
+          area, whether or not the native keyboard is up. The wrapper is
+          pointer-events:none so taps above the sheet fall through to the
+          backdrop and dismiss. */}
       {open && (
         <div
-          ref={sheetRef}
-          className="fixed inset-x-0 z-[70] mx-auto flex w-full max-w-md flex-col rounded-t-3xl bg-[var(--surface)] [touch-action:pan-y]"
+          className="fixed left-0 top-0 z-[70] w-full"
           style={{
-            // amountActive → the in-app keypad is the sheet's own
-            // bottom section, so the sheet stays anchored at bottom: 0.
-            // Otherwise lift above the native keyboard (Description).
-            bottom: amountActive ? 0 : kbInset,
-            height: "auto",
-            // Keypad mode + no-keyboard → 92dvh. Native keyboard up →
-            // cap to the visible viewport (dvh doesn't shrink for it).
-            maxHeight:
-              !amountActive && kbInset > 0 && viewportH ? `${viewportH}px` : "92dvh",
+            height: vvHeight != null ? `${vvHeight}px` : "100dvh",
+            transform: `translateY(${vvOffsetTop}px)`,
+            pointerEvents: "none",
+          }}
+        >
+        <div
+          ref={sheetRef}
+          className="absolute inset-x-0 bottom-0 mx-auto flex w-full max-w-md flex-col rounded-t-3xl bg-[var(--surface)] [touch-action:pan-y]"
+          style={{
+            pointerEvents: "auto",
+            // The wrapper already tracks the visible viewport, so 92%
+            // leaves an 8% backdrop sliver at the top in every state.
+            maxHeight: "92%",
             boxShadow: "0 -10px 30px rgba(0,0,0,0.18)",
             // Picker open → slide the whole sheet off-screen so no white
-            // sliver shows behind the floating bento picker.
+            // sliver shows behind the floating bento picker. Because the
+            // sheet genuinely sits at the wrapper's bottom edge,
+            // translateY(100%) now moves it FULLY off-screen.
             // v1.45.3 — durations doubled (280→560ms): animations slowed
             // to half speed at the user's request.
             transform: pickerVisible ? "translateY(100%)" : "translateY(0)",
@@ -863,7 +874,8 @@ export default function AddTransactionSheet({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                onFocus={() => setAmountActive(false)}
+                onFocus={() => { setAmountActive(false); setDescFocused(true); }}
+                onBlur={() => setDescFocused(false)}
                 placeholder={isTransfer ? tr("tx.note") : tr("tx.descriptionPlaceholder")}
                 aria-label={tr("tx.description")}
                 className="h-12 w-full rounded-full border border-[var(--separator)] bg-[var(--background)] px-[18px] text-[14.5px] text-[var(--foreground)] outline-none placeholder:text-[var(--label-tertiary)] focus:border-[var(--foreground)]/30"
@@ -1052,10 +1064,11 @@ export default function AddTransactionSheet({
               style={{
                 // amountActive → the keypad sits below this row and owns
                 // the home-indicator clearance, so a small pad is fine.
-                // Native keyboard up → also small. Otherwise clear the
-                // home bar with the safe-area inset.
+                // Description keyboard up → also small (the keyboard
+                // covers the home bar). Otherwise clear it with the
+                // safe-area inset.
                 paddingBottom:
-                  amountActive || kbInset > 0
+                  amountActive || descFocused
                     ? "10px"
                     : "max(16px, env(safe-area-inset-bottom))",
               }}
@@ -1162,6 +1175,7 @@ export default function AddTransactionSheet({
               <NumericKeypad onDigit={pushDigit} onBackspace={backspaceAmount} />
             )}
           </form>
+        </div>
         </div>
       )}
 
