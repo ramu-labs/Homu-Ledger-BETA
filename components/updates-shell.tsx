@@ -2,27 +2,22 @@
 
 // Changelog viewer.
 //
-// v1.29.0 split:
-//   - `/settings/updates` (Version Updates, in the Support group) calls
-//     this with view="user". Everyone — including devs — gets the
-//     plain-language read.
-//   - `/settings/dev-changelog` (in the Developer group, only visible
-//     to is_developer accounts) calls this with view="dev". Same UI
-//     shell, different filter + title.
+// Two routes, two audiences (v1.46.0):
+//   - `/settings/updates` (Version Updates, Support group) → view="user".
+//     Everyone, including devs, sees ONE short plain-language line per
+//     release. The lines live in lib/changelog-summaries.ts.
+//   - `/settings/dev-changelog` (Developer group, is_developer only) →
+//     view="dev". Shows the FULL technical changelog — every detailed
+//     entry from lib/changelog.ts, nothing hidden.
 //
-// Filtering by ChangeEntry.audience:
-//   - view="user" shows entries with audience='user' OR audience='all'
-//     OR no audience field (legacy entries default to 'all').
-//   - view="dev"  shows entries with audience='dev'  OR audience='all'
-//     OR no audience field.
-//
-// We also hide entire version blocks whose visible changes are empty —
-// otherwise the User route would show empty cards for releases that
-// were purely dev-only, and vice versa.
+// Why the split: the detailed changelog exposed bugs, regressions, file
+// names and internals that end users shouldn't see. The user route now
+// shows only a friendly one-liner; all the detail is developer-only.
 
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Sparkles, Wrench, ArrowUpCircle } from "lucide-react";
-import { CHANGELOG, type Audience, type ChangeEntry } from "@/lib/changelog";
+import { CHANGELOG, type ChangeEntry } from "@/lib/changelog";
+import { CHANGELOG_SUMMARIES } from "@/lib/changelog-summaries";
 import { useT, useLang } from "@/lib/i18n/provider";
 
 type View = "user" | "dev";
@@ -39,13 +34,13 @@ export default function UpdatesShell({ view, title }: Props) {
   const router = useRouter();
   const t = useT();
   const lang = useLang();
+  const isDev = view === "dev";
 
-  const versions = CHANGELOG
-    .map((entry) => ({
-      ...entry,
-      changes: entry.changes.filter((c) => matchesView(c.audience, view)),
-    }))
-    .filter((entry) => entry.changes.length > 0);
+  // Dev view → every release with detailed changes (the full record).
+  // User view → every release that has a plain-language summary.
+  const versions = isDev
+    ? CHANGELOG.filter((entry) => entry.changes.length > 0)
+    : CHANGELOG.filter((entry) => !!CHANGELOG_SUMMARIES[entry.version]);
 
   return (
     <div className="pb-10">
@@ -69,47 +64,45 @@ export default function UpdatesShell({ view, title }: Props) {
             {t("updates.empty")}
           </p>
         ) : (
-          versions.map((entry) => (
-            <div
-              key={entry.version}
-              className="rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] overflow-hidden"
-            >
-              <div className="flex items-baseline justify-between px-4 pt-4 pb-3 border-b border-[var(--separator)]">
-                <p className="text-[17px] font-bold text-[var(--foreground)] tracking-tight">
-                  v{entry.version}
-                </p>
-                <p className="text-[12px] text-[var(--label-tertiary)]">{entry.date}</p>
-              </div>
+          versions.map((entry) => {
+            const summary = CHANGELOG_SUMMARIES[entry.version];
+            return (
+              <div
+                key={entry.version}
+                className="rounded-2xl bg-[var(--surface)] ring-1 ring-black/[0.04] overflow-hidden"
+              >
+                <div className="flex items-baseline justify-between px-4 pt-4 pb-3 border-b border-[var(--separator)]">
+                  <p className="text-[17px] font-bold text-[var(--foreground)] tracking-tight">
+                    v{entry.version}
+                  </p>
+                  <p className="text-[12px] text-[var(--label-tertiary)]">{entry.date}</p>
+                </div>
 
-              <ul className="px-4 py-3 space-y-2.5">
-                {entry.changes.map((change, i) => (
-                  <li key={i} className="flex items-start gap-2.5">
-                    <ChangeIcon type={change.type} />
-                    <p className="text-[14px] text-[var(--foreground)] leading-snug pt-0.5">
-                      {lang === "id" ? change.id : change.en}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))
+                {isDev ? (
+                  // Developer route — full detailed change list.
+                  <ul className="px-4 py-3 space-y-2.5">
+                    {entry.changes.map((change, i) => (
+                      <li key={i} className="flex items-start gap-2.5">
+                        <ChangeIcon type={change.type} />
+                        <p className="text-[14px] text-[var(--foreground)] leading-snug pt-0.5">
+                          {lang === "id" ? change.id : change.en}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  // User route — one friendly line.
+                  <p className="px-4 py-3.5 text-[14px] text-[var(--foreground)] leading-snug">
+                    {summary ? (lang === "id" ? summary.id : summary.en) : ""}
+                  </p>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
     </div>
   );
-}
-
-/**
- * Does this entry (with the given audience tag) show on the given view?
- *
- *   - undefined / 'all' → shows on both routes (backwards-compatible
- *                          default for legacy entries pre-v1.28.0)
- *   - 'user'            → User route only
- *   - 'dev'             → Developer route only
- */
-function matchesView(audience: Audience | undefined, view: View): boolean {
-  if (!audience || audience === "all") return true;
-  return audience === view;
 }
 
 function ChangeIcon({ type }: { type: ChangeEntry["type"] }) {
