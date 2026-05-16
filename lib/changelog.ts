@@ -45,6 +45,29 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.44.0",
+    date: "May 16, 2026",
+    changes: [
+      // ── User-facing ──
+      { type: "improvement", audience: "user",
+        en: "Auto-categorization is much smarter out of the box. ~2,800 keywords and brand names — in both Indonesian and English — now tag your transactions instantly, before the AI even runs. Type “Indomaret”, “Mie Gacoan”, “Indihome”, “Kopi Kenangan” and it just knows.",
+        id: "Kategorisasi otomatis jauh lebih pintar sejak awal. ~2.800 kata kunci dan nama brand — dalam Bahasa Indonesia dan Inggris — kini menandai transaksimu seketika, sebelum AI dijalankan. Ketik “Indomaret”, “Mie Gacoan”, “Indihome”, “Kopi Kenangan” dan langsung dikenali." },
+      { type: "improvement", audience: "user",
+        en: "It can now tell apart “Ayam goreng” (a meal — Dining out) from “Ayam 500g” (raw chicken by weight — Groceries), and similar tricky pairs.",
+        id: "Sekarang bisa membedakan “Ayam goreng” (makanan jadi — Dining out) dari “Ayam 500g” (ayam mentah per berat — Groceries), dan pasangan lain yang mirip." },
+      // ── Developer-facing ──
+      { type: "new", audience: "dev",
+        en: "Migration 0029 adds the global category_keyword_seeds table (~2,782 rows: keyword → category_name, lang, kind). One shared lookup for all households — replaces the per-household seeding in migration 0023 (which used pre-v1.40.1 category names and copied every row into every household). RLS: authenticated read-only.",
+        id: "Migrasi 0029 menambahkan tabel global category_keyword_seeds (~2.782 baris: keyword → category_name, lang, kind). Satu lookup bersama untuk semua household — menggantikan seeding per-household di migrasi 0023 (yang memakai nama kategori pra-v1.40.1 dan menyalin tiap baris ke tiap household). RLS: baca-saja untuk authenticated." },
+      { type: "new", audience: "dev",
+        en: "lib/llm/disambiguation.ts — 7 regex force-rules run before the keyword lookup: gift markers, date-night, fuel-vs-transport, prepared-prefix (goreng/bakar → Dining out), weight-unit (500g/1kg → Groceries), subscription-pattern, kids-vs-baby. A rule forces a category by name; if the household doesn't own it, the result is discarded and lookup proceeds.",
+        id: "lib/llm/disambiguation.ts — 7 aturan regex berjalan sebelum lookup keyword: penanda hadiah, date-night, fuel-vs-transport, prepared-prefix (goreng/bakar → Dining out), weight-unit (500g/1kg → Groceries), subscription-pattern, kids-vs-baby. Aturan memaksa kategori berdasarkan nama; kalau household tidak punya kategori itu, hasilnya dibuang dan lookup lanjut." },
+      { type: "improvement", audience: "dev",
+        en: "suggestCategory() is now 4 layers: disambiguation rule → category_hints (this household's ai/user mappings) → category_keyword_seeds (global) → Gemini. SuggestCategoryResult.source gains 'rule' and 'seed'. Legacy pre-v1.40.1 households keep their old source='seed' hints (intentionally not deleted) since the global table uses new category names they don't have.",
+        id: "suggestCategory() kini 4 lapis: aturan disambiguasi → category_hints (mapping ai/user household ini) → category_keyword_seeds (global) → Gemini. SuggestCategoryResult.source bertambah 'rule' dan 'seed'. Household lama pra-v1.40.1 tetap memakai hint source='seed' lama (sengaja tidak dihapus) karena tabel global memakai nama kategori baru yang tidak mereka miliki." },
+    ],
+  },
+  {
     version: "1.43.3",
     date: "May 15, 2026",
     changes: [

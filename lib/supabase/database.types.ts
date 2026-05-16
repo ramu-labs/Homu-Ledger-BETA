@@ -195,6 +195,30 @@ export type Database = {
           },
         ]
       }
+      category_keyword_seeds: {
+        Row: {
+          category_name: string
+          created_at: string
+          keyword: string
+          kind: string
+          lang: string
+        }
+        Insert: {
+          category_name: string
+          created_at?: string
+          keyword: string
+          kind?: string
+          lang?: string
+        }
+        Update: {
+          category_name?: string
+          created_at?: string
+          keyword?: string
+          kind?: string
+          lang?: string
+        }
+        Relationships: []
+      }
       feedback: {
         Row: {
           attachments: string[]

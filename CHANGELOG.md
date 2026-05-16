@@ -2,6 +2,62 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
+> **Note:** v1.37.0–v1.43.3 (the Voice release line) updated `lib/changelog.ts` but not this file. See `lib/changelog.ts` for those entries. This file resumes at v1.44.0.
+
+## v1.44.0 - May 16, 2026
+
+**Smarter auto-categorization** — a ~2,800-entry bilingual keyword + brand seed database, plus a disambiguation rule layer.
+
+### 1. Global keyword seed table (migration 0029)
+
+New table `category_keyword_seeds` — one **global**, shared lookup of ~2,782 rows mapping `keyword → category_name`, in Indonesian and English, covering generic terms AND brand names (Indomaret, Mie Gacoan, Indihome, Kopi Kenangan, Gojek, Tokopedia, Pampers, Garuda Indonesia, …).
+
+This replaces the per-household seeding from migration 0023, which had two problems: it used pre-v1.40.1 category names ("Food & Drink" etc.), and it copied every seed row into every household — storage that grows linearly with the user base. The global table is ~200 KB total, shared by everyone, and adds **zero** client-side weight (it's a server-side lookup).
+
+`keyword` is the primary key (every keyword maps to exactly one category). RLS: authenticated read-only; writes only via migration.
+
+### 2. Disambiguation rules (`lib/llm/disambiguation.ts`)
+
+Seven regex rules run **before** the keyword lookup and force a category from the literal description:
+
+| Rule | Example | → |
+|---|---|---|
+| gift-vs-shopping | "kado parfum" | Gifts |
+| date-night-pattern | "dinner sama pacar" | Date nights |
+| fuel-vs-transport | "bensin motor" | Fuel |
+| prepared-prefix-bias | "ayam **goreng**" | Dining out |
+| weight-unit-bias | "ayam **500g**" | Groceries |
+| subscription-pattern | "langganan netflix" | Subscriptions |
+| kids-vs-baby | "popok bayi" / "seragam anak" | Baby / Kids |
+
+The headline case the user asked for — `Ayam goreng` (a cooked meal) vs `Ayam 500g` (raw chicken by weight) — is rules 4 and 5. A rule forces a category *by name*; if the household doesn't own that category, the result is discarded and the normal lookup proceeds, so a rule can never invent a category the user doesn't have.
+
+### 3. `suggestCategory()` is now four layers
+
+```
+1. disambiguation rule    ← regex over the literal description
+2. category_hints         ← this household's learned (ai) + corrected (user) mappings
+3. category_keyword_seeds ← the new global table
+4. Gemini AI              ← only on a true miss; warms category_hints
+```
+
+`SuggestCategoryResult.source` gains `"rule"` and `"seed"` alongside `"cache"` and `"ai"`. Rule and seed hits are logged as cache hits so the dev panel's hit-rate stays accurate.
+
+### 4. Legacy households
+
+~11–13 households created before the v1.40.1 category redesign still carry old-name categories ("Food & Drink", "Health", "Education"). The global seed uses v1.40.1 names, so it can't serve those households directly — **their existing `source='seed'` hints are intentionally left in place** (not deleted) so they keep working, and they still fall through to Gemini for anything uncovered. New households (v1.40.1 category set) get the full benefit immediately.
+
+### 5. Performance
+
+- Client bundle: **0 bytes added** — the seed DB and rules are entirely server-side.
+- DB: +2,782 rows in one ~200 KB global table. One indexed `keyword IN (...)` lookup per categorization (PK lookup, microseconds).
+- New-household signup is now **faster** — the per-household seed loop (which inserted dozens of rows per signup) is gone.
+
+### 6. Verification
+
+- `npm run build` + `npm run lint` clean.
+- Migration 0029 applied + verified on production before this PR merges.
+
 ## v1.36.0 - May 15, 2026
 
 Four things from the post-v1.35.1 review:
