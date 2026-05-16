@@ -257,6 +257,14 @@ input[type="date"]::-webkit-clear-button {
   will-change: transform;
 }
 
+/* v1.44.0 — Add Transaction hero-amount caret. A 3×50px coral bar
+   that blinks on/off (steps(2) = hard on/off, no fade) while the
+   hidden amount input has focus. */
+@keyframes atx-caret {
+  0%, 50%  { opacity: 1; }
+  51%,100% { opacity: 0; }
+}
+
 /* Companion overlay fade-in for the same sheet. */
 @keyframes overlay-fade-in {
   from { opacity: 0; }

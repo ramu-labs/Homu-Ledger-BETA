@@ -68,6 +68,8 @@ export const en = {
   "tx.move": "Move to another ledger",
   "tx.deleteConfirm": "Delete this transaction?",
   "tx.deleteTransaction": "Delete Transaction",
+  "tx.toWord": "to",
+  "tx.newRecurringItem": "New recurring item",
 
   // Recurring
   "recurring.title": "Recurring",
@@ -82,6 +84,8 @@ export const en = {
   "recurring.monthly": "Monthly",
   "recurring.yearly": "Yearly",
   "recurring.startingDate": "Starting date",
+  "recurring.startingPrefix": "Starting",
+  "recurring.untilWord": "until",
   "recurring.nextDueDate": "Next due date",
   "recurring.repeatUntil": "Repeat until",
   "recurring.forever": "Forever",
@@ -448,6 +452,8 @@ export const id: Record<TKey, string> = {
   "tx.move": "Pindahkan ke buku lain",
   "tx.deleteConfirm": "Hapus transaksi ini?",
   "tx.deleteTransaction": "Hapus Transaksi",
+  "tx.toWord": "ke",
+  "tx.newRecurringItem": "Item berulang baru",
 
   // Recurring
   "recurring.title": "Berulang",
@@ -462,6 +468,8 @@ export const id: Record<TKey, string> = {
   "recurring.monthly": "Bulanan",
   "recurring.yearly": "Tahunan",
   "recurring.startingDate": "Tanggal mulai",
+  "recurring.startingPrefix": "Mulai",
+  "recurring.untilWord": "sampai",
   "recurring.nextDueDate": "Jatuh tempo berikutnya",
   "recurring.repeatUntil": "Ulangi sampai",
   "recurring.forever": "Selamanya",
