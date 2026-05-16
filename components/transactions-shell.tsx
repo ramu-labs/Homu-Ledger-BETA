@@ -140,6 +140,9 @@ export default function TransactionsShell({
   // Transaction sheet
   const [showSheet, setShowSheet] = useState(false);
   const [editingTx, setEditingTx] = useState<DbTransaction | null>(null);
+  // v1.44.0 — true when the unified sheet was opened to create a
+  // recurring item (from the Recurring tab / "Add recurring" button).
+  const [sheetRecurring, setSheetRecurring] = useState(false);
 
   // Recurring sheet
   const [showRecurringSheet, setShowRecurringSheet] = useState(false);
@@ -371,17 +374,22 @@ export default function TransactionsShell({
     if (searchOpen) setTimeout(() => searchInputRef.current?.focus(), 50);
   }, [searchOpen]);
 
-  function openAdd() { setEditingTx(null); setShowSheet(true); }
-  function openEdit(tx: DbTransaction) { setEditingTx(tx); setShowSheet(true); }
+  function openAdd() { setEditingTx(null); setSheetRecurring(false); setShowSheet(true); }
+  function openEdit(tx: DbTransaction) { setEditingTx(tx); setSheetRecurring(false); setShowSheet(true); }
   function closeSheet() {
     setShowSheet(false);
     setEditingTx(null);
+    setSheetRecurring(false);
     if (typeof window !== "undefined" && window.location.search.includes("new=1")) {
       window.history.replaceState({}, "", "/transactions");
     }
   }
 
-  function openAddRecurring() { setEditingRecurring(null); setShowRecurringSheet(true); }
+  // v1.44.0 — "Add recurring item" no longer opens a separate sheet.
+  // It opens the SAME AddTransactionSheet with the Recurring toggle
+  // pre-ticked (`defaultRecurring`). The standalone AddRecurringSheet
+  // is now used only for EDITING an existing recurring item.
+  function openAddRecurring() { setEditingTx(null); setSheetRecurring(true); setShowSheet(true); }
   function openEditRecurring(item: DbRecurringItem) { setEditingRecurring(item); setShowRecurringSheet(true); }
   function closeRecurringSheet() { setShowRecurringSheet(false); setEditingRecurring(null); }
 
@@ -565,6 +573,7 @@ export default function TransactionsShell({
         memberships={memberships}
         currentHouseholdId={householdId}
         iconStyle={iconStyle}
+        defaultRecurring={sheetRecurring}
       />
 
       <AddRecurringSheet

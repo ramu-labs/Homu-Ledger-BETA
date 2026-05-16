@@ -45,6 +45,30 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.45.0",
+    date: "May 16, 2026",
+    changes: [
+      { type: "new", audience: "user",
+        en: "Add Transaction got a full redesign — and Add Recurring is merged into it. There's no separate 'Add Recurring' anymore: tap + and just flip the Recurring toggle on. The Recurring tab's + and 'Add recurring item' button open the same sheet with Recurring pre-ticked.",
+        id: "Add Transaction didesain ulang sepenuhnya — dan Add Recurring digabung ke dalamnya. Tidak ada lagi 'Add Recurring' terpisah: ketuk + lalu nyalakan toggle Recurring. Tombol + dan 'Tambah item berulang' di tab Recurring membuka sheet yang sama dengan Recurring sudah aktif." },
+      { type: "improvement", audience: "user",
+        en: "New Add Transaction layout: a big hero amount with a superscript Rp that auto-shrinks for huge numbers, compact colour-coded Expense / Income / Transfer tabs, and rounded pill fields — Wallet and Category sit side by side on one row.",
+        id: "Tata letak Add Transaction baru: jumlah hero besar dengan Rp superскript yang mengecil otomatis untuk angka besar, tab Expense / Income / Transfer ringkas berkode warna, dan field pill membulat — Wallet dan Category bersebelahan dalam satu baris." },
+      { type: "improvement", audience: "user",
+        en: "Wallet and Category pickers are now floating cards that slide up while the sheet behind them gently slides down and dims — one coordinated motion instead of two stacked sheets. You can still add a brand-new wallet or category right from the picker.",
+        id: "Picker Wallet dan Category sekarang kartu mengambang yang naik sementara sheet di belakangnya turun lembut dan meredup — satu gerakan terkoordinasi alih-alih dua sheet bertumpuk. Kamu tetap bisa menambah wallet atau kategori baru langsung dari picker." },
+      { type: "improvement", audience: "user",
+        en: "Recurring options (Frequency, and 'until Forever / On date') now sit next to the Save button as compact dropdowns — picking 'On date' pops the date picker straight away.",
+        id: "Opsi Recurring (Frekuensi, dan 'sampai Selamanya / Pada tanggal') sekarang berada di sebelah tombol Simpan sebagai dropdown ringkas — memilih 'Pada tanggal' langsung memunculkan pemilih tanggal." },
+      { type: "improvement", audience: "dev",
+        en: "add-transaction-sheet.tsx rewritten to the prototype design (content-driven bottom sheet, HeroAmountInput with measure-and-scale, segmented tabs, pill fields, action-row recurring dropdowns). All production logic preserved verbatim: offline queue (queuedAddTransaction), pending-row editing, AI auto-categorise, photo upload, transfer pairs, move-to-ledger, addRecurringItem. New `defaultRecurring` prop pre-ticks the toggle.",
+        id: "add-transaction-sheet.tsx ditulis ulang ke desain prototipe (bottom sheet content-driven, HeroAmountInput dengan measure-and-scale, tab tersegmentasi, field pill, dropdown recurring di action row). Semua logika produksi dipertahankan: antrian offline, edit baris pending, auto-kategori AI, unggah foto, pasangan transfer, pindah-ledger, addRecurringItem. Prop `defaultRecurring` baru men-tick toggle." },
+      { type: "improvement", audience: "dev",
+        en: "category-picker.tsx + wallet-picker-sheet.tsx restyled as floating bento pickers: 2-col icon-left grid, double-RAF slide-up, optional onCloseStart for coordinated parent-sheet recede. Inline-add preserved. transactions-shell routes the Recurring-tab + and empty-list button into AddTransactionSheet with defaultRecurring; AddRecurringSheet kept only for editing existing recurring items.",
+        id: "category-picker.tsx + wallet-picker-sheet.tsx digayakan ulang sebagai picker bento mengambang: grid 2-kolom ikon-kiri, slide-up double-RAF, onCloseStart opsional untuk koordinasi mundurnya sheet induk. Inline-add dipertahankan. transactions-shell mengarahkan + tab Recurring dan tombol daftar-kosong ke AddTransactionSheet dengan defaultRecurring; AddRecurringSheet hanya untuk mengedit item berulang yang ada." },
+    ],
+  },
+  {
     version: "1.44.0",
     date: "May 16, 2026",
     changes: [

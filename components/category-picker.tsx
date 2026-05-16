@@ -1,25 +1,46 @@
 "use client";
 
+// Category picker — v1.44.0 floating-bento redesign.
+//
+// Ported from the Add Transaction prototype (`src/tx/add-tx-sheet.jsx`
+// → ATxCategoryPicker). Visual changes from the old 4-col bottom sheet:
+//   • Floats as a "bento" card: 10px side margin, 18px bottom margin,
+//     28px radius, soft shadow — doesn't span edge-to-edge.
+//   • 2-col grid, icon-LEFT layout (28px circle + name + check).
+//   • Active item = 1.5px coloured border, no background fill.
+//   • Slides up translateY(110%)→0 with a double-RAF enter so the
+//     transition never gets batched away into an instant pop.
+//
+// Coordinated-exit: the picker exposes `onCloseStart` — fired the
+// instant the user taps the backdrop / an item / the X — so the parent
+// AddTransactionSheet can begin sliding back up at the SAME moment the
+// bento starts sliding down. `onClose` fires 280ms later to unmount.
+// When `onCloseStart` is omitted (e.g. AddRecurringSheet) the picker
+// just animates itself; nothing else moves.
+//
+// Inline-add is preserved: the footer "Add new category" button still
+// opens AddCategorySheet.
+
 import { useState, useEffect } from "react";
 import { X, Plus, Check } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
 import AddCategorySheet from "@/components/add-category-sheet";
-import { cn } from "@/lib/cn";
+import { useT } from "@/lib/i18n/provider";
 import type { DbCategory, TransactionType } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 
 type Props = {
   categories: DbCategory[];
   selected: string | null;
-  /** Limits the picker to categories of this type. Caller passes the
-   *  transaction's current type so we don't show e.g. "Salary" when the
-   *  user is adding an expense. Newly created categories inherit the
-   *  same type. */
   type: TransactionType;
   onSelect: (id: string | null) => void;
   onClose: () => void;
   onCategoryAdded: (cat: DbCategory) => void;
   iconStyle?: IconStyle;
+  /** v1.44.0 — fired synchronously when the picker starts its exit
+   *  animation, BEFORE onClose. Lets the parent sheet rise back up in
+   *  sync with the bento sliding down. Optional. */
+  onCloseStart?: () => void;
 };
 
 export default function CategoryPicker({
@@ -30,115 +51,153 @@ export default function CategoryPicker({
   onClose,
   onCategoryAdded,
   iconStyle = "3d",
+  onCloseStart,
 }: Props) {
+  const tr = useT();
   const [showAdd, setShowAdd] = useState(false);
   const [localCategories, setLocalCategories] = useState<DbCategory[]>(categories);
   const visibleCategories = localCategories.filter((c) => c.type === type);
-  // Slide-up animation: start translated down, animate to 0 on mount
-  const [visible, setVisible] = useState(false);
 
+  // Double-RAF enter: render at translateY(110%) first, paint, THEN
+  // flip visible=true so the transition has a previous state.
+  const [visible, setVisible] = useState(false);
   useEffect(() => {
-    requestAnimationFrame(() => setVisible(true));
+    let r2: number | null = null;
+    const r1 = requestAnimationFrame(() => {
+      r2 = requestAnimationFrame(() => setVisible(true));
+    });
+    return () => {
+      cancelAnimationFrame(r1);
+      if (r2) cancelAnimationFrame(r2);
+    };
   }, []);
+
+  function startClose() {
+    setVisible(false);
+    onCloseStart?.();
+    setTimeout(onClose, 280);
+  }
 
   function handleAdded(cat: DbCategory) {
     setLocalCategories((prev) => [...prev, cat]);
     onCategoryAdded(cat);
     setShowAdd(false);
     onSelect(cat.id);
-    onClose();
+    startClose();
   }
 
   return (
     <>
-      {/* Dim overlay */}
-      <div className="fixed inset-0 z-[80] bg-black/50" onClick={onClose} />
-
-      {/* Half-screen sheet with slide-up animation */}
+      {/* Backdrop — dim + blur, both animate together. 280ms in,
+          140ms out (snappier return). */}
       <div
-        className={cn(
-          "fixed bottom-0 left-1/2 z-[90] flex h-[65dvh] w-full max-w-md -translate-x-1/2 flex-col rounded-t-3xl bg-[var(--surface)] transition-transform duration-300 ease-out",
-          visible ? "translate-y-0" : "translate-y-full"
-        )}
+        onClick={startClose}
+        className="fixed inset-0 z-[80] flex items-end justify-center"
+        style={{
+          background: visible ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0)",
+          backdropFilter: visible ? "blur(2px)" : "blur(0px)",
+          WebkitBackdropFilter: visible ? "blur(2px)" : "blur(0px)",
+          transition: visible
+            ? "background 280ms ease, backdrop-filter 280ms ease"
+            : "background 140ms ease, backdrop-filter 140ms ease",
+          padding: "0 10px 18px",
+        }}
       >
-        {/* Drag handle */}
-        <div className="flex shrink-0 justify-center pt-3 pb-1">
-          <div className="h-1 w-10 rounded-full bg-black/10" />
-        </div>
+        {/* Bento card */}
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="flex w-full max-w-md flex-col bg-[var(--surface)] text-[var(--foreground)]"
+          style={{
+            maxHeight: "88%",
+            borderRadius: 28,
+            padding: "10px 0 16px",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
+            transform: visible ? "translateY(0)" : "translateY(110%)",
+            transition: "transform 280ms cubic-bezier(0.32, 0.72, 0, 1)",
+          }}
+        >
+          {/* Drag handle */}
+          <div className="flex justify-center pb-2 pt-1">
+            <div className="h-1 w-9 rounded-full bg-black/[0.16]" />
+          </div>
 
-        {/* Header */}
-        <div className="flex shrink-0 items-center justify-between px-5 pb-2 pt-1">
-          <h3 className="text-[17px] font-semibold text-[var(--foreground)]">Category</h3>
-          <button
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.05] text-[var(--label-secondary)]"
-          >
-            <X className="h-4 w-4" strokeWidth={2.25} />
-          </button>
-        </div>
+          {/* Header */}
+          <div className="flex items-center justify-between px-[18px] pb-2.5 pt-1">
+            <span className="text-[15px] font-bold text-[var(--foreground)]">
+              {tr("tx.selectCategory")}
+            </span>
+            <button
+              onClick={startClose}
+              className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-black/[0.05] text-[var(--label-secondary)]"
+              aria-label={tr("common.close")}
+            >
+              <X className="h-4 w-4" strokeWidth={2.25} />
+            </button>
+          </div>
 
-        {/* Scrollable grid — min-h-0 is required for flex-1 to scroll correctly */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-2">
-          {visibleCategories.length === 0 ? (
-            <div className="flex h-24 items-center justify-center">
-              <p className="text-[14px] text-[var(--label-secondary)]">No {type} categories yet. Add one below.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-4 gap-2">
-              {visibleCategories.map((cat) => {
-                const isSelected = selected === cat.id;
+          {/* 2-col icon-left grid */}
+          <div className="grid min-h-0 grid-cols-2 gap-2 overflow-y-auto px-3">
+            {visibleCategories.length === 0 ? (
+              <p className="col-span-2 py-8 text-center text-[14px] text-[var(--label-secondary)]">
+                No {type} categories yet. Add one below.
+              </p>
+            ) : (
+              visibleCategories.map((cat) => {
+                const active = cat.id === selected;
                 return (
                   <button
                     key={cat.id}
-                    onClick={() => { onSelect(isSelected ? null : cat.id); onClose(); }}
-                    className={cn(
-                      "relative flex flex-col items-center gap-1.5 rounded-2xl px-1 py-2.5 transition-all active:scale-[0.97]",
-                      isSelected
-                        ? "ring-2 ring-[var(--foreground)]/30"
-                        : "bg-[var(--background)] ring-1 ring-black/[0.06]"
-                    )}
-                    style={isSelected ? { backgroundColor: `${cat.color}22` } : undefined}
+                    type="button"
+                    onClick={() => {
+                      onSelect(active ? null : cat.id);
+                      startClose();
+                    }}
+                    className="flex min-w-0 items-center gap-2.5 rounded-[20px] bg-[var(--background)] px-3 py-[11px] text-left transition-transform active:scale-[0.97]"
+                    style={{
+                      border: active
+                        ? `1.5px solid ${cat.color}`
+                        : "1px solid var(--separator)",
+                    }}
                   >
-                    {isSelected && (
-                      <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--foreground)]">
-                        <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
-                      </span>
-                    )}
                     <span
-                      className="flex h-10 w-10 items-center justify-center rounded-full"
-                      style={{ backgroundColor: `${cat.color}20` }}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                      style={{ backgroundColor: `${cat.color}26` }}
                     >
                       <CategoryIcon
                         symbol={cat.symbol}
                         iconStyle={iconStyle}
-                        size={20}
-                        emojiSize="20px"
+                        size={16}
+                        emojiSize="14px"
                         color={iconStyle === "2d" ? cat.color : undefined}
                       />
                     </span>
-                    <span className="w-full text-center text-[11px] font-medium leading-tight text-[var(--foreground)] line-clamp-2">
+                    <span className="min-w-0 flex-1 truncate text-[14px] font-medium">
                       {cat.name}
                     </span>
+                    {active && (
+                      <Check className="h-[18px] w-[18px] shrink-0" strokeWidth={2.5} style={{ color: cat.color }} />
+                    )}
                   </button>
                 );
-              })}
-            </div>
-          )}
-        </div>
+              })
+            )}
+          </div>
 
-        {/* Sticky footer */}
-        <div className="shrink-0 border-t border-[var(--separator)] bg-[var(--surface)] px-5 pb-8 pt-3">
-          <button
-            onClick={() => setShowAdd(true)}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--background)] py-3 text-[14px] font-medium text-[var(--label-secondary)] ring-1 ring-black/[0.06] transition-colors active:bg-black/[0.04]"
-          >
-            <Plus className="h-4 w-4" strokeWidth={2.25} />
-            Add new category
-          </button>
+          {/* Footer — inline add */}
+          <div className="px-3 pt-3">
+            <button
+              type="button"
+              onClick={() => setShowAdd(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-[20px] bg-[var(--background)] py-3 text-[14px] font-medium text-[var(--label-secondary)] ring-1 ring-black/[0.06] transition-colors active:bg-black/[0.04]"
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.25} />
+              Add new category
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Add Category sheet — z-[100/110] sits above the picker */}
+      {/* Inline-add — sits above the picker (z-100/110) */}
       <AddCategorySheet
         open={showAdd}
         type={type}
