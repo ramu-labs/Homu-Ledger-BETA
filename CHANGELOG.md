@@ -2,7 +2,32 @@
 
 This file is the GitHub-facing release log for Homu. Every production release must be documented here and in `lib/changelog.ts` before it is deployed.
 
-> **Note:** v1.37.0–v1.43.3 (the Voice release line) updated `lib/changelog.ts` but not this file. See `lib/changelog.ts` for those entries. This file resumes at v1.44.0.
+> **Note:** v1.37.0–v1.43.3 (the Voice release line) and v1.45.0–v1.46.1 updated `lib/changelog.ts` but not this file. See `lib/changelog.ts` for those entries.
+
+## v1.46.2 - May 17, 2026
+
+**Hotfix: Google sign-up was completely broken.**
+
+New Google users couldn't get past the "pick a username" screen — it failed with `new row violates row-level security policy for table "profiles"`.
+
+### Root cause
+
+`completeGoogleProfile()` writes the profile with `supabase.upsert()`, which compiles to `INSERT ... ON CONFLICT DO UPDATE`. Postgres evaluates the **INSERT** RLS policy for *any* upsert — even when the row already exists and the statement resolves to an UPDATE. The `profiles` table had only **SELECT** and **UPDATE** policies — no INSERT policy — so every upsert was denied.
+
+Email/password signups were never affected: their `profiles` row is created by the `handle_new_user` `SECURITY DEFINER` trigger (which bypasses RLS) and then written with a plain `.update()`, which the existing UPDATE policy permits. Only the Google OAuth path uses `.upsert()`.
+
+### Fix
+
+Migration `0030_profiles_insert_policy.sql` adds:
+
+```sql
+create policy "profiles: self insert"
+  on public.profiles for insert
+  to authenticated
+  with check (id = auth.uid());
+```
+
+A user may insert only their own profile row — exactly mirroring the UPDATE policy's `id = auth.uid()` self-check. No code change required; `completeGoogleProfile()` was already correct.
 
 ## v1.44.0 - May 16, 2026
 

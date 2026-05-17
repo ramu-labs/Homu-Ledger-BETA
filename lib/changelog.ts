@@ -58,6 +58,18 @@ export type VersionEntry = {
 
 export const CHANGELOG: VersionEntry[] = [
   {
+    version: "1.46.2",
+    date: "May 17, 2026",
+    changes: [
+      { type: "fix", audience: "user",
+        en: "Signing up with Google now works. Picking your username on the welcome screen previously failed with a database error — Google sign-up was completely blocked. Email/password signups were never affected.",
+        id: "Daftar dengan Google sekarang berfungsi. Memilih username di layar sambutan sebelumnya gagal dengan error database — pendaftaran Google sepenuhnya terblokir. Pendaftaran email/password tidak pernah terpengaruh." },
+      { type: "fix", audience: "dev",
+        en: "Migration 0030 adds the missing INSERT RLS policy on profiles (\"profiles: self insert\", WITH CHECK id = auth.uid()). completeGoogleProfile() writes via supabase.upsert(), which is INSERT ... ON CONFLICT — Postgres evaluates the INSERT policy for any upsert even when it resolves to an UPDATE. profiles had only SELECT + UPDATE policies, so every upsert was denied with \"new row violates row-level security policy for table profiles\". Email/password signups dodged it: their row is created by the handle_new_user SECURITY DEFINER trigger and written with plain .update().",
+        id: "Migrasi 0030 menambahkan policy RLS INSERT yang hilang di profiles (\"profiles: self insert\", WITH CHECK id = auth.uid()). completeGoogleProfile() menulis via supabase.upsert(), yaitu INSERT ... ON CONFLICT — Postgres mengevaluasi policy INSERT untuk tiap upsert bahkan saat hasilnya UPDATE. profiles hanya punya policy SELECT + UPDATE, jadi tiap upsert ditolak dengan \"new row violates row-level security policy for table profiles\". Pendaftaran email/password lolos: barisnya dibuat oleh trigger handle_new_user SECURITY DEFINER dan ditulis dengan .update() biasa." },
+    ],
+  },
+  {
     version: "1.46.1",
     date: "May 16, 2026",
     changes: [
