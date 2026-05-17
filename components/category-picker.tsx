@@ -26,6 +26,7 @@ import { X, Plus, Check } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
 import AddCategorySheet from "@/components/add-category-sheet";
 import { useT } from "@/lib/i18n/provider";
+import { logEvent } from "@/lib/events";
 import type { DbCategory, TransactionType } from "@/lib/types";
 import type { IconStyle } from "@/lib/category-icons";
 
@@ -57,6 +58,12 @@ export default function CategoryPicker({
   const [showAdd, setShowAdd] = useState(false);
   const [localCategories, setLocalCategories] = useState<DbCategory[]>(categories);
   const visibleCategories = localCategories.filter((c) => c.type === type);
+
+  // Funnel: category_picker_opened (RAM-19). Paired with
+  // category_selected. No-op without analytics consent.
+  useEffect(() => {
+    logEvent("category_picker_opened");
+  }, []);
 
   // Double-RAF enter: render at translateY(110%) first, paint, THEN
   // flip visible=true so the transition has a previous state.
@@ -149,6 +156,7 @@ export default function CategoryPicker({
                     key={cat.id}
                     type="button"
                     onClick={() => {
+                      logEvent("category_selected");
                       onSelect(active ? null : cat.id);
                       startClose();
                     }}

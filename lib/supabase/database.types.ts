@@ -219,6 +219,41 @@ export type Database = {
         }
         Relationships: []
       }
+      events: {
+        Row: {
+          client_ts: string | null
+          created_at: string
+          id: string
+          name: string
+          props: Json
+          user_id: string
+        }
+        Insert: {
+          client_ts?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          props?: Json
+          user_id?: string
+        }
+        Update: {
+          client_ts?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          props?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback: {
         Row: {
           attachments: string[]

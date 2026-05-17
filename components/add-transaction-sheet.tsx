@@ -32,6 +32,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Trash2, Camera, ImagePlus, ChevronRight, ChevronDown, ArrowRightLeft, Check, Calendar, Repeat, Sparkles, Loader2 } from "lucide-react";
 import { updateTransaction, deleteTransaction, moveTransaction, addTransfer } from "@/app/actions/transactions";
 import { queuedAddTransaction, isQueued, updateQueuedTransaction, deleteQueuedTransaction } from "@/lib/queue-actions";
+import { logEvent } from "@/lib/events";
 import { withTimeout } from "@/lib/with-timeout";
 import { signTransactionPhoto } from "@/app/actions/photos";
 import { addRecurringItem } from "@/app/actions/recurring";
@@ -493,6 +494,13 @@ export default function AddTransactionSheet({
     aiSuggestedRef.current = null;
   }, [open, editing, wallets, defaultRecurring]);
 
+  // ── Funnel: transaction_started (RAM-19) ────────────────────────────
+  // Fires when the sheet opens for a NEW transaction. Paired with
+  // transaction_completed in handleSubmit. No-op without analytics consent.
+  useEffect(() => {
+    if (open && !editing) logEvent("transaction_started");
+  }, [open, editing]);
+
   // ── AI auto-categorisation (unchanged) ──────────────────────────────
   useEffect(() => {
     if (!open || editing || isTransfer) return;
@@ -659,6 +667,7 @@ export default function AddTransactionSheet({
 
     if (result && isQueued(result)) {
       void recordCategoryUsage(name, categoryId);
+      if (!editing) logEvent("transaction_completed", { queued: true });
       onClose();
       return;
     }
@@ -667,6 +676,7 @@ export default function AddTransactionSheet({
       setLoading(false);
     } else {
       void recordCategoryUsage(name, categoryId);
+      if (!editing) logEvent("transaction_completed", { queued: false });
       onClose();
     }
   }
