@@ -748,6 +748,7 @@ export type Database = {
         Args: { p_invitation_id: string }
         Returns: string
       }
+      analytics_overview: { Args: never; Returns: Json }
       api_usage_recent_window: {
         Args: never
         Returns: {
