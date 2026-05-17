@@ -194,6 +194,44 @@ export default function DevAnalyticsShell({ analytics, failed }: Props) {
             </div>
           </Section>
 
+          {/* ── Friction points ───────────────────────────────────── */}
+          <Section
+            title="Friction points"
+            hint="Drop-off between paired UI events. Empty until event collection is enabled (consent — RAM-20)."
+          >
+            {analytics.friction.funnels.every((f) => f.started === 0) ? (
+              <p className="text-[12px] text-[var(--label-secondary)]">
+                No events captured yet.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {analytics.friction.funnels.map((f) => {
+                  const rate = f.completionRate === null ? 0 : Math.round(f.completionRate * 100);
+                  return (
+                    <div key={f.label}>
+                      <div className="mb-1 flex items-baseline justify-between gap-2">
+                        <p className="text-[12px] font-medium text-[var(--foreground)]">{f.label}</p>
+                        <p className="text-[12px] font-semibold tabular-nums text-[var(--label-secondary)]">
+                          {f.completionRate === null ? "—" : `${rate}%`}
+                        </p>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/[0.05]">
+                        <div
+                          className="h-full rounded-full bg-[#EE6452] transition-[width] duration-300"
+                          style={{ width: `${rate}%` }}
+                        />
+                      </div>
+                      <p className="mt-1 text-[10px] tabular-nums text-[var(--label-tertiary)]">
+                        {f.started} started · {f.completed} completed ·{" "}
+                        {Math.max(0, f.started - f.completed)} dropped
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Section>
+
           {/* ── Export ────────────────────────────────────────────── */}
           <div className="mx-5 mt-6">
             <button

@@ -6,6 +6,7 @@ import { CopyButton } from "@/components/copy-button";
 import { getServerT } from "@/lib/i18n/server";
 import DevFeedbackBadge from "@/components/dev-feedback-badge";
 import { APP_VERSION } from "@/lib/version";
+import TrackView from "@/components/track-view";
 
 export default async function SettingsPage() {
   // requireSession + getServerT share the SAME getSession() call via
@@ -78,6 +79,7 @@ export default async function SettingsPage() {
     // 7rem bottom padding leaves a big empty gap below the version label.
     // Cancel ~6rem of it via negative margin; keep ~1rem + safe-area for breathing room.
     <div className="pb-4" style={{ marginBottom: "calc(-7rem + 1rem)" }}>
+      <TrackView event="settings_opened" />
       <header className="sticky top-[env(safe-area-inset-top)] z-20 flex items-center justify-between bg-[var(--background)]/95 px-5 pt-2 pb-2 backdrop-blur">
         <TapLink
           href="/transactions"

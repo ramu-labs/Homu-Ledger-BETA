@@ -11,6 +11,12 @@
 
 const DAY = 86_400_000;
 
+// Funnel pairs for the Friction Points section (RAM-19) — [start, end, label].
+const FUNNEL_DEFS: [string, string, string][] = [
+  ["transaction_started", "transaction_completed", "New transaction"],
+  ["category_picker_opened", "category_selected", "Category pick"],
+];
+
 // ── Raw shape returned by analytics_overview() ──────────────────────────
 export type AnalyticsRaw = {
   generated_at: string;
@@ -32,6 +38,8 @@ export type AnalyticsRaw = {
   household_members: { profile_id: string; household_id: string }[];
   households: { id: string; currency: string }[];
   category_hints: { source: string }[];
+  // Added by migration 0032 (RAM-19). Optional — older snapshots omit it.
+  events?: { name: string; user_id: string | null; created_at: string }[];
 };
 
 // ── Computed shape consumed by the UI ───────────────────────────────────
@@ -81,6 +89,15 @@ export type AnalyticsData = {
     byCurrency: { currency: string; avgTransaction: number; txCount: number }[];
     topCategories: { name: string; count: number }[];
     avgCategoriesPerUser: number;
+  };
+  friction: {
+    funnels: {
+      label: string;
+      started: number;
+      completed: number;
+      completionRate: number | null;
+    }[];
+    eventCounts: { name: string; count: number }[];
   };
 };
 
@@ -270,6 +287,26 @@ export function computeAnalytics(raw: AnalyticsRaw): AnalyticsData {
   const avgCategoriesPerUser =
     txByUser.size > 0 ? distinctCategorySum / txByUser.size : 0;
 
+  // ── Friction funnels (RAM-19) ──────────────────────────────────────
+  // Drop-off between paired UI events. Empty until event collection is
+  // switched on (consent — RAM-20); directional only at beta sizes.
+  const eventCount = countBy(raw.events ?? [], (e) => e.name);
+  const friction = {
+    funnels: FUNNEL_DEFS.map(([startName, endName, label]) => {
+      const started = eventCount.get(startName) ?? 0;
+      const completed = eventCount.get(endName) ?? 0;
+      return {
+        label,
+        started,
+        completed,
+        completionRate: started > 0 ? Math.min(1, completed / started) : null,
+      };
+    }),
+    eventCounts: [...eventCount.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count),
+  };
+
   return {
     generatedAt: raw.generated_at,
     users: { total, new7d, new30d, dau, wau, mau, stickiness, activationRate },
@@ -286,6 +323,7 @@ export function computeAnalytics(raw: AnalyticsRaw): AnalyticsData {
     },
     ai,
     financial: { byCurrency, topCategories, avgCategoriesPerUser },
+    friction,
   };
 }
 
@@ -378,6 +416,13 @@ export function buildAnalyticsCsv(d: AnalyticsData): string {
   }
   rows.push([]);
   rows.push(["Avg distinct categories per user", d.financial.avgCategoriesPerUser.toFixed(1)]);
+  rows.push([]);
+
+  rows.push(["Friction funnels"]);
+  rows.push(["Funnel", "Started", "Completed", "Completion rate"]);
+  for (const f of d.friction.funnels) {
+    rows.push([f.label, f.started, f.completed, pct(f.completionRate)]);
+  }
 
   return rows.map((r) => r.map(csvCell).join(",")).join("\n");
 }
