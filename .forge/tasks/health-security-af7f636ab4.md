@@ -1,20 +1,20 @@
 ---
-id: health-security-97091760f1
+id: health-security-af7f636ab4
 title: cancelInvitation deletes by ID with no caller ownership check
-status: completed
-priority: P1
+status: backlog
+priority: P2
+assignee: unassigned
+project: homu-ledger-beta
 labels:
-  - security
-  - warning
-  - health-check
-created_at: 2026-05-20T17:55:00Z
-updated_at: 2026-05-20T19:14:12.386Z
+  - Health check
+  - Warning
+  - Security
+created_at: 2026-05-20T19:13:36.478Z
+updated_at: 2026-05-20T19:13:36.478Z
 ---
 
-## Finding
-
-**Source:** Security · OWASP A01 (Broken Access Control)  
-**File:** `app/actions/invitations.ts:77`  
+**Source:** Security · OWASP A01 (Broken Access Control)
+**File:** `app/actions/invitations.ts:132`
 **Severity:** warning
 
 ## Description
@@ -31,13 +31,14 @@ export async function cancelInvitation(invitationId: string): Promise<{ error?: 
     .from("household_invitations")
     .delete()
     .eq("id", invitationId); // ← no ownership check
+}
 ```
 
-Contrast with `declineInvitation`, which correctly validates `invite.invited_user_id !== user.id`. Any authenticated user who learns or guesses a valid `invitationId` UUID can cancel any pending invitation in any household. Whether this is exploitable depends entirely on whether the Supabase RLS `DELETE` policy on `household_invitations` restricts deletions to the `invited_by` user or household owner. If it does not, the server action provides no additional check.
+Contrast with `declineInvitation` (line 102), which correctly validates `invite.invited_user_id === user.id`. Any authenticated user who discovers a valid `invitationId` UUID can cancel any pending invitation in any household. Exploitability depends on whether the Supabase RLS `DELETE` policy on `household_invitations` restricts deletions to the `invited_by` user or household owner.
 
 ## Recommended Fix
 
-Verify ownership before deleting, mirroring the pattern in `declineInvitation`:
+Verify ownership before deleting:
 
 ```typescript
 const { data: invite } = await supabase
@@ -49,18 +50,13 @@ const { data: invite } = await supabase
 if (!invite) return { error: "Invitation not found" };
 if (invite.status !== "pending") return { error: "Invitation is no longer pending" };
 
-// Verify caller is the inviter or a household owner
 if (invite.invited_by !== user.id) {
   const { data: membership } = await supabase
-    .from("household_members")
-    .select("role")
+    .from("household_members").select("role")
     .eq("household_id", invite.household_id)
-    .eq("profile_id", user.id)
-    .eq("role", "owner")
-    .maybeSingle();
+    .eq("profile_id", user.id).eq("role", "owner").maybeSingle();
   if (!membership) return { error: "Not authorized" };
 }
 ```
 
-Also audit the RLS `DELETE` policy on `household_invitations` to ensure it enforces the same constraint at the database level.
-
+Also audit the RLS `DELETE` policy on `household_invitations` to enforce the same constraint at the DB level.

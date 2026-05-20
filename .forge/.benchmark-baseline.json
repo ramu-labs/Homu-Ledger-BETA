@@ -1,5 +1,6 @@
 {
-  "_note": "Lighthouse baseline not yet populated — first run was in a headless-browser-free environment. Run again with Lighthouse available to establish scores.",
+  "_note": "Lighthouse baseline not yet populated — headless browser unavailable in this execution environment. Run again locally with Chrome to establish scores.",
   "created_at": "2026-05-20T17:55:00Z",
+  "updated_at": "2026-05-20T19:06:00Z",
   "scores": {}
 }
